@@ -4,6 +4,18 @@ Low-token repo discovery skill for Claude Code and Codex.
 
 This repo contains the extracted runtime package for `token-reduce`: a small set of search helpers and guardrail hooks that push agents toward low-context discovery instead of broad recursive scans.
 
+## Built With
+
+This skill is built on a small set of concrete tools and patterns:
+
+- `qmd` for BM25 file and snippet retrieval
+- `rg` / `git grep` for narrow fallback search
+- Claude Code and Codex workspace hooks / instructions
+- path-first kickoff wrappers instead of broad repo inventory
+- Bash and Glob guardrails to stop context-expensive discovery patterns early
+
+The path-only kickoff pattern is intentionally simple: return the smallest useful candidate set first, then expand only if needed.
+
 ## What it does
 
 - starts ambiguous repo discovery with a path-first helper
@@ -37,6 +49,26 @@ In the larger source repo where this skill was developed and measured, the main 
 - targeted reads vs full reads: about `33%` fewer tokens
 
 Those numbers came from the original development repo, not this tiny extracted repo. The extracted repo is mainly for installation and reuse; the mechanism is the same runtime that produced those savings there.
+
+## Compared In Benchmarks
+
+In the source repo, the workflow was compared directly against broader discovery patterns.
+
+Example payload comparison from a fresh repo-local run there:
+
+| Strategy | Approx. tokens | Savings vs broad inventory |
+|----------|----------------|----------------------------|
+| Broad inventory (`rg --files .`) | `2945` | baseline |
+| Scoped `rg` | `499` | `83.1%` |
+| Path-only helper | `262` | `91.1%` |
+| One-snippet helper | `373` | `87.3%` |
+
+The runtime was also checked in bounded live agent benchmarks:
+
+- Claude: correct on benchmark, measurement, and Bash-hook lookup prompts
+- Codex: correct on benchmark, measurement, and Bash-hook lookup prompts
+
+That is why this repo ships the runtime helpers and guardrails, not just benchmark notes.
 
 ## Install
 
