@@ -3,7 +3,7 @@
 **Benchmarked:** 2026-02-07 with tiktoken on real repo content (642 files, 234 .md)
 **Auto-active:** Via local workspace rules or direct helper invocation
 **Validated:** `python3 /path/to/quick_validate.py /path/to/token-reduce-skill`
-**Full benchmarks:** run the bundled benchmark scripts in `./scripts/`
+**Scope:** reusable runtime skill package
 
 ---
 
@@ -139,37 +139,18 @@ Parallel (1 turn):    2,700 tokens
 
 ---
 
-## Hooks (`consumer workspace hook configuration`)
+## Included Runtime Files
 
-- `enforce-targeted-read.py` — Blocks Read on files >300 lines without limit
-- `enforce-grep-limits.py` — Warns when Grep content mode used without head_limit
-- `warn-glob-explosion.py` — Warns when Glob returns >50 files (suggests sub-agent)
+- `../scripts/token-reduce-search.sh` — canonical retrieval helper
+- `../scripts/token-reduce-paths.sh` — path-only kickoff wrapper
+- `../scripts/token-reduce-snippet.sh` — one-snippet wrapper
+- `../scripts/advise-token-reduction.py` — broad Bash-scan blocker
+- `../scripts/enforce-glob-scope.py` — broad Glob blocker
+- `../scripts/remind-token-reduce.py` — prompt-submit steering hook
 
----
-
-## Validation & Monitoring
-
-```bash
-../scripts/baseline-measurement.sh --scope repo
-../scripts/install-token-reduction-cron.sh
-../scripts/benchmark-token-reduction-workflow.py --query "token reduction"
-python3 ../scripts/benchmark-token-reduction-agents.py --agents claude --timeout-seconds 30
-```
-
-**Workspace integrations:** consumer Claude/Codex/workspace instructions can point at this package without copying the scripts.
+**Workspace integrations:** consumer Claude/Codex/workspace instructions can point at this package and wire these runtime files in directly.
 
 ---
 
-## Benchmark Dependencies
-
-```bash
-apt install python3-venv
-python3 -m venv /tmp/token-venv
-source /tmp/token-venv/bin/activate
-pip3 install tiktoken
-```
-
----
-
-**Version:** 4.2 (2026-02-08 — deduplication pass, Claude Code tool references)
+**Version:** 5.1 (2026-03-19 — standalone runtime package)
 **Validation:** `python3 /path/to/quick_validate.py /path/to/token-reduce-skill`
