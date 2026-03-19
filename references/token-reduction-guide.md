@@ -152,5 +152,32 @@ Parallel (1 turn):    2,700 tokens
 
 ---
 
+## Install Examples
+
+### Codex
+
+Clone this repo into your local skills directory so Codex can discover `SKILL.md` directly:
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill.git "$CODEX_HOME/skills/token-reduce"
+```
+
+### Claude
+
+Clone the repo into your workspace, then point your Claude hooks or instructions at the runtime files:
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill.git tools/token-reduce-skill
+```
+
+Typical entrypoints:
+- `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
+- `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
+- `./tools/token-reduce-skill/scripts/advise-token-reduction.py`
+- `./tools/token-reduce-skill/scripts/enforce-glob-scope.py`
+- `./tools/token-reduce-skill/scripts/remind-token-reduce.py`
+
+---
+
 **Version:** 5.1 (2026-03-19 — standalone runtime package)
 **Validation:** `python3 /path/to/quick_validate.py /path/to/token-reduce-skill`
