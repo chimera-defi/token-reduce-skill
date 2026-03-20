@@ -5,15 +5,17 @@ import re
 import sys
 
 
+# Require compound patterns that signal actual repo-discovery intent.
+# Single common words like "find", "where", "context", "review" fire on almost
+# every coding prompt and add ~85 tokens of system message with no benefit.
 TRIGGERS = (
-    r"\bfind\b",
-    r"\bwhere\b",
-    r"\blives?\b",
-    r"\bexplor",
-    r"\bcontext\b",
-    r"\breview\b",
-    r"\bbenchmark\b",
-    r"\bsearch\b",
+    r"\bexplor(e|ing|ation)\b.{0,60}\b(repo|codebase|files?|code)\b",
+    r"\b(find|locate|where)\b.{0,60}\b(file|class|function|hook|script|lives?|defined|lives?)\b",
+    r"\b(read|load|gather)\b.{0,60}\bcontext\b",
+    r"\bsearch\b.{0,60}\b(repo|codebase|files?)\b",
+    r"\breview\b.{0,60}\b(repo|codebase|entire|whole)\b",
+    r"\bwhere\s+(is|are|does|do)\b",
+    r"\bwhere.{0,20}\blive[s]?\b",
 )
 
 
@@ -31,8 +33,8 @@ def main() -> int:
         {
             "continue": True,
             "systemMessage": (
-                "For repo discovery in this workspace, do not invoke the Skill tool. "
-                "Your first tool call must be a single standalone Bash command: "
+                "For repo discovery in this workspace, start with the token-reduce workflow. "
+                "If the task is about maintaining this skill itself, use the skill instructions and then begin discovery with a single standalone Bash command: "
                 "./scripts/token-reduce-paths.sh topic words. "
                 "That helper gives a low-token path-only kickoff. "
                 "Use the user's literal filenames, identifiers, or key nouns as the query words; "

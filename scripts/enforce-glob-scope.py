@@ -5,13 +5,24 @@ import sys
 
 
 def is_broad(pattern: str) -> bool:
+    """Return True for patterns that scan the full repo without a directory prefix."""
     if not pattern:
         return False
-    if pattern.startswith("**/") or "**/*" in pattern:
+    # Strip leading ./ for comparison
+    p = pattern.lstrip("./")
+    # Unscoped wildcards at the root: **/* **/*.ts **/foo etc.
+    if p.startswith("**/"):
         return True
-    if pattern.count("*") >= 2 and "/" not in pattern:
+    # Bare multi-wildcard with no directory scope: *.* **/* etc.
+    if p.count("*") >= 2 and "/" not in p:
         return True
-    if pattern.endswith("/**") or pattern.endswith("/**/*"):
+    # path/** grabs every file under a directory — treat as broad.
+    if p.endswith("/**") or p.endswith("/**/*"):
+        return True
+    # Scoped patterns like src/**/*.ts are fine; only block when the directory
+    # segment itself is a wildcard (e.g. **/**/* or */**).
+    parts = p.split("/")
+    if len(parts) > 1 and all(seg.startswith("*") for seg in parts[:2]):
         return True
     return False
 
@@ -29,7 +40,7 @@ def main() -> int:
     if is_broad(pattern):
         json.dump(
             {
-                "decision": "deny",
+                "decision": "block",
                 "reason": (
                     "Blocked broad exploratory Glob pattern. "
                     "Use ./scripts/token-reduce-paths.sh for a path-only kickoff, "
@@ -37,9 +48,9 @@ def main() -> int:
                     "or scoped rg -g first."
                 ),
             },
-            sys.stderr,
+            sys.stdout,
         )
-        print(file=sys.stderr)
+        print()
         return 2
     return 0
 

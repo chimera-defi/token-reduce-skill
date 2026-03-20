@@ -1,0 +1,27 @@
+{
+  "name": "token-reduce",
+  "version": "0.1.0",
+  "description": "Low-token repo discovery for Claude Code and MCP-compatible clients.",
+  "author": {
+    "name": "Claudy Won",
+    "url": "https://github.com/chimera-defi"
+  },
+  "homepage": "https://chimera-defi.github.io/token-reduce-skill/",
+  "repository": "https://github.com/chimera-defi/token-reduce-skill",
+  "license": "MIT",
+  "keywords": [
+    "token-reduction",
+    "repo-discovery",
+    "mcp",
+    "claude-code",
+    "codex"
+  ],
+  "mcpServers": {
+    "token-reduce-mcp": {
+      "command": "node",
+      "args": [
+        "mcp/server.mjs"
+      ]
+    }
+  }
+}

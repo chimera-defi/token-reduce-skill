@@ -1,4 +1,6 @@
 interface:
   display_name: "Token Reduce"
-  short_description: "Reduce context via narrow retrieval."
-  default_prompt: "Use $token-reduce to locate the smallest relevant context before reading files."
+  short_description: "Find the smallest useful repo context."
+  default_prompt: "Use $token-reduce to find the smallest useful repo context before reading files."
+policy:
+  allow_implicit_invocation: true

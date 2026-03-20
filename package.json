@@ -1,0 +1,20 @@
+{
+  "name": "token-reduce-mcp",
+  "version": "0.1.0",
+  "description": "MCP server and plugin packaging for the token-reduce skill.",
+  "type": "module",
+  "bin": {
+    "token-reduce-mcp": "mcp/server.mjs"
+  },
+  "scripts": {
+    "bench": "uv run --with tiktoken scripts/benchmark-token-reduce.py"
+  },
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "codex",
+    "token-reduction",
+    "repo-discovery"
+  ],
+  "license": "MIT"
+}

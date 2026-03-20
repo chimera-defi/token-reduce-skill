@@ -50,3 +50,20 @@ git config core.hooksPath .githooks
 - Title should describe the change, not the prompt.
 - Keep the PR summary factual and short.
 - Include the original request verbatim in `## Original Request`.
+
+## Token Reduce — Codex Overrides
+
+Canonical token-reduce rules are in `SKILL.md`. The notes below replace or supplement sections that differ in Codex.
+
+### Escalation
+
+There is no `Task(subagent_type)` API in Codex. If the candidate set stays broad after two discovery passes, stop and ask the user to narrow the scope. Do not attempt to spin up sub-agents.
+
+### Python Commands
+
+Use `uv run ...` instead of `python3 ...` or `pip ...`.
+For the validator: `uv run --with pyyaml /path/to/quick_validate.py .`
+
+### Skill Self-Maintenance
+
+These narrow-discovery rules apply even when the task is modifying this skill repo itself. Editing `SKILL.md` or a hook does not justify broad repo inventory.

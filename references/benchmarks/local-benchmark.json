@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-03-20T10:58:01.061023+00:00",
+  "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/master",
+  "qmd_available": true,
+  "benchmarks": [
+    {
+      "name": "broad_inventory",
+      "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | head -200",
+      "exit_code": 0,
+      "duration_ms": 8,
+      "bytes": 330,
+      "lines": 12,
+      "tokens": 92,
+      "stdout_preview": "./scripts/token-reduce-snippet.sh\n./scripts/enforce-glob-scope.py\n./scripts/token-reduce-search.sh\n./scripts/token-reduce-paths.sh\n./scripts/remind-token-reduce.py\n./scripts/advise-token-reduction.py"
+    },
+    {
+      "name": "scoped_rg",
+      "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | rg -i -e 'hook|bash|exploratory|scans|token-reduce' | head -20",
+      "exit_code": 0,
+      "duration_ms": 12,
+      "bytes": 168,
+      "lines": 5,
+      "tokens": 44,
+      "stdout_preview": "./scripts/token-reduce-snippet.sh\n./scripts/token-reduce-search.sh\n./scripts/token-reduce-paths.sh\n./scripts/remind-token-reduce.py\n./scripts/benchmark-token-reduce.py"
+    },
+    {
+      "name": "token_reduce_paths",
+      "command": "./scripts/token-reduce-paths.sh \"hook broad exploratory bash scans\"",
+      "exit_code": 0,
+      "duration_ms": 33,
+      "bytes": 106,
+      "lines": 3,
+      "tokens": 29,
+      "stdout_preview": "[token-reduce-search] rg content hits\n./scripts/advise-token-reduction.py\n./scripts/enforce-glob-scope.py"
+    },
+    {
+      "name": "token_reduce_snippet",
+      "command": "./scripts/token-reduce-snippet.sh \"token reduction\"",
+      "exit_code": 0,
+      "duration_ms": 831,
+      "bytes": 543,
+      "lines": 14,
+      "tokens": 201,
+      "stdout_preview": "[token-reduce-search] qmd search --files (repo-f28f25d6215f)\n#905589,0.89,qmd://repo-f28f25d6215f/references/token-reduction-guide.md\n#c5418e,0.88,qmd://repo-f28f25d6215f/readme.md\n#b4f7db,0.87,qmd://repo-f28f25d6215f/skill.md\n\n[token-reduce-search] qmd search snippet (repo-f28f25d6215f)"
+    }
+  ],
+  "savings_vs_broad_inventory": {
+    "broad_inventory": 0.0,
+    "scoped_rg": 52.2,
+    "token_reduce_paths": 68.5,
+    "token_reduce_snippet": -118.5
+  },
+  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `92` | baseline | `8 ms` |\n| `scoped_rg` | `44` | 52.2% | `12 ms` |\n| `token_reduce_paths` | `29` | 68.5% | `33 ms` |\n| `token_reduce_snippet` | `201` | -118.5% | `831 ms` |"
+}

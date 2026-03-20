@@ -1,123 +1,147 @@
-# token-reduce-skill
+# token-reduce
 
-Low-token repo discovery skill for Claude Code and Codex.
+Path-first repo discovery for Claude Code, Codex, and MCP-compatible clients.
 
-This repo contains the extracted runtime package for `token-reduce`: a small set of search helpers and guardrail hooks that push agents toward low-context discovery instead of broad recursive scans.
+token-reduce exists for one reason: broad repo exploration is cheap to type and expensive in context. This package pushes discovery toward the smallest useful output first, then expands only when the first answer is not enough.
 
-## Built With
+## Token Reduction, First
 
-This skill is built on a small set of concrete tools and patterns:
+Measured locally in this repo:
 
-- `qmd` for BM25 file and snippet retrieval
-- `rg` / `git grep` for narrow fallback search
-- Claude Code and Codex workspace hooks / instructions
-- path-first kickoff wrappers instead of broad repo inventory
-- Bash and Glob guardrails to stop context-expensive discovery patterns early
+| Strategy | Tokens | Savings vs broad inventory | Duration |
+|----------|--------|----------------------------|----------|
+| `broad_inventory` | `92` | baseline | `8 ms` |
+| `scoped_rg` | `44` | `52.2%` | `12 ms` |
+| `token_reduce_paths` | `29` | `68.5%` | `33 ms` |
+| `token_reduce_snippet` | `201` | `-118.5%` | `831 ms` |
 
-The path-only kickoff pattern is intentionally simple: return the smallest useful candidate set first, then expand only if needed.
+What that means:
 
-## What it does
+- the default win is the path-first kickoff
+- the snippet helper is intentionally a follow-up path, not the default
+- the benchmark is reproducible here with `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
-- starts ambiguous repo discovery with a path-first helper
-- uses QMD BM25 when available
-- falls back to scoped `rg` when QMD is missing or unhelpful
-- blocks broad Bash scans like `find .`, `ls -R`, `grep -R`
-- blocks broad `Glob` patterns
-- provides a one-snippet follow-up path when file paths alone are not enough
+The local artifact lives at `references/benchmarks/local-benchmark.json`.
 
-Core runtime files:
-
-- `scripts/token-reduce-search.sh`
-- `scripts/token-reduce-paths.sh`
-- `scripts/token-reduce-snippet.sh`
-- `scripts/advise-token-reduction.py`
-- `scripts/enforce-glob-scope.py`
-- `scripts/remind-token-reduce.py`
-
-Optional tooling restored from the source repo:
-
-- `scripts/benchmark-token-reduction-workflow.py`
-- `scripts/benchmark-token-reduction-agents.py`
-- `scripts/measure_token_reduction.py`
-- `scripts/baseline-measurement.sh`
-- `scripts/summarize_token_reduction.py`
-- `scripts/install-token-reduction-cron.sh`
-
-## Why it reduces token usage
-
-The reduction comes from three concrete changes in behavior:
-
-1. Replace broad repo inventory with path-only retrieval first.
-2. Retrieve one ranked snippet only when needed.
-3. Deny broad Bash and Glob exploration before it bloats context.
-
-In the larger source repo where this skill was developed and measured, the main benchmark deltas were:
+This repo also preserves benchmark summaries from the larger source repo where the workflow was developed:
 
 - concise responses: about `89%` fewer tokens
 - QMD BM25 search vs naive multi-file reads: about `99%` fewer tokens
 - targeted reads vs full reads: about `33%` fewer tokens
 
-Those numbers came from the original development repo, not this tiny extracted repo. The extracted repo is mainly for installation and reuse; the mechanism is the same runtime that produced those savings there.
+## Quickstart
 
-## Compared In Benchmarks
+Claude Code:
 
-In the source repo, the workflow was compared directly against broader discovery patterns.
-
-Example payload comparison from a fresh repo-local run there:
-
-| Strategy | Approx. tokens | Savings vs broad inventory |
-|----------|----------------|----------------------------|
-| Broad inventory (`rg --files .`) | `2945` | baseline |
-| Scoped `rg` | `499` | `83.1%` |
-| Path-only helper | `262` | `91.1%` |
-| One-snippet helper | `373` | `87.3%` |
-
-The runtime was also checked in bounded live agent benchmarks:
-
-- Claude: correct on benchmark, measurement, and Bash-hook lookup prompts
-- Codex: correct on benchmark, measurement, and Bash-hook lookup prompts
-
-That is why this repo ships the runtime helpers and guardrails, not just benchmark notes.
-
-## Install
-
-### Codex
-
-Clone into your Codex skills directory:
-
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git "$CODEX_HOME/skills/token-reduce"
+```text
+/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
+/plugin install token-reduce@chimera-defi
 ```
 
-### Claude
-
-Clone into your workspace and point your workspace instructions/hooks at the runtime files:
+Codex:
 
 ```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git tools/token-reduce-skill
+git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"
 ```
 
-Typical entrypoints:
+MCP clients:
 
-- `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
-- `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
-- `./tools/token-reduce-skill/scripts/advise-token-reduction.py`
-- `./tools/token-reduce-skill/scripts/enforce-glob-scope.py`
-- `./tools/token-reduce-skill/scripts/remind-token-reduce.py`
+```json
+{
+  "mcpServers": {
+    "token-reduce-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/token-reduce-skill/mcp/server.mjs"]
+    }
+  }
+}
+```
 
-## Validate
+## What You Get
+
+- `scripts/token-reduce-paths.sh`: cheapest path-first discovery kickoff
+- `scripts/token-reduce-snippet.sh`: one ranked excerpt after the path list
+- `scripts/advise-token-reduction.py`: blocks broad Bash scans
+- `scripts/enforce-glob-scope.py`: blocks broad Glob patterns
+- `scripts/remind-token-reduce.py`: steers discovery onto the helper flow
+- `mcp/server.mjs`: dependency-free MCP server for the same helper surface
+- `.claude-plugin/`: Claude plugin packaging for `/plugin` install
+
+## Why It Works
+
+The workflow is intentionally simple:
+
+1. Start with paths, not content.
+2. Use QMD BM25 when available.
+3. Fall back to scoped `rg`.
+4. Add one ranked snippet only if the path list is not enough.
+5. Block broad scans before they bloat context.
+
+That is the product. Not a bigger search stack, not more agent narration, not more prompt stuffing.
+
+## Proven Here
+
+What is verifiable in this repo today:
+
+- `SKILL.md` validates with `quick_validate.py`
+- the helper scripts run successfully
+- the MCP server initializes and exposes working tools
+- the benchmark harness runs and writes a local artifact
+- the QMD collection refreshes when Markdown files change, so results do not stay stale
+
+Validate locally:
 
 ```bash
-python3 /root/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
+uv run --with pyyaml /root/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
+uv run --with tiktoken scripts/benchmark-token-reduce.py
 ./scripts/token-reduce-paths.sh "hook broad exploratory bash scans"
 ./scripts/token-reduce-snippet.sh "token reduction"
 ```
 
-## Files
+## Who It Is For
 
-- `SKILL.md`: canonical skill instructions
-- `agents/openai.yaml`: UI metadata
-- `references/token-reduction-guide.md`: benchmark summary and integration notes
-- `references/workspace-integration.md`: generic Claude/Codex wiring examples
-- `scripts/`: runtime helpers and hooks
-  - plus optional benchmark/adoption tooling for parity with the source repo
+Use this when:
+
+- file location is uncertain
+- the repo is large enough that `find .` and `rg --files .` are noisy
+- you want the same path-first workflow in Claude Code, Codex, and MCP clients
+- you want host-side guardrails around repo exploration
+
+Skip this when:
+
+- the exact file path is already known
+- the task is a small local edit
+- you are trying to change Codex or Claude Code internals
+
+## Important Boundary
+
+This repo can improve your repo discovery workflow.
+It cannot change Codex's own model-side behavior.
+
+It also includes an optional Anthropic-only helper for developers who own their own Anthropic API payloads:
+
+```bash
+cat payload.json | node scripts/anthropic-cache-plan.mjs
+```
+
+That helper does **not** change Codex behavior and does **not** add caching to Claude Code's built-in sessions. It only helps when you control the Anthropic request payload yourself.
+
+See `references/anthropic-prompt-caching.md` for details.
+
+## Website
+
+The single-page landing page lives in `docs/` and is intended for GitHub Pages or any static host.
+
+## FAQ
+
+### Does this always save tokens?
+
+No. The path-first helper is the cheapest default. On a tiny repo, one ranked snippet can cost more than a plain file inventory.
+
+### Does this require QMD?
+
+No. QMD is preferred when available, but the workflow falls back to scoped `rg`.
+
+### Does this hard-force skill use by itself?
+
+No. Skills are advisory. Reliable behavior comes from repo instructions plus the prompt-submit and pre-tool hooks shipped here.
