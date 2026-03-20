@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+msg_file="${1:-}"
+if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
+  echo "ERROR: commit-msg hook expected a commit message file path." >&2
+  exit 1
+fi
+
+header="$(sed -n '1p' "$msg_file")"
+
+case "$header" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *)
+    exit 0
+    ;;
+esac
+
+header_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)\([a-z0-9._/-]+\): [^[:space:]].* \[Agent: .+\]$'
+
+if ! printf '%s\n' "$header" | grep -Eq "$header_pattern"; then
+  cat >&2 <<'EOF'
+ERROR: Invalid commit header format.
+
+Expected:
+  type(scope): subject [Agent: <MODEL NAME>]
+
+Example:
+  docs(repo): add standalone install examples [Agent: GPT-5 Codex]
+EOF
+  exit 1
+fi
+
+parsed_trailers="$(git interpret-trailers --parse "$msg_file" || true)"
+if ! printf '%s\n' "$parsed_trailers" | grep -Eiq '^Co-authored-by:\s+(Chimera|ChimeraDeFi)\s+<chimera_defi@protonmail\.com>$'; then
+  cat >&2 <<'EOF'
+ERROR: Missing required Co-authored-by trailer in commit message footer.
+
+Add this trailer at the end of your commit message:
+  Co-authored-by: Chimera <chimera_defi@protonmail.com>
+EOF
+  exit 1
+fi
+
+hooks_path="$(git config --get core.hooksPath || true)"
+if [ "$hooks_path" != ".githooks" ]; then
+  echo "WARNING: Configure git hooks path with: git config core.hooksPath .githooks" >&2
+fi
