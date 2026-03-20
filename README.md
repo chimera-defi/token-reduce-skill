@@ -34,6 +34,15 @@ Core runtime files:
 - `scripts/enforce-glob-scope.py`
 - `scripts/remind-token-reduce.py`
 
+Optional tooling restored from the source repo:
+
+- `scripts/benchmark-token-reduction-workflow.py`
+- `scripts/benchmark-token-reduction-agents.py`
+- `scripts/measure_token_reduction.py`
+- `scripts/baseline-measurement.sh`
+- `scripts/summarize_token_reduction.py`
+- `scripts/install-token-reduction-cron.sh`
+
 ## Why it reduces token usage
 
 The reduction comes from three concrete changes in behavior:
@@ -109,4 +118,6 @@ python3 /root/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
 - `SKILL.md`: canonical skill instructions
 - `agents/openai.yaml`: UI metadata
 - `references/token-reduction-guide.md`: benchmark summary and integration notes
+- `references/workspace-integration.md`: generic Claude/Codex wiring examples
 - `scripts/`: runtime helpers and hooks
+  - plus optional benchmark/adoption tooling for parity with the source repo

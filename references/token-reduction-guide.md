@@ -149,6 +149,16 @@ Parallel (1 turn):    2,700 tokens
 - `../scripts/remind-token-reduce.py` — prompt-submit steering hook
 
 **Workspace integrations:** consumer Claude/Codex/workspace instructions can point at this package and wire these runtime files in directly.
+For concrete wiring examples, read `workspace-integration.md`.
+
+## Optional Tooling
+
+- `../scripts/benchmark-token-reduction-workflow.py` — compare broad inventory, scoped search, path-only helper, and snippet helper
+- `../scripts/benchmark-token-reduction-agents.py` — bounded Claude/Codex behavior benchmark
+- `../scripts/measure_token_reduction.py` — repo-local adoption measurement from Claude/Codex session logs
+- `../scripts/baseline-measurement.sh` — wrapper for writing adoption reports
+- `../scripts/summarize_token_reduction.py` — weekly summary helper
+- `../scripts/install-token-reduction-cron.sh` — optional cron installer for recurring measurement
 
 ---
 
