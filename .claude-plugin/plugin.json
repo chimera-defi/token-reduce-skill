@@ -1,7 +1,7 @@
 {
   "name": "token-reduce",
   "version": "0.1.0",
-  "description": "Low-token repo discovery for Claude Code and MCP-compatible clients.",
+  "description": "Reduce wasted context in Claude Code so sessions last longer and stay focused.",
   "author": {
     "name": "Claudy Won",
     "url": "https://github.com/chimera-defi"
@@ -14,7 +14,8 @@
     "repo-discovery",
     "mcp",
     "claude-code",
-    "codex"
+    "codex",
+    "context-efficiency"
   ],
   "mcpServers": {
     "token-reduce-mcp": {

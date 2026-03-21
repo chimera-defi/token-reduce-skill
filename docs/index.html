@@ -6,7 +6,7 @@
     <title>token-reduce</title>
     <meta
       name="description"
-      content="Path-first repo discovery for Claude Code, Codex, and MCP-compatible clients."
+      content="Make Claude Code and Codex last longer by reducing wasted context before and during coding."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -30,10 +30,10 @@
         <section class="hero">
           <div class="hero-copy">
             <p class="eyebrow">Skill · Plugin · MCP Server</p>
-            <h1>Find the smallest useful repo context first.</h1>
+            <h1>Make Claude Code and Codex last longer.</h1>
             <p class="lede">
-              token-reduce cuts broad repo exploration down to a path-first kickoff, a narrow
-              follow-up, and only the context you actually need.
+              token-reduce cuts wasted context before and during coding, so the agent spends more
+              of its budget writing code and less of it wandering through the repo.
             </p>
             <div class="pill-row">
               <span class="pill">Claude plugin</span>
@@ -51,13 +51,13 @@
             <div class="card-head">Claude Code</div>
             <pre><code>/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
 /plugin install token-reduce@chimera-defi</code></pre>
-            <p>No npm. No config file. Start with path-first repo discovery on the next turn.</p>
+            <p>No npm. No config file. Start the next coding task with a leaner workflow.</p>
           </aside>
         </section>
 
         <section class="metrics">
-          <article><strong>68.5%</strong><span>local savings for path kickoff vs broad inventory</span></article>
-          <article><strong>29 tokens</strong><span>current local output for `token_reduce_paths`</span></article>
+          <article><strong>58.3%</strong><span>local savings for warm path kickoff vs broad inventory</span></article>
+          <article><strong>105 tokens</strong><span>current local output for warm `token_reduce_paths`</span></article>
           <article><strong>0 config</strong><span>for the Claude plugin install path</span></article>
         </section>
 
@@ -71,7 +71,7 @@
         <section id="how" class="content-grid">
           <div>
             <p class="eyebrow">How it works</p>
-            <h2>Path list first. Snippet only when it earns its keep.</h2>
+            <h2>Spend the budget on coding, not context bloat.</h2>
           </div>
           <div class="steps">
             <article>
@@ -80,7 +80,11 @@
             </article>
             <article>
               <h3>Guardrails</h3>
-              <p>Bash and Glob hooks block broad scans and push the workflow back onto the cheapest discovery path.</p>
+              <p>Bash, Glob, and Grep hooks block exploratory scans and push the workflow back onto the cheapest discovery path.</p>
+            </article>
+            <article>
+              <h3>Architecture</h3>
+              <p>The value is the whole system: guidance, helper scripts, hooks, and install surfaces. See <code>references/architecture.md</code> for the high-level flow.</p>
             </article>
             <article>
               <h3>Use this when</h3>
@@ -111,13 +115,14 @@
               <tr><th>Strategy</th><th>Tokens</th><th>Savings</th><th>Duration</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>broad_inventory</code></td><td>92</td><td>baseline</td><td>8 ms</td></tr>
-              <tr><td><code>scoped_rg</code></td><td>44</td><td>52.2%</td><td>12 ms</td></tr>
-              <tr><td><code>token_reduce_paths</code></td><td>29</td><td>68.5%</td><td>33 ms</td></tr>
-              <tr><td><code>token_reduce_snippet</code></td><td>201</td><td>-118.5%</td><td>831 ms</td></tr>
+              <tr><td><code>broad_inventory</code></td><td>252</td><td>baseline</td><td>7 ms</td></tr>
+              <tr><td><code>guidance_scoped_rg</code></td><td>18</td><td>92.9%</td><td>7 ms</td></tr>
+              <tr><td><code>qmd_files</code></td><td>105</td><td>58.3%</td><td>261 ms</td></tr>
+              <tr><td><code>token_reduce_paths_warm</code></td><td>105</td><td>58.3%</td><td>512 ms</td></tr>
+              <tr><td><code>token_reduce_snippet_warm</code></td><td>105</td><td>58.3%</td><td>712 ms</td></tr>
             </tbody>
           </table>
-          <p class="note">The negative snippet result is not a bug. It is why snippet mode is a follow-up path, not the default.</p>
+          <p class="note">On an architecture-focused query, the path helper dropped to 51 tokens versus 265 for broad inventory, about 80.8% savings.</p>
         </section>
 
         <section id="install" class="install-grid">

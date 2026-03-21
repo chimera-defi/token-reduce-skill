@@ -1,7 +1,7 @@
 {
   "name": "token-reduce-mcp",
   "version": "0.1.0",
-  "description": "MCP server and plugin packaging for the token-reduce skill.",
+  "description": "Skill, plugin, and MCP server for reducing total token burn across AI coding tasks.",
   "type": "module",
   "bin": {
     "token-reduce-mcp": "mcp/server.mjs"
@@ -14,7 +14,9 @@
     "claude-code",
     "codex",
     "token-reduction",
-    "repo-discovery"
+    "repo-discovery",
+    "claude-subscription",
+    "codex-efficiency"
   ],
   "license": "MIT"
 }

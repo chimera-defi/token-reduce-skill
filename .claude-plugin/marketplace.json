@@ -6,14 +6,14 @@
     "email": "claudy@ethbig"
   },
   "metadata": {
-    "description": "Low-token repo discovery for Claude Code and MCP-compatible clients.",
+    "description": "Make Claude Code sessions last longer by cutting wasted context before and during coding.",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "token-reduce",
       "source": "./",
-      "description": "Path-first repo discovery with QMD/rg fallbacks, helper scripts, and benchmark tooling.",
+      "description": "A token-efficiency workflow for Claude Code that keeps discovery and follow-up context lean.",
       "version": "0.1.0",
       "author": {
         "name": "Claudy Won",
@@ -25,7 +25,8 @@
         "token-reduction",
         "mcp",
         "claude-code",
-        "codex"
+        "codex",
+        "context-efficiency"
       ],
       "homepage": "https://chimera-defi.github.io/token-reduce-skill/",
       "repository": "https://github.com/chimera-defi/token-reduce-skill"
