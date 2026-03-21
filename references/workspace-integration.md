@@ -1,21 +1,25 @@
 # Workspace Integration
 
-Use this package in a consumer repo by wiring three things:
+Add token-reduce to any repo in three steps:
 
-1. discovery helper commands
-2. guardrail hooks
-3. short repo instructions that tell the agent to start with the helper
+1. Clone the skill into `tools/token-reduce-skill/`
+2. Wire the hooks below into your `.claude/settings.json`
+3. Add one line to your `AGENTS.md` or `CLAUDE.md`
 
-## Claude
+For maximum savings also run `./tools/token-reduce-skill/scripts/setup.sh` to install QMD and RTK.
 
-Example project hook wiring:
+## Claude Code — Hook Wiring
+
+Two hook layers work together:
+
+- **token-reduce hooks** block wasteful discovery commands before they fire
+- **RTK hook** (`~/.claude/hooks/rtk-rewrite.sh`) compresses output of commands that do run — install with `scripts/setup.sh` or `rtk init -g`
 
 ```json
 {
   "hooks": {
     "UserPromptSubmit": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -30,7 +34,11 @@ Example project hook wiring:
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/advise-token-reduction.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/enforce-token-reduce-first.py"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       },
@@ -39,7 +47,25 @@ Example project hook wiring:
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/enforce-glob-scope.py"
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/enforce-token-reduce-first.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/enforce-token-reduce-first.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run \"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/enforce-token-reduce-first.py"
           }
         ]
       }
@@ -48,17 +74,17 @@ Example project hook wiring:
 }
 ```
 
-Recommended repo instruction:
+The RTK hook is a no-op if RTK is not installed — safe to include unconditionally.
+
+## Repo Instructions (AGENTS.md / CLAUDE.md)
+
+Add one line:
 
 ```text
-If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-paths.sh topic words.
-If you need one ranked excerpt after the path list, use ./tools/token-reduce-skill/scripts/token-reduce-snippet.sh topic words.
-Do not start with find ., ls -R, grep -R, rg --files ., or broad Glob patterns.
+If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-paths.sh topic words before any Grep, Glob, or Read.
 ```
 
 ## Codex
-
-Recommended repo instruction:
 
 ```text
 Use ./tools/token-reduce-skill/scripts/token-reduce-paths.sh for ambiguous repo discovery before broader search.
@@ -70,8 +96,9 @@ Avoid find ., ls -R, grep -R, and rg --files . for first-pass discovery.
 
 ```text
 repo/
-├── AGENTS.md
-├── .claude/settings.json
+├── AGENTS.md          ← add one-line instruction above
+├── .claude/
+│   └── settings.json  ← add hook wiring above
 └── tools/
-    └── token-reduce-skill/
+    └── token-reduce-skill/  ← git clone here
 ```
