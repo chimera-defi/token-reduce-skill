@@ -1,8 +1,8 @@
 ---
 name: token-reduce
 description: |
-  Reduce token usage during repo exploration by finding the smallest useful context first.
-  Use when file location is uncertain, the repo is large, or the user asks to explore, review, or gather context.
+  Reduce total token usage across AI coding tasks by keeping discovery, reading, and follow-up context minimal.
+  Use when file location is uncertain, the repo is large, or the user asks to explore, review, gather context, or work across multiple files.
   Prefer QMD BM25 when available; otherwise fall back to scoped `rg`. Skip for small edits with an exact file path.
 metadata:
   author: "GPT-5 Codex"

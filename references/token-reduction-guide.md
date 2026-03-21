@@ -29,13 +29,25 @@ Current artifact: `references/benchmarks/local-benchmark.json`
 
 | Strategy | Tokens | Savings vs broad inventory | Duration |
 |----------|--------|----------------------------|----------|
-| `broad_inventory` | `92` | baseline | `8 ms` |
-| `scoped_rg` | `44` | `52.2%` | `12 ms` |
-| `token_reduce_paths` | `29` | `68.5%` | `33 ms` |
-| `token_reduce_snippet` | `201` | `-118.5%` | `831 ms` |
+| `broad_inventory` | `259` | baseline | `8 ms` |
+| `guidance_scoped_rg` | `25` | `90.3%` | `8 ms` |
+| `qmd_files` | `132` | `49.0%` | `253 ms` |
+| `token_reduce_paths_warm` | `132` | `49.0%` | `487 ms` |
+| `token_reduce_snippet_warm` | `217` | `16.2%` | `732 ms` |
 
-This repo is intentionally small, so one ranked snippet can cost more tokens than a plain file inventory. Treat `token-reduce-snippet.sh` as a follow-up, not the default first move.
-The helper now refreshes the QMD collection when the repo's Markdown fingerprint changes, which avoids stale search results after editing the skill docs.
+This repo is intentionally small, so an exact scoped `rg` is cheaper than the helper and one ranked snippet can approach broad inventory cost. Treat `token-reduce-snippet.sh` as a follow-up, not the default first move.
+The warm helper now matches raw QMD output exactly, so the wrapper is not adding extra payload above QMD on the steady-state path.
+The helper also refreshes the QMD collection when the repo's Markdown fingerprint changes, which avoids stale search results after editing the skill docs.
+For a better-fit query like `architecture`, the path helper returned `51` tokens against `265` for broad inventory, which is about `80.8%` savings.
+
+## Claude And Codex Spot Check
+
+Spot-checked locally on `2026-03-20` with better-fit prompts for this repo:
+
+- Claude returned `3/3` correct paths. On `2/3` prompts it blocked exploratory tools and redirected toward `../scripts/token-reduce-paths.sh`, but `claude -p` still showed approval stops before the redirected Bash helper actually ran.
+- Codex returned `3/3` correct paths and attempted the helper on `2/3`, but it still showed broad-scan behavior on every run.
+
+Interpret that as better Claude hook coverage and only partial Codex routing improvement: the helper path is getting used more often, but host approval settings and Codex-side routing still matter.
 
 ## Decision Tree
 

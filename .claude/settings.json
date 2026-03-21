@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/advise-token-reduction.py"
+            "command": "uv run scripts/enforce-token-reduce-first.py"
           }
         ]
       },
@@ -25,7 +25,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/enforce-glob-scope.py"
+            "command": "uv run scripts/enforce-token-reduce-first.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run scripts/enforce-token-reduce-first.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run scripts/enforce-token-reduce-first.py"
           }
         ]
       }

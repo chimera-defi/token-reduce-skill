@@ -11,6 +11,7 @@ import json
 import shutil
 import subprocess
 import time
+from hashlib import sha1
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,6 +22,7 @@ import tiktoken
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "local-benchmark.json"
 ENCODING = tiktoken.get_encoding("cl100k_base")
+QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8')).hexdigest()[:12]}"
 
 
 @dataclass
@@ -41,15 +43,19 @@ BENCHMARKS = (
         "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | head -200",
     ),
     (
-        "scoped_rg",
-        "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | rg -i -e 'hook|bash|exploratory|scans|token-reduce' | head -20",
+        "guidance_scoped_rg",
+        "rg -n -i -g '*.md' \"token reduction\" . | head -40",
     ),
     (
-        "token_reduce_paths",
-        "./scripts/token-reduce-paths.sh \"hook broad exploratory bash scans\"",
+        "qmd_files",
+        f"qmd search \"token reduction\" -n 8 --files -c {QMD_COLLECTION}",
     ),
     (
-        "token_reduce_snippet",
+        "token_reduce_paths_warm",
+        "./scripts/token-reduce-paths.sh \"token reduction\"",
+    ),
+    (
+        "token_reduce_snippet_warm",
         "./scripts/token-reduce-snippet.sh \"token reduction\"",
     ),
 )
@@ -79,6 +85,16 @@ def run_command(command: str) -> BenchmarkResult:
     )
 
 
+def warm_qmd_helper() -> None:
+    subprocess.run(
+        ["bash", "-lc", "./scripts/token-reduce-paths.sh \"token reduction\" >/dev/null"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
 def compute_savings(results: list[BenchmarkResult]) -> dict[str, float]:
     baseline = next(result for result in results if result.name == "broad_inventory").tokens
     savings = {}
@@ -105,6 +121,7 @@ def render_table(results: list[BenchmarkResult], savings: dict[str, float]) -> s
 
 def main() -> int:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    warm_qmd_helper()
 
     results: list[BenchmarkResult] = []
     for name, command in BENCHMARKS:

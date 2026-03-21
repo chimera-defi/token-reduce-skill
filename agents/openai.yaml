@@ -1,6 +1,6 @@
 interface:
   display_name: "Token Reduce"
-  short_description: "Find the smallest useful repo context."
-  default_prompt: "Use $token-reduce to find the smallest useful repo context before reading files."
+  short_description: "Make coding sessions last longer by keeping context lean."
+  default_prompt: "Use $token-reduce to reduce total token burn across discovery, reading, and implementation."
 policy:
   allow_implicit_invocation: true

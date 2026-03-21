@@ -7,4 +7,10 @@ if [[ $# -lt 1 ]]; then
 fi
 
 QUERY="$*"
-exec "$(dirname "$0")/token-reduce-search.sh" --paths-only "$QUERY"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY"; then
+  "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
+  exit 0
+fi
+exit $?

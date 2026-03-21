@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-20T10:58:01.061023+00:00",
+  "generated_at": "2026-03-21T03:59:12.165984+00:00",
   "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/master",
   "qmd_available": true,
   "benchmarks": [
@@ -7,48 +7,59 @@
       "name": "broad_inventory",
       "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | head -200",
       "exit_code": 0,
+      "duration_ms": 7,
+      "bytes": 1009,
+      "lines": 33,
+      "tokens": 259,
+      "stdout_preview": "./scripts/enforce-token-reduce-first.py\n./scripts/token-reduce-snippet.sh\n./scripts/enforce-glob-scope.py\n./scripts/benchmark-token-reduction-workflow.py\n./scripts/token-reduce-search.sh\n./scripts/baseline-measurement.sh"
+    },
+    {
+      "name": "guidance_scoped_rg",
+      "command": "rg -n -i -g '*.md' \"token reduction\" . | head -40",
+      "exit_code": 0,
       "duration_ms": 8,
-      "bytes": 330,
-      "lines": 12,
-      "tokens": 92,
-      "stdout_preview": "./scripts/token-reduce-snippet.sh\n./scripts/enforce-glob-scope.py\n./scripts/token-reduce-search.sh\n./scripts/token-reduce-paths.sh\n./scripts/remind-token-reduce.py\n./scripts/advise-token-reduction.py"
+      "bytes": 102,
+      "lines": 2,
+      "tokens": 25,
+      "stdout_preview": "./SKILL.md:18:# Token Reduction Skill\n./references/token-reduction-guide.md:1:# Token Reduction Guide"
     },
     {
-      "name": "scoped_rg",
-      "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | rg -i -e 'hook|bash|exploratory|scans|token-reduce' | head -20",
+      "name": "qmd_files",
+      "command": "qmd search \"token reduction\" -n 8 --files -c repo-f28f25d6215f",
       "exit_code": 0,
-      "duration_ms": 12,
-      "bytes": 168,
+      "duration_ms": 249,
+      "bytes": 293,
       "lines": 5,
-      "tokens": 44,
-      "stdout_preview": "./scripts/token-reduce-snippet.sh\n./scripts/token-reduce-search.sh\n./scripts/token-reduce-paths.sh\n./scripts/remind-token-reduce.py\n./scripts/benchmark-token-reduce.py"
+      "tokens": 133,
+      "stdout_preview": "#f15c67,0.89,qmd://repo-f28f25d6215f/references/token-reduction-guide.md\n#6ac406,0.87,qmd://repo-f28f25d6215f/readme.md\n#0c4907,0.87,qmd://repo-f28f25d6215f/skill.md\n#39eb8d,0.86,qmd://repo-f28f25d6215f/references/architecture.md\n#196c5a,0.86,qmd://repo-f28f25d6215f/references/agent-setup.md"
     },
     {
-      "name": "token_reduce_paths",
-      "command": "./scripts/token-reduce-paths.sh \"hook broad exploratory bash scans\"",
+      "name": "token_reduce_paths_warm",
+      "command": "./scripts/token-reduce-paths.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 33,
-      "bytes": 106,
-      "lines": 3,
-      "tokens": 29,
-      "stdout_preview": "[token-reduce-search] rg content hits\n./scripts/advise-token-reduction.py\n./scripts/enforce-glob-scope.py"
+      "duration_ms": 490,
+      "bytes": 293,
+      "lines": 5,
+      "tokens": 133,
+      "stdout_preview": "#f15c67,0.89,qmd://repo-f28f25d6215f/references/token-reduction-guide.md\n#6ac406,0.87,qmd://repo-f28f25d6215f/readme.md\n#0c4907,0.87,qmd://repo-f28f25d6215f/skill.md\n#39eb8d,0.86,qmd://repo-f28f25d6215f/references/architecture.md\n#196c5a,0.86,qmd://repo-f28f25d6215f/references/agent-setup.md"
     },
     {
-      "name": "token_reduce_snippet",
+      "name": "token_reduce_snippet_warm",
       "command": "./scripts/token-reduce-snippet.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 831,
-      "bytes": 543,
+      "duration_ms": 736,
+      "bytes": 548,
       "lines": 14,
-      "tokens": 201,
-      "stdout_preview": "[token-reduce-search] qmd search --files (repo-f28f25d6215f)\n#905589,0.89,qmd://repo-f28f25d6215f/references/token-reduction-guide.md\n#c5418e,0.88,qmd://repo-f28f25d6215f/readme.md\n#b4f7db,0.87,qmd://repo-f28f25d6215f/skill.md\n\n[token-reduce-search] qmd search snippet (repo-f28f25d6215f)"
+      "tokens": 218,
+      "stdout_preview": "#f15c67,0.89,qmd://repo-f28f25d6215f/references/token-reduction-guide.md\n#6ac406,0.87,qmd://repo-f28f25d6215f/readme.md\n#0c4907,0.87,qmd://repo-f28f25d6215f/skill.md\n#39eb8d,0.86,qmd://repo-f28f25d6215f/references/architecture.md\n#196c5a,0.86,qmd://repo-f28f25d6215f/references/agent-setup.md\n"
     }
   ],
   "savings_vs_broad_inventory": {
     "broad_inventory": 0.0,
-    "scoped_rg": 52.2,
-    "token_reduce_paths": 68.5,
-    "token_reduce_snippet": -118.5
+    "guidance_scoped_rg": 90.3,
+    "qmd_files": 48.6,
+    "token_reduce_paths_warm": 48.6,
+    "token_reduce_snippet_warm": 15.8
   },
-  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `92` | baseline | `8 ms` |\n| `scoped_rg` | `44` | 52.2% | `12 ms` |\n| `token_reduce_paths` | `29` | 68.5% | `33 ms` |\n| `token_reduce_snippet` | `201` | -118.5% | `831 ms` |"
+  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `259` | baseline | `7 ms` |\n| `guidance_scoped_rg` | `25` | 90.3% | `8 ms` |\n| `qmd_files` | `133` | 48.6% | `249 ms` |\n| `token_reduce_paths_warm` | `133` | 48.6% | `490 ms` |\n| `token_reduce_snippet_warm` | `218` | 15.8% | `736 ms` |"
 }

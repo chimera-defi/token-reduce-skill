@@ -1,35 +1,80 @@
 # token-reduce
 
-Path-first repo discovery for Claude Code, Codex, and MCP-compatible clients.
+![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-111111)
+![Codex](https://img.shields.io/badge/Codex-skill-1f6feb)
+![MCP](https://img.shields.io/badge/MCP-server-0a7f5a)
+![MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
-token-reduce exists for one reason: broad repo exploration is cheap to type and expensive in context. This package pushes discovery toward the smallest useful output first, then expands only when the first answer is not enough.
+Make Claude Code and Codex last longer.
 
-## Token Reduction, First
+token-reduce is a workflow skill for AI coding tools. It cuts wasted context before and during implementation, so your agent spends more of its budget writing code and less of it wandering through the repo.
 
-Measured locally in this repo:
+It is built for one goal:
+
+> lower total token burn across a real coding task without making the model less useful
+
+## Why People Install It
+
+- longer Claude Code and Codex sessions before you hit limits
+- less context pollution from broad scans and oversized reads
+- more budget left for planning, writing code, and fixing bugs
+- better odds that the agent stays fast and focused on the actual task
+
+This is not just a search helper.
+It is a workflow layer that helps the model discover, narrow, read, and then implement with less waste.
+
+## How It Works
+
+1. Start narrow.
+   The agent gets candidate paths before it gets fat snippets or broad inventories.
+2. Expand only when needed.
+   If the path list is not enough, it can ask for one ranked excerpt.
+3. Stay disciplined after discovery.
+   Hooks and guidance push the agent away from broad scans and back toward targeted follow-up reads.
+
+That matters because most coding tasks are not “just repo discovery.”
+They are discovery plus planning plus editing plus verification.
+If you waste context at the front of the task, the whole session gets worse.
+
+## What Makes It Different
+
+`qmd` is a strong search primitive.
+RTK is useful for trimming noisy output.
+
+token-reduce sits above both ideas.
+It packages the workflow around them:
+
+- it can use QMD under the hood
+- it pushes the model toward a cheaper first move
+- it adds host-side enforcement so the model actually uses the workflow more often
+- it is designed for the full coding loop, not just one search command
+
+## Results
+
+Current local benchmark in this repo:
 
 | Strategy | Tokens | Savings vs broad inventory | Duration |
 |----------|--------|----------------------------|----------|
-| `broad_inventory` | `92` | baseline | `8 ms` |
-| `scoped_rg` | `44` | `52.2%` | `12 ms` |
-| `token_reduce_paths` | `29` | `68.5%` | `33 ms` |
-| `token_reduce_snippet` | `201` | `-118.5%` | `831 ms` |
+| `broad_inventory` | `259` | baseline | `8 ms` |
+| `guidance_scoped_rg` | `25` | `90.3%` | `8 ms` |
+| `qmd_files` | `132` | `49.0%` | `253 ms` |
+| `token_reduce_paths_warm` | `132` | `49.0%` | `487 ms` |
+| `token_reduce_snippet_warm` | `217` | `16.2%` | `732 ms` |
 
-What that means:
+This is a small repo — the helper's savings are proportionally lower than on a large codebase. On the 642-file repo where this skill was developed, QMD BM25 search delivered ~99% fewer tokens than naive multi-file reads.
 
-- the default win is the path-first kickoff
-- the snippet helper is intentionally a follow-up path, not the default
-- the benchmark is reproducible here with `uv run --with tiktoken scripts/benchmark-token-reduce.py`
+Routing also improved on the latest spot check:
 
-The local artifact lives at `references/benchmarks/local-benchmark.json`.
+- Claude: `3/3` correct on better-fit prompts, with exploratory tool paths blocked and redirected on `2/3`
+- Codex: `3/3` correct, helper attempted on `2/3`, but routing is still weaker than Claude
 
-This repo also preserves benchmark summaries from the larger source repo where the workflow was developed:
+Benchmarks and technical notes:
 
-- concise responses: about `89%` fewer tokens
-- QMD BM25 search vs naive multi-file reads: about `99%` fewer tokens
-- targeted reads vs full reads: about `33%` fewer tokens
+- [references/benchmarks/local-benchmark.json](references/benchmarks/local-benchmark.json)
+- [references/benchmarks/script-speed.json](references/benchmarks/script-speed.json)
+- [references/token-reduction-guide.md](references/token-reduction-guide.md)
 
-## Quickstart
+## Install
 
 Claude Code:
 
@@ -38,110 +83,37 @@ Claude Code:
 /plugin install token-reduce@chimera-defi
 ```
 
-Codex:
+Using Codex or MCP, or want the host-specific setup details?
+See [references/agent-setup.md](references/agent-setup.md).
 
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"
-```
+## Learn More
 
-MCP clients:
-
-```json
-{
-  "mcpServers": {
-    "token-reduce-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/token-reduce-skill/mcp/server.mjs"]
-    }
-  }
-}
-```
-
-## What You Get
-
-- `scripts/token-reduce-paths.sh`: cheapest path-first discovery kickoff
-- `scripts/token-reduce-snippet.sh`: one ranked excerpt after the path list
-- `scripts/advise-token-reduction.py`: blocks broad Bash scans
-- `scripts/enforce-glob-scope.py`: blocks broad Glob patterns
-- `scripts/remind-token-reduce.py`: steers discovery onto the helper flow
-- `mcp/server.mjs`: dependency-free MCP server for the same helper surface
-- `.claude-plugin/`: Claude plugin packaging for `/plugin` install
-
-## Why It Works
-
-The workflow is intentionally simple:
-
-1. Start with paths, not content.
-2. Use QMD BM25 when available.
-3. Fall back to scoped `rg`.
-4. Add one ranked snippet only if the path list is not enough.
-5. Block broad scans before they bloat context.
-
-That is the product. Not a bigger search stack, not more agent narration, not more prompt stuffing.
-
-## Proven Here
-
-What is verifiable in this repo today:
-
-- `SKILL.md` validates with `quick_validate.py`
-- the helper scripts run successfully
-- the MCP server initializes and exposes working tools
-- the benchmark harness runs and writes a local artifact
-- the QMD collection refreshes when Markdown files change, so results do not stay stale
-
-Validate locally:
-
-```bash
-uv run --with pyyaml /root/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
-uv run --with tiktoken scripts/benchmark-token-reduce.py
-./scripts/token-reduce-paths.sh "hook broad exploratory bash scans"
-./scripts/token-reduce-snippet.sh "token reduction"
-```
-
-## Who It Is For
-
-Use this when:
-
-- file location is uncertain
-- the repo is large enough that `find .` and `rg --files .` are noisy
-- you want the same path-first workflow in Claude Code, Codex, and MCP clients
-- you want host-side guardrails around repo exploration
-
-Skip this when:
-
-- the exact file path is already known
-- the task is a small local edit
-- you are trying to change Codex or Claude Code internals
-
-## Important Boundary
-
-This repo can improve your repo discovery workflow.
-It cannot change Codex's own model-side behavior.
-
-It also includes an optional Anthropic-only helper for developers who own their own Anthropic API payloads:
-
-```bash
-cat payload.json | node scripts/anthropic-cache-plan.mjs
-```
-
-That helper does **not** change Codex behavior and does **not** add caching to Claude Code's built-in sessions. It only helps when you control the Anthropic request payload yourself.
-
-See `references/anthropic-prompt-caching.md` for details.
-
-## Website
-
-The single-page landing page lives in `docs/` and is intended for GitHub Pages or any static host.
+- [references/architecture.md](references/architecture.md) for the high-level system design
+- [references/agent-setup.md](references/agent-setup.md) for Claude, Codex, and MCP setup
+- [references/workspace-integration.md](references/workspace-integration.md) for deeper repo wiring
+- [references/token-reduction-guide.md](references/token-reduction-guide.md) for benchmark notes and workflow details
 
 ## FAQ
 
+### Is this only for repo discovery?
+
+No.
+The point is to reduce total token burn across the whole coding task.
+Discovery is where the waste usually starts, so that is where the workflow takes control first.
+
+### Does this replace QMD or RTK?
+
+No.
+It can benefit from tools like QMD, and it is compatible with the broader idea behind RTK, but it is trying to solve the workflow problem around those tools, not just ship a single primitive.
+
 ### Does this always save tokens?
 
-No. The path-first helper is the cheapest default. On a tiny repo, one ranked snippet can cost more than a plain file inventory.
+No.
+On tiny repos, an exact scoped `rg` can still be cheapest.
+The value is larger on longer sessions, larger repos, fuzzier prompts, and hosts that actually follow the workflow.
 
-### Does this require QMD?
+### Does this change model internals?
 
-No. QMD is preferred when available, but the workflow falls back to scoped `rg`.
-
-### Does this hard-force skill use by itself?
-
-No. Skills are advisory. Reliable behavior comes from repo instructions plus the prompt-submit and pre-tool hooks shipped here.
+No.
+It improves how the host gathers and spends context.
+It does not change Codex or Claude model internals.

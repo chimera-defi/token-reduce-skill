@@ -33,6 +33,16 @@ PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
 PREFER_SCRIPT_CONTENT=0
 
+debug() {
+  if [[ "${TOKEN_REDUCE_DEBUG:-0}" == "1" ]]; then
+    printf '%s\n' "$*" >&2
+  fi
+}
+
+warn() {
+  printf '%s\n' "$*" >&2
+}
+
 if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* ]]; then
   NEEDS_PATH_HINT=1
 fi
@@ -132,10 +142,10 @@ ensure_qmd_collection() {
   fi
 
   if qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"; then
-    echo "[token-reduce-search] refreshing qmd collection ${COLLECTION_NAME}"
+    debug "[token-reduce-search] refreshing qmd collection ${COLLECTION_NAME}"
     qmd collection remove "$COLLECTION_NAME" >/dev/null 2>&1 || true
   else
-    echo "[token-reduce-search] indexing repo docs for qmd collection ${COLLECTION_NAME}"
+    debug "[token-reduce-search] indexing repo docs for qmd collection ${COLLECTION_NAME}"
   fi
 
   if ! qmd collection add "$REPO_ROOT" --name "$COLLECTION_NAME" --mask "$QMD_MASK" >/dev/null 2>&1; then
@@ -261,7 +271,7 @@ fi
 
 if command -v qmd >/dev/null 2>&1; then
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$PATH_HINTS" ]]; then
-    echo "[token-reduce-search] rg path hits"
+    debug "[token-reduce-search] rg path hits"
     printf '%s\n' "$PATH_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
@@ -272,7 +282,7 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
-    echo "[token-reduce-search] rg content hits"
+    debug "[token-reduce-search] rg content hits"
     printf '%s\n' "$CONTENT_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
@@ -283,7 +293,7 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 
   if [[ "$PREFER_SKILL_SCRIPTS" -eq 1 && "$PREFER_SCRIPT_CONTENT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
-    echo "[token-reduce-search] rg content hits"
+    debug "[token-reduce-search] rg content hits"
     printf '%s\n' "$CONTENT_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
@@ -294,7 +304,7 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 
   if ! ensure_qmd_collection; then
-    echo "[token-reduce-search] qmd collection add failed; falling back to rg"
+    warn "[token-reduce-search] qmd collection add failed; falling back to rg"
     cd "$REPO_ROOT"
     if [[ "$MODE" == "snippets" ]]; then
       fallback_snippets
@@ -304,7 +314,7 @@ if command -v qmd >/dev/null 2>&1; then
     exit 0
   fi
 
-  echo "[token-reduce-search] qmd search --files (${COLLECTION_NAME})"
+  debug "[token-reduce-search] qmd search --files (${COLLECTION_NAME})"
   QMD_FILES_OUTPUT="$(qmd search "$QUERY" -n 8 --files -c "$COLLECTION_NAME" || true)"
   printf '%s\n' "$QMD_FILES_OUTPUT"
 
@@ -312,20 +322,20 @@ if command -v qmd >/dev/null 2>&1; then
     if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
       if [[ -n "$PATH_HINTS" ]]; then
         echo
-        echo "[token-reduce-search] rg path hits"
+        debug "[token-reduce-search] rg path hits"
         printf '%s\n' "$PATH_HINTS"
       fi
     fi
 
     if [[ "$MODE" == "snippets" ]]; then
       echo
-      echo "[token-reduce-search] qmd search snippet (${COLLECTION_NAME})"
+      debug "[token-reduce-search] qmd search snippet (${COLLECTION_NAME})"
       qmd search "$QUERY" -n 1 -c "$COLLECTION_NAME" || true
     fi
     exit 0
   fi
 
-  echo "[token-reduce-search] qmd had no hits, falling back to rg"
+  warn "[token-reduce-search] qmd had no hits, falling back to rg"
   if [[ "$MODE" == "snippets" ]]; then
     echo
     fallback_snippets
@@ -338,7 +348,7 @@ if command -v qmd >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "[token-reduce-search] qmd unavailable, falling back to scoped rg"
+warn "[token-reduce-search] qmd unavailable, falling back to scoped rg"
 cd "$REPO_ROOT"
 if [[ "$MODE" == "snippets" ]]; then
   fallback_snippets

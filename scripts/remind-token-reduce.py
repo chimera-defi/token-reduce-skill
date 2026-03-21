@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: nudge repo exploration onto the token-reduce path."""
+"""UserPromptSubmit hook: require token-reduce for matching repo-discovery prompts."""
 import json
-import re
 import sys
 
-
-# Require compound patterns that signal actual repo-discovery intent.
-# Single common words like "find", "where", "context", "review" fire on almost
-# every coding prompt and add ~85 tokens of system message with no benefit.
-TRIGGERS = (
-    r"\bexplor(e|ing|ation)\b.{0,60}\b(repo|codebase|files?|code)\b",
-    r"\b(find|locate|where)\b.{0,60}\b(file|class|function|hook|script|lives?|defined|lives?)\b",
-    r"\b(read|load|gather)\b.{0,60}\bcontext\b",
-    r"\bsearch\b.{0,60}\b(repo|codebase|files?)\b",
-    r"\breview\b.{0,60}\b(repo|codebase|entire|whole)\b",
-    r"\bwhere\s+(is|are|does|do)\b",
-    r"\bwhere.{0,20}\blive[s]?\b",
-)
+from token_reduce_state import clear_pending, mark_pending, prompt_requires_helper, repo_root, session_key
 
 
 def main() -> int:
@@ -26,8 +13,13 @@ def main() -> int:
         return 0
 
     prompt = data.get("user_prompt", "") or ""
-    if not any(re.search(pattern, prompt, re.IGNORECASE) for pattern in TRIGGERS):
+    repo = repo_root()
+    key = session_key(data)
+    if not prompt_requires_helper(prompt):
+        clear_pending(repo, key)
         return 0
+
+    mark_pending(repo, key, prompt)
 
     json.dump(
         {
