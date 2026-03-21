@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-21T03:59:12.165984+00:00",
+  "generated_at": "2026-03-21T04:29:02.481871+00:00",
   "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/master",
   "qmd_available": true,
   "benchmarks": [
@@ -27,7 +27,7 @@
       "name": "qmd_files",
       "command": "qmd search \"token reduction\" -n 8 --files -c repo-f28f25d6215f",
       "exit_code": 0,
-      "duration_ms": 249,
+      "duration_ms": 251,
       "bytes": 293,
       "lines": 5,
       "tokens": 133,
@@ -37,7 +37,7 @@
       "name": "token_reduce_paths_warm",
       "command": "./scripts/token-reduce-paths.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 490,
+      "duration_ms": 484,
       "bytes": 293,
       "lines": 5,
       "tokens": 133,
@@ -47,7 +47,7 @@
       "name": "token_reduce_snippet_warm",
       "command": "./scripts/token-reduce-snippet.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 736,
+      "duration_ms": 733,
       "bytes": 548,
       "lines": 14,
       "tokens": 218,
@@ -61,5 +61,5 @@
     "token_reduce_paths_warm": 48.6,
     "token_reduce_snippet_warm": 15.8
   },
-  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `259` | baseline | `7 ms` |\n| `guidance_scoped_rg` | `25` | 90.3% | `8 ms` |\n| `qmd_files` | `133` | 48.6% | `249 ms` |\n| `token_reduce_paths_warm` | `133` | 48.6% | `490 ms` |\n| `token_reduce_snippet_warm` | `218` | 15.8% | `736 ms` |"
+  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `259` | baseline | `7 ms` |\n| `guidance_scoped_rg` | `25` | 90.3% | `8 ms` |\n| `qmd_files` | `133` | 48.6% | `251 ms` |\n| `token_reduce_paths_warm` | `133` | 48.6% | `484 ms` |\n| `token_reduce_snippet_warm` | `218` | 15.8% | `733 ms` |"
 }
