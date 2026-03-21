@@ -78,9 +78,9 @@ Discovery is where context waste usually starts. Fixing the front of the task ma
 
 ## What Makes It Different
 
-`qmd` is a strong search primitive. RTK is useful for trimming noisy output.
+`qmd` is a strong BM25 search primitive. token-reduce wraps it — when QMD is installed the helpers call it automatically; when it isn't, they fall back to scoped `rg`. Either way you interact with the skill, not the underlying tool.
 
-token-reduce sits above both — it packages the workflow, adds host-side enforcement, and is designed for the full coding loop, not just one search command.
+Beyond search, token-reduce adds host-side enforcement (hooks that block broad scans before they happen) and is designed for the full coding loop, not just one search command.
 
 ## Learn More
 
@@ -94,8 +94,8 @@ token-reduce sits above both — it packages the workflow, adds host-side enforc
 **Is this only for repo discovery?**
 No. Discovery is where waste usually starts, but the workflow covers the full coding loop.
 
-**Does this replace QMD or RTK?**
-No. It wraps the workflow around those tools.
+**Does this replace QMD?**
+For day-to-day use, yes — you call the skill helpers, not `qmd` directly. QMD is an optional dependency that improves search quality; the skill falls back to `rg` if it isn't installed.
 
 **Does this always save tokens?**
 No. On tiny repos a scoped `rg` can be cheaper. Value scales with session length, repo size, and prompt fuzziness.
