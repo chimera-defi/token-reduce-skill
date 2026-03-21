@@ -142,16 +142,24 @@ Use parallel lookups when the queries are independent.
 
 ## Install Examples
 
+### Full stack (recommended)
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
+./tools/token-reduce-skill/scripts/setup.sh
+```
+
+### Claude Code plugin
+
+```bash
+claude plugin marketplace add chimera-defi/token-reduce-skill
+claude plugin install token-reduce@chimera-defi
+```
+
 ### Codex
 
 ```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git "$CODEX_HOME/skills/token-reduce"
-```
-
-### Claude
-
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git tools/token-reduce-skill
+git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"
 ```
 
 Typical entrypoints:
