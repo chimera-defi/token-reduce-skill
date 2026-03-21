@@ -1,20 +1,37 @@
 # Agent Setup
 
-Use this file for host-specific setup and wiring.
-The main `README.md` is intentionally user-facing and non-technical.
+Host-specific setup and wiring details.
+The main `README.md` is user-facing; this file is for integrators.
+
+## Full Setup (recommended)
+
+One command installs QMD (BM25 search) and RTK (output compression) and wires both:
+
+```bash
+./scripts/setup.sh
+```
+
+Or from a fresh clone of the skill into a consumer repo:
+
+```bash
+./tools/token-reduce-skill/scripts/setup.sh
+```
 
 ## Claude Code
 
 ### Plugin Install
 
 ```text
-/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
-/plugin install token-reduce@chimera-defi
+claude plugin marketplace add chimera-defi/token-reduce-skill
+claude plugin install token-reduce@chimera-defi
 ```
+
+The plugin wires the token-reduce enforcement hooks automatically.
+For RTK output compression on top, run `scripts/setup.sh` or `rtk init -g` separately.
 
 ### Repo-Level Hook Wiring
 
-If you want stronger enforcement inside a project repo, wire the hooks shown in `references/workspace-integration.md`.
+See `references/workspace-integration.md` for the full settings.json template, including both token-reduce hooks and the RTK rewrite hook.
 
 ## Codex
 
@@ -22,12 +39,16 @@ If you want stronger enforcement inside a project repo, wire the hooks shown in 
 git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"
 ```
 
-Then point repo instructions at:
+Then run:
+
+```bash
+"$CODEX_HOME/skills/token-reduce/scripts/setup.sh"
+```
+
+Point repo instructions at:
 
 - `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
-
-For deeper setup guidance, use `references/workspace-integration.md`.
 
 ## MCP
 
@@ -41,6 +62,16 @@ For deeper setup guidance, use `references/workspace-integration.md`.
   }
 }
 ```
+
+## What Each Layer Does
+
+| Layer | Tool | What it does |
+|-------|------|--------------|
+| Discovery guardrails | `enforce-token-reduce-first.py` | Blocks broad scans before they happen |
+| Prompt steering | `remind-token-reduce.py` | Routes discovery prompts to helpers |
+| Path kickoff | `token-reduce-paths.sh` | QMD BM25 → candidate paths, minimal tokens |
+| Output compression | RTK (`rtk-rewrite.sh`) | Compresses output of commands that do run |
+| Search backend | QMD | BM25 index, fallback to scoped `rg` |
 
 ## Read Next
 

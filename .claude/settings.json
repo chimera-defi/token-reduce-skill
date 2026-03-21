@@ -17,6 +17,10 @@
           {
             "type": "command",
             "command": "uv run scripts/enforce-token-reduce-first.py"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       },
