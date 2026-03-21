@@ -1,123 +1,119 @@
-# token-reduce-skill
+# token-reduce
 
-Low-token repo discovery skill for Claude Code and Codex.
+![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-111111)
+![Codex](https://img.shields.io/badge/Codex-skill-1f6feb)
+![MCP](https://img.shields.io/badge/MCP-server-0a7f5a)
+![MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
-This repo contains the extracted runtime package for `token-reduce`: a small set of search helpers and guardrail hooks that push agents toward low-context discovery instead of broad recursive scans.
+Make Claude Code and Codex last longer.
 
-## Built With
+token-reduce is a workflow skill for AI coding tools. It cuts wasted context before and during implementation, so your agent spends more of its budget writing code and less of it wandering through the repo.
 
-This skill is built on a small set of concrete tools and patterns:
+It is built for one goal:
 
-- `qmd` for BM25 file and snippet retrieval
-- `rg` / `git grep` for narrow fallback search
-- Claude Code and Codex workspace hooks / instructions
-- path-first kickoff wrappers instead of broad repo inventory
-- Bash and Glob guardrails to stop context-expensive discovery patterns early
+> lower total token burn across a real coding task without making the model less useful
 
-The path-only kickoff pattern is intentionally simple: return the smallest useful candidate set first, then expand only if needed.
+## Why People Install It
 
-## What it does
+- longer Claude Code and Codex sessions before you hit limits
+- less context pollution from broad scans and oversized reads
+- more budget left for planning, writing code, and fixing bugs
+- better odds that the agent stays fast and focused on the actual task
 
-- starts ambiguous repo discovery with a path-first helper
-- uses QMD BM25 when available
-- falls back to scoped `rg` when QMD is missing or unhelpful
-- blocks broad Bash scans like `find .`, `ls -R`, `grep -R`
-- blocks broad `Glob` patterns
-- provides a one-snippet follow-up path when file paths alone are not enough
+This is not just a search helper.
+It is a workflow layer that helps the model discover, narrow, read, and then implement with less waste.
 
-Core runtime files:
+## How It Works
 
-- `scripts/token-reduce-search.sh`
-- `scripts/token-reduce-paths.sh`
-- `scripts/token-reduce-snippet.sh`
-- `scripts/advise-token-reduction.py`
-- `scripts/enforce-glob-scope.py`
-- `scripts/remind-token-reduce.py`
+1. Start narrow.
+   The agent gets candidate paths before it gets fat snippets or broad inventories.
+2. Expand only when needed.
+   If the path list is not enough, it can ask for one ranked excerpt.
+3. Stay disciplined after discovery.
+   Hooks and guidance push the agent away from broad scans and back toward targeted follow-up reads.
 
-Optional tooling restored from the source repo:
+That matters because most coding tasks are not “just repo discovery.”
+They are discovery plus planning plus editing plus verification.
+If you waste context at the front of the task, the whole session gets worse.
 
-- `scripts/benchmark-token-reduction-workflow.py`
-- `scripts/benchmark-token-reduction-agents.py`
-- `scripts/measure_token_reduction.py`
-- `scripts/baseline-measurement.sh`
-- `scripts/summarize_token_reduction.py`
-- `scripts/install-token-reduction-cron.sh`
+## What Makes It Different
 
-## Why it reduces token usage
+`qmd` is a strong search primitive.
+RTK is useful for trimming noisy output.
 
-The reduction comes from three concrete changes in behavior:
+token-reduce sits above both ideas.
+It packages the workflow around them:
 
-1. Replace broad repo inventory with path-only retrieval first.
-2. Retrieve one ranked snippet only when needed.
-3. Deny broad Bash and Glob exploration before it bloats context.
+- it can use QMD under the hood
+- it pushes the model toward a cheaper first move
+- it adds host-side enforcement so the model actually uses the workflow more often
+- it is designed for the full coding loop, not just one search command
 
-In the larger source repo where this skill was developed and measured, the main benchmark deltas were:
+## Results
 
-- concise responses: about `89%` fewer tokens
-- QMD BM25 search vs naive multi-file reads: about `99%` fewer tokens
-- targeted reads vs full reads: about `33%` fewer tokens
+Current local benchmark in this repo:
 
-Those numbers came from the original development repo, not this tiny extracted repo. The extracted repo is mainly for installation and reuse; the mechanism is the same runtime that produced those savings there.
+| Strategy | Tokens | Savings vs broad inventory | Duration |
+|----------|--------|----------------------------|----------|
+| `broad_inventory` | `259` | baseline | `8 ms` |
+| `guidance_scoped_rg` | `25` | `90.3%` | `8 ms` |
+| `qmd_files` | `132` | `49.0%` | `253 ms` |
+| `token_reduce_paths_warm` | `132` | `49.0%` | `487 ms` |
+| `token_reduce_snippet_warm` | `217` | `16.2%` | `732 ms` |
 
-## Compared In Benchmarks
+This is a small repo — the helper's savings are proportionally lower than on a large codebase. On the 642-file repo where this skill was developed, QMD BM25 search delivered ~99% fewer tokens than naive multi-file reads.
 
-In the source repo, the workflow was compared directly against broader discovery patterns.
+Routing also improved on the latest spot check:
 
-Example payload comparison from a fresh repo-local run there:
+- Claude: `3/3` correct on better-fit prompts, with exploratory tool paths blocked and redirected on `2/3`
+- Codex: `3/3` correct, helper attempted on `2/3`, but routing is still weaker than Claude
 
-| Strategy | Approx. tokens | Savings vs broad inventory |
-|----------|----------------|----------------------------|
-| Broad inventory (`rg --files .`) | `2945` | baseline |
-| Scoped `rg` | `499` | `83.1%` |
-| Path-only helper | `262` | `91.1%` |
-| One-snippet helper | `373` | `87.3%` |
+Benchmarks and technical notes:
 
-The runtime was also checked in bounded live agent benchmarks:
-
-- Claude: correct on benchmark, measurement, and Bash-hook lookup prompts
-- Codex: correct on benchmark, measurement, and Bash-hook lookup prompts
-
-That is why this repo ships the runtime helpers and guardrails, not just benchmark notes.
+- [references/benchmarks/local-benchmark.json](references/benchmarks/local-benchmark.json)
+- [references/benchmarks/script-speed.json](references/benchmarks/script-speed.json)
+- [references/token-reduction-guide.md](references/token-reduction-guide.md)
 
 ## Install
 
-### Codex
+Claude Code:
 
-Clone into your Codex skills directory:
-
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git "$CODEX_HOME/skills/token-reduce"
+```text
+/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
+/plugin install token-reduce@chimera-defi
 ```
 
-### Claude
+Using Codex or MCP, or want the host-specific setup details?
+See [references/agent-setup.md](references/agent-setup.md).
 
-Clone into your workspace and point your workspace instructions/hooks at the runtime files:
+## Learn More
 
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill.git tools/token-reduce-skill
-```
+- [references/architecture.md](references/architecture.md) for the high-level system design
+- [references/agent-setup.md](references/agent-setup.md) for Claude, Codex, and MCP setup
+- [references/workspace-integration.md](references/workspace-integration.md) for deeper repo wiring
+- [references/token-reduction-guide.md](references/token-reduction-guide.md) for benchmark notes and workflow details
 
-Typical entrypoints:
+## FAQ
 
-- `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
-- `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
-- `./tools/token-reduce-skill/scripts/advise-token-reduction.py`
-- `./tools/token-reduce-skill/scripts/enforce-glob-scope.py`
-- `./tools/token-reduce-skill/scripts/remind-token-reduce.py`
+### Is this only for repo discovery?
 
-## Validate
+No.
+The point is to reduce total token burn across the whole coding task.
+Discovery is where the waste usually starts, so that is where the workflow takes control first.
 
-```bash
-python3 /root/.codex/skills/.system/skill-creator/scripts/quick_validate.py .
-./scripts/token-reduce-paths.sh "hook broad exploratory bash scans"
-./scripts/token-reduce-snippet.sh "token reduction"
-```
+### Does this replace QMD or RTK?
 
-## Files
+No.
+It can benefit from tools like QMD, and it is compatible with the broader idea behind RTK, but it is trying to solve the workflow problem around those tools, not just ship a single primitive.
 
-- `SKILL.md`: canonical skill instructions
-- `agents/openai.yaml`: UI metadata
-- `references/token-reduction-guide.md`: benchmark summary and integration notes
-- `references/workspace-integration.md`: generic Claude/Codex wiring examples
-- `scripts/`: runtime helpers and hooks
-  - plus optional benchmark/adoption tooling for parity with the source repo
+### Does this always save tokens?
+
+No.
+On tiny repos, an exact scoped `rg` can still be cheapest.
+The value is larger on longer sessions, larger repos, fuzzier prompts, and hosts that actually follow the workflow.
+
+### Does this change model internals?
+
+No.
+It improves how the host gathers and spends context.
+It does not change Codex or Claude model internals.

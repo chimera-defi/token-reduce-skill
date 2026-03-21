@@ -1,0 +1,22 @@
+{
+  "name": "token-reduce-mcp",
+  "version": "0.1.0",
+  "description": "Skill, plugin, and MCP server for reducing total token burn across AI coding tasks.",
+  "type": "module",
+  "bin": {
+    "token-reduce-mcp": "mcp/server.mjs"
+  },
+  "scripts": {
+    "bench": "uv run --with tiktoken scripts/benchmark-token-reduce.py"
+  },
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "codex",
+    "token-reduction",
+    "repo-discovery",
+    "claude-subscription",
+    "codex-efficiency"
+  ],
+  "license": "MIT"
+}

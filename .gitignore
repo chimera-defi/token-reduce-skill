@@ -1,2 +1,6 @@
 artifacts/
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
 .worktrees/

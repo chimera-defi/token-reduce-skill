@@ -20,7 +20,7 @@ SAFE_HINTS = (
     "If you need one excerpt after the file list: ./scripts/token-reduce-snippet.sh topic words",
     "Examples: qmd search \"topic\" -n 5 --files",
     "          rg -n -g '*.ts' 'keyword'",
-    "Escalate to Task(subagent_type='Explore') if the search space stays broad.",
+    "If the search space stays broad after two passes, stop and ask the user to narrow it.",
 )
 
 
@@ -40,12 +40,12 @@ def main() -> int:
     if any(re.search(pattern, command) for pattern in BROAD_PATTERNS):
         json.dump(
             {
-                "decision": "deny",
+                "decision": "block",
                 "reason": " ".join(("Blocked broad exploratory Bash scan.",) + SAFE_HINTS),
             },
-            sys.stderr,
+            sys.stdout,
         )
-        print(file=sys.stderr)
+        print()
         return 2
 
     return 0

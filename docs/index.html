@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>token-reduce</title>
+    <meta
+      name="description"
+      content="Make Claude Code and Codex last longer by reducing wasted context before and during coding."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand">token-reduce</div>
+        <nav>
+          <a href="#how">How it works</a>
+          <a href="#benchmarks">Benchmarks</a>
+          <a href="#install">Install</a>
+          <a href="#mcp">MCP</a>
+          <a href="#anthropic">Anthropic</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/chimera-defi/token-reduce-skill">GitHub</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Skill · Plugin · MCP Server</p>
+            <h1>Make Claude Code and Codex last longer.</h1>
+            <p class="lede">
+              token-reduce cuts wasted context before and during coding, so the agent spends more
+              of its budget writing code and less of it wandering through the repo.
+            </p>
+            <div class="pill-row">
+              <span class="pill">Claude plugin</span>
+              <span class="pill">Codex skill</span>
+              <span class="pill">MCP server</span>
+              <span class="pill">Local benchmark</span>
+            </div>
+            <div class="hero-actions">
+              <a class="button primary" href="#install">Get started</a>
+              <a class="button ghost" href="https://github.com/chimera-defi/token-reduce-skill">View on GitHub</a>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            <div class="card-head">Claude Code</div>
+            <pre><code>/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
+/plugin install token-reduce@chimera-defi</code></pre>
+            <p>No npm. No config file. Start the next coding task with a leaner workflow.</p>
+          </aside>
+        </section>
+
+        <section class="metrics">
+          <article><strong>58.3%</strong><span>local savings for warm path kickoff vs broad inventory</span></article>
+          <article><strong>105 tokens</strong><span>current local output for warm `token_reduce_paths`</span></article>
+          <article><strong>0 config</strong><span>for the Claude plugin install path</span></article>
+        </section>
+
+        <section class="trust-strip">
+          <div>Validated skill metadata</div>
+          <div>Working MCP server</div>
+          <div>Reproducible local benchmark</div>
+          <div>QMD index auto-refresh</div>
+        </section>
+
+        <section id="how" class="content-grid">
+          <div>
+            <p class="eyebrow">How it works</p>
+            <h2>Spend the budget on coding, not context bloat.</h2>
+          </div>
+          <div class="steps">
+            <article>
+              <h3>Path kickoff</h3>
+              <p>Start with <code>token-reduce-paths.sh</code> so the agent gets candidate files without paying for a fat snippet payload.</p>
+            </article>
+            <article>
+              <h3>Guardrails</h3>
+              <p>Bash, Glob, and Grep hooks block exploratory scans and push the workflow back onto the cheapest discovery path.</p>
+            </article>
+            <article>
+              <h3>Architecture</h3>
+              <p>The value is the whole system: guidance, helper scripts, hooks, and install surfaces. See <code>references/architecture.md</code> for the high-level flow.</p>
+            </article>
+            <article>
+              <h3>Use this when</h3>
+              <ul>
+                <li>you do not know where the answer lives yet</li>
+                <li>the repo is large enough that `find .` and `rg --files .` are noisy</li>
+                <li>you want the same path-first behavior in Claude, Codex, and MCP clients</li>
+              </ul>
+            </article>
+            <article>
+              <h3>Skip this when</h3>
+              <ul>
+                <li>the exact file path is already known</li>
+                <li>the task is a small single-file edit</li>
+                <li>you are trying to change Codex or Claude internals</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="benchmarks" class="benchmark-panel">
+          <div>
+            <p class="eyebrow">Benchmarks</p>
+            <h2>Measured here, not just inherited from another repo.</h2>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Strategy</th><th>Tokens</th><th>Savings</th><th>Duration</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>broad_inventory</code></td><td>252</td><td>baseline</td><td>7 ms</td></tr>
+              <tr><td><code>guidance_scoped_rg</code></td><td>18</td><td>92.9%</td><td>7 ms</td></tr>
+              <tr><td><code>qmd_files</code></td><td>105</td><td>58.3%</td><td>261 ms</td></tr>
+              <tr><td><code>token_reduce_paths_warm</code></td><td>105</td><td>58.3%</td><td>512 ms</td></tr>
+              <tr><td><code>token_reduce_snippet_warm</code></td><td>105</td><td>58.3%</td><td>712 ms</td></tr>
+            </tbody>
+          </table>
+          <p class="note">On an architecture-focused query, the path helper dropped to 51 tokens versus 265 for broad inventory, about 80.8% savings.</p>
+        </section>
+
+        <section id="install" class="install-grid">
+          <article class="install-card">
+            <p class="eyebrow">Install</p>
+            <h2>Claude Code plugin</h2>
+            <pre><code>/plugin marketplace add https://github.com/chimera-defi/token-reduce-skill
+/plugin install token-reduce@chimera-defi</code></pre>
+          </article>
+          <article class="install-card">
+            <p class="eyebrow">Skill</p>
+            <h2>Codex skill</h2>
+            <pre><code>git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"</code></pre>
+          </article>
+        </section>
+
+        <section id="mcp" class="content-grid">
+          <div>
+            <p class="eyebrow">MCP</p>
+            <h2>Use the same helper flow from any MCP-compatible client.</h2>
+          </div>
+          <div class="steps">
+            <article>
+              <h3>stdio server</h3>
+              <pre><code>{
+  "mcpServers": {
+    "token-reduce-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/token-reduce-skill/mcp/server.mjs"]
+    }
+  }
+}</code></pre>
+            </article>
+            <article>
+              <h3>Exposed tools</h3>
+              <p>`token_reduce_paths`, `token_reduce_snippet`, `token_reduce_benchmark`, `token_reduce_install_info`, and `anthropic_cache_plan`.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="anthropic" class="content-grid">
+          <div>
+            <p class="eyebrow">Anthropic only</p>
+            <h2>Plan `cache_control` breakpoints for your own Anthropic API payloads.</h2>
+          </div>
+          <div class="steps">
+            <article>
+              <h3>Planner</h3>
+              <pre><code>cat payload.json | node scripts/anthropic-cache-plan.mjs</code></pre>
+              <p>The planner returns optimized `system`, `tools`, and `messages` blocks plus an estimated repeated-call savings summary.</p>
+            </article>
+            <article>
+              <h3>Boundary</h3>
+              <p>This does not change Codex behavior and it does not add caching to Claude Code's own built-in session handling. It only helps when you own the Anthropic request payload yourself.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="faq" class="benchmark-panel faq-panel">
+          <div>
+            <p class="eyebrow">FAQ</p>
+            <h2>What tends to confuse people on first read.</h2>
+          </div>
+          <div class="faq-list">
+            <details>
+              <summary>Does this always save tokens?</summary>
+              <p>No. Path-first discovery is the cheap default. Ranked snippet mode is a follow-up path and can cost more on a tiny repo.</p>
+            </details>
+            <details>
+              <summary>Does this require QMD?</summary>
+              <p>No. QMD is preferred when available, but scoped `rg` remains the fallback.</p>
+            </details>
+            <details>
+              <summary>Does the Anthropic helper affect Codex or Claude Code sessions?</summary>
+              <p>No. It only helps when you own the Anthropic API payload and can place `cache_control` markers yourself.</p>
+            </details>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
