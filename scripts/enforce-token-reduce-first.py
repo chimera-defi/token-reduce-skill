@@ -19,6 +19,11 @@ BROAD_BASH_PATTERNS = [
     r"\brg\b.*\s--files(?:\s+\.|\s*$)",
     r"\btree\b(?:\s+\.|\s*$)",
 ]
+# Commands that are safe orchestrators — they may have broad-looking args in --body/--message,
+# but are never themselves filesystem scanners.
+_SAFE_TOOL_RE = re.compile(
+    r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
+)
 HELPER_COMMAND_RE = re.compile(r"token-reduce-(?:paths|snippet)\.sh\b")
 
 
@@ -90,7 +95,7 @@ def main() -> int:
     if pending:
         if tool_name == "Bash":
             command = tool_input.get("command", "") or ""
-            if HELPER_COMMAND_RE.search(command):
+            if HELPER_COMMAND_RE.search(command.split("\n")[0]):
                 return 0
             return block(helper_required_reason())
         if tool_name in {"Glob", "Grep", "Read"}:
@@ -99,7 +104,12 @@ def main() -> int:
 
     if tool_name == "Bash":
         command = tool_input.get("command", "") or ""
-        if any(re.search(pattern, command) for pattern in BROAD_BASH_PATTERNS):
+        # Only check the first line — broad scan patterns appear on the command line,
+        # not inside heredoc/--body strings passed as arguments to gh, git, etc.
+        first_line = command.split("\n")[0]
+        if _SAFE_TOOL_RE.match(first_line):
+            return 0
+        if any(re.search(pattern, first_line) for pattern in BROAD_BASH_PATTERNS):
             return block(
                 "Blocked broad exploratory Bash scan. "
                 "Use a path-only kickoff first: ./scripts/token-reduce-paths.sh topic words. "
