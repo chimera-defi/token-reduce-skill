@@ -11,7 +11,18 @@ Most context waste in a coding session happens at the front — the agent scans 
 
 ## Install
 
-**Claude Code** (2 commands):
+**Quickest — full stack (QMD + RTK + hooks wired in one shot):**
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
+./tools/token-reduce-skill/scripts/setup.sh
+```
+
+`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search) and [RTK](https://github.com/rtk-ai/rtk) (output compression), wires both sets of hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
+
+---
+
+**Claude Code plugin** (2 commands):
 
 ```text
 claude plugin marketplace add chimera-defi/token-reduce-skill
@@ -37,15 +48,7 @@ git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills
 }
 ```
 
-**Generic / self-hosted** (1 command):
-
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
-```
-
-Then point your repo instructions at `tools/token-reduce-skill/scripts/token-reduce-paths.sh`.
-
-For hook wiring and deeper setup see [references/agent-setup.md](references/agent-setup.md).
+For hook wiring details see [references/agent-setup.md](references/agent-setup.md).
 
 ## How It Works
 
