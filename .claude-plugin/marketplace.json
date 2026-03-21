@@ -1,0 +1,35 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "chimera-defi",
+  "owner": {
+    "name": "Claudy Won",
+    "email": "claudy@ethbig"
+  },
+  "metadata": {
+    "description": "Make Claude Code sessions last longer by cutting wasted context before and during coding.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "token-reduce",
+      "source": "./",
+      "description": "A token-efficiency workflow for Claude Code that keeps discovery and follow-up context lean.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Claudy Won",
+        "email": "claudy@ethbig"
+      },
+      "category": "development",
+      "keywords": [
+        "repo-discovery",
+        "token-reduction",
+        "mcp",
+        "claude-code",
+        "codex",
+        "context-efficiency"
+      ],
+      "homepage": "https://chimera-defi.github.io/token-reduce-skill/",
+      "repository": "https://github.com/chimera-defi/token-reduce-skill"
+    }
+  ]
+}

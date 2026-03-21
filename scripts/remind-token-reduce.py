@@ -1,20 +1,9 @@
 #!/usr/bin/env python3
-"""UserPromptSubmit hook: nudge repo exploration onto the token-reduce path."""
+"""UserPromptSubmit hook: require token-reduce for matching repo-discovery prompts."""
 import json
-import re
 import sys
 
-
-TRIGGERS = (
-    r"\bfind\b",
-    r"\bwhere\b",
-    r"\blives?\b",
-    r"\bexplor",
-    r"\bcontext\b",
-    r"\breview\b",
-    r"\bbenchmark\b",
-    r"\bsearch\b",
-)
+from token_reduce_state import clear_pending, mark_pending, prompt_requires_helper, repo_root, session_key
 
 
 def main() -> int:
@@ -24,15 +13,20 @@ def main() -> int:
         return 0
 
     prompt = data.get("user_prompt", "") or ""
-    if not any(re.search(pattern, prompt, re.IGNORECASE) for pattern in TRIGGERS):
+    repo = repo_root()
+    key = session_key(data)
+    if not prompt_requires_helper(prompt):
+        clear_pending(repo, key)
         return 0
+
+    mark_pending(repo, key, prompt)
 
     json.dump(
         {
             "continue": True,
             "systemMessage": (
-                "For repo discovery in this workspace, do not invoke the Skill tool. "
-                "Your first tool call must be a single standalone Bash command: "
+                "For repo discovery in this workspace, start with the token-reduce workflow. "
+                "If the task is about maintaining this skill itself, use the skill instructions and then begin discovery with a single standalone Bash command: "
                 "./scripts/token-reduce-paths.sh topic words. "
                 "That helper gives a low-token path-only kickoff. "
                 "Use the user's literal filenames, identifiers, or key nouns as the query words; "

@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-03-20T16:18:31.088883+00:00",
+  "runs": 10,
+  "results": {
+    "bash_true": {
+      "mean_ms": 3.5,
+      "median_ms": 3.4,
+      "min_ms": 3.3,
+      "max_ms": 4.0
+    },
+    "uv_python_true": {
+      "mean_ms": 47.1,
+      "median_ms": 46.8,
+      "min_ms": 46.1,
+      "max_ms": 51.2
+    },
+    "hook_remind_py": {
+      "mean_ms": 64.6,
+      "median_ms": 64.4,
+      "min_ms": 62.5,
+      "max_ms": 67.7
+    },
+    "hook_enforce_py": {
+      "mean_ms": 64.1,
+      "median_ms": 63.4,
+      "min_ms": 62.4,
+      "max_ms": 69.8
+    },
+    "paths_helper": {
+      "mean_ms": 495.1,
+      "median_ms": 490.5,
+      "min_ms": 485.0,
+      "max_ms": 524.2
+    },
+    "snippet_helper": {
+      "mean_ms": 732.5,
+      "median_ms": 733.2,
+      "min_ms": 726.2,
+      "max_ms": 737.3
+    }
+  }
+}
