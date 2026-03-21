@@ -5,9 +5,9 @@
 ![MCP](https://img.shields.io/badge/MCP-server-0a7f5a)
 ![MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Make Claude Code and Codex last longer.
+Make Claude Code and Codex last longer by keeping discovery lean.
 
-token-reduce keeps discovery and reading lean so your agent spends its budget writing code instead of wandering through the repo.
+Most context waste in a coding session happens at the front — the agent scans the whole repo before it writes a single line. token-reduce fixes that: it guides the agent to the smallest useful context first, then expands only when needed.
 
 ## Install
 
@@ -47,40 +47,50 @@ Then point your repo instructions at `tools/token-reduce-skill/scripts/token-red
 
 For hook wiring and deeper setup see [references/agent-setup.md](references/agent-setup.md).
 
+## How It Works
+
+```
+Without token-reduce:                 With token-reduce:
+
+Agent  --"find auth logic"-->         Agent  --"find auth logic"-->
+  broad scan: rg --files .              token-reduce-paths.sh "auth"
+  cat 8 files into context              QMD BM25 → 2 candidate paths
+  ~52,000 tokens                        targeted read of those 2 files
+                                        ~500 tokens   (99% less)
+```
+
+1. **Start narrow.** Helpers return candidate paths before any file content lands in context.
+2. **Expand only when needed.** One ranked excerpt if the path list isn't enough.
+3. **Stay disciplined.** Hooks block broad scans before they happen — not after.
+
 ## Results
 
-Current local benchmark in this repo:
+Savings from the source repo (642 files) where this skill was developed:
 
-| Strategy | Tokens | Savings vs broad inventory | Duration |
-|----------|--------|----------------------------|----------|
-| `broad_inventory` | `259` | baseline | `8 ms` |
-| `guidance_scoped_rg` | `25` | `90.3%` | `8 ms` |
-| `qmd_files` | `132` | `49.0%` | `253 ms` |
-| `token_reduce_paths_warm` | `132` | `49.0%` | `487 ms` |
-| `token_reduce_snippet_warm` | `217` | `16.2%` | `732 ms` |
+| Strategy | Measured Savings |
+|----------|-----------------|
+| Concise responses | ~89% fewer tokens |
+| QMD BM25 path kickoff vs naive multi-file reads | ~99% fewer tokens |
+| Targeted reads vs full-file reads | ~33% fewer tokens |
 
-This is a small repo — savings scale up on larger codebases. On the 642-file repo where this skill was developed, QMD BM25 search delivered ~99% fewer tokens than naive multi-file reads.
+Local benchmark in this repo (small — scales up on larger codebases):
 
-Routing spot check:
-
-- Claude: `3/3` correct, exploratory tools blocked and redirected on `2/3`
-- Codex: `3/3` correct, helper attempted on `2/3`
+| Strategy | Tokens | vs broad inventory |
+|----------|--------|--------------------|
+| `broad_inventory` | `259` | baseline |
+| `guidance_scoped_rg` | `25` | `90.3%` saved |
+| `token_reduce_paths` | `132` | `49.0%` saved |
+| `token_reduce_snippet` | `217` | `16.2%` saved |
 
 Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
-## How It Works
-
-1. **Start narrow.** Agent gets candidate paths before snippets or broad inventories.
-2. **Expand only when needed.** One ranked excerpt if the path list isn't enough.
-3. **Stay disciplined.** Hooks push the agent away from broad scans after discovery.
-
-Discovery is where context waste usually starts. Fixing the front of the task makes the whole session better.
-
 ## What Makes It Different
 
-`qmd` is a strong BM25 search primitive. token-reduce wraps it — when QMD is installed the helpers call it automatically; when it isn't, they fall back to scoped `rg`. Either way you interact with the skill, not the underlying tool.
+**vs [RTK](https://github.com/rtk-ai/rtk):** RTK compresses command *output* after it runs — a great complement. token-reduce works upstream: it prevents expensive discovery commands from being issued in the first place. Use both for maximum savings.
 
-Beyond search, token-reduce adds host-side enforcement (hooks that block broad scans before they happen) and is designed for the full coding loop, not just one search command.
+**vs raw QMD:** token-reduce wraps QMD — when it's installed the helpers call it automatically; when it isn't, they fall back to scoped `rg`. Either way you call the skill helper, not the underlying tool directly.
+
+**vs just writing better prompts:** Prompts don't block bad tool calls. Hooks do.
 
 ## Learn More
 
@@ -96,6 +106,9 @@ No. Discovery is where waste usually starts, but the workflow covers the full co
 
 **Does this replace QMD?**
 For day-to-day use, yes — you call the skill helpers, not `qmd` directly. QMD is an optional dependency that improves search quality; the skill falls back to `rg` if it isn't installed.
+
+**Does this replace RTK?**
+No — they're complementary. [RTK](https://github.com/rtk-ai/rtk) trims the output of commands that run. token-reduce prevents costly commands from running at all. Running both gives you savings at both ends.
 
 **Does this always save tokens?**
 No. On tiny repos a scoped `rg` can be cheaper. Value scales with session length, repo size, and prompt fuzziness.
