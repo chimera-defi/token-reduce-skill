@@ -20,7 +20,7 @@
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/rtk-rewrite.sh"
+            "command": "[ -x ~/.claude/hooks/rtk-rewrite.sh ] && ~/.claude/hooks/rtk-rewrite.sh || exit 0"
           }
         ]
       },
