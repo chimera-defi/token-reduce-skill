@@ -136,8 +136,8 @@ Use parallel lookups when the queries are independent.
 - `../scripts/token-reduce-search.sh` — canonical retrieval helper
 - `../scripts/token-reduce-paths.sh` — path-only kickoff wrapper
 - `../scripts/token-reduce-snippet.sh` — one-snippet wrapper
-- `../scripts/advise-token-reduction.py` — broad Bash-scan blocker
-- `../scripts/enforce-glob-scope.py` — broad Glob blocker
+- `../scripts/enforce-token-reduce-first.py` — unified PreToolUse blocker (Bash/Glob/Grep/Read)
+- `../scripts/enforce-glob-scope.py` — broad Glob blocker (legacy, now covered by above)
 - `../scripts/remind-token-reduce.py` — prompt-submit steering hook
 
 ## Install Examples
@@ -165,8 +165,7 @@ git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills
 Typical entrypoints:
 - `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
-- `./tools/token-reduce-skill/scripts/advise-token-reduction.py`
-- `./tools/token-reduce-skill/scripts/enforce-glob-scope.py`
+- `./tools/token-reduce-skill/scripts/enforce-token-reduce-first.py`
 - `./tools/token-reduce-skill/scripts/remind-token-reduce.py`
 
 ---
