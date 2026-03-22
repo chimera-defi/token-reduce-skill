@@ -124,7 +124,7 @@ content_pattern() {
 }
 
 collection_fingerprint() {
-  find "$REPO_ROOT" -type f -name '*.md' -not -path '*/.git/*' -printf '%P\t%T@\t%s\n' 2>/dev/null | sort | sha1sum | cut -d' ' -f1
+  find "$REPO_ROOT" -type f -name '*.md' -not -path '*/.git/*' -printf '%P\t%Ts\t%s\n' 2>/dev/null | sort | sha1sum | cut -d' ' -f1
 }
 
 ensure_qmd_collection() {

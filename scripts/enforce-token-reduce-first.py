@@ -39,7 +39,7 @@ def is_broad_glob(pattern: str) -> bool:
     p = pattern.lstrip("./")
     if p.startswith("**/"):
         return True
-    if p.count("*") >= 2 and "/" not in p:
+    if p.count("*") >= 2:
         return True
     if p.endswith("/**") or p.endswith("/**/*"):
         return True
@@ -58,17 +58,22 @@ def is_exploratory_grep(tool_input: dict[str, object], repo: Path) -> bool:
     glob_value = str(tool_input.get("glob", "") or "")
     output_mode = str(tool_input.get("output_mode", "") or "")
 
-    if output_mode == "files_with_matches":
-        return True
+    # Broad glob filter always exploratory
     if any(char in glob_value for char in "*?["):
         return True
+
+    # No path or root path = exploratory
     if not path_value or path_value in {".", "./"}:
         return True
 
     candidate = (repo / path_value).resolve()
     if candidate.exists():
-        return candidate.is_dir()
+        if candidate.is_dir():
+            return True
+        # It's a specific file — allow files_with_matches on exact files
+        return False
 
+    # Unknown path: exploratory if no extension (likely a dir name)
     return "." not in Path(path_value).name
 
 
@@ -104,12 +109,17 @@ def main() -> int:
 
     if tool_name == "Bash":
         command = tool_input.get("command", "") or ""
-        # Only check the first line — broad scan patterns appear on the command line,
-        # not inside heredoc/--body strings passed as arguments to gh, git, etc.
         first_line = command.split("\n")[0]
+        # Safe orchestrators: may carry broad-looking strings as arguments
         if _SAFE_TOOL_RE.match(first_line):
             return 0
-        if any(re.search(pattern, first_line) for pattern in BROAD_BASH_PATTERNS):
+        # Check all lines — broad scans may be on continuation lines
+        lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
+        if any(
+            re.search(pattern, line)
+            for line in lines
+            for pattern in BROAD_BASH_PATTERNS
+        ):
             return block(
                 "Blocked broad exploratory Bash scan. "
                 "Use a path-only kickoff first: ./scripts/token-reduce-paths.sh topic words. "
