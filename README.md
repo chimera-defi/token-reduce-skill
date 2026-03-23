@@ -9,6 +9,8 @@ Make Claude Code and Codex last longer by keeping discovery lean.
 
 Most context waste in a coding session happens at the front — the agent scans the whole repo before it writes a single line. token-reduce fixes that: it guides the agent to the smallest useful context first, then expands only when needed.
 
+> **Agents:** read [`llms.txt`](./llms.txt) for a self-contained install + usage guide.
+
 ## Install
 
 **Quickest — full stack (QMD + RTK + hooks wired in one shot):**
