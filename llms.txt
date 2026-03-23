@@ -1,0 +1,88 @@
+# token-reduce
+
+> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD) and compresses command output (RTK) before context is consumed.
+
+## Install (run this once, then restart Claude Code)
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
+./tools/token-reduce-skill/scripts/setup.sh
+```
+
+`setup.sh` installs QMD and RTK, wires both hook layers into Claude Code globally, and indexes your repo. Safe to re-run.
+
+Claude Code plugin alternative:
+
+```
+claude plugin marketplace add chimera-defi/token-reduce-skill
+claude plugin install token-reduce@chimera-defi
+```
+
+## How to use (for agents)
+
+Before reading any file whose path you don't already know, run one of:
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-paths.sh <topic words>
+./tools/token-reduce-skill/scripts/token-reduce-snippet.sh <topic words>
+```
+
+`token-reduce-paths.sh` returns candidate file paths via BM25. Use those paths for targeted `Read` or `Grep` calls — never broad glob or `find .` scans.
+
+`token-reduce-snippet.sh` returns paths plus one ranked excerpt when you need more context to pick the right file.
+
+## Decision flow
+
+```
+Know the exact file path? → Read it directly
+Don't know where it lives? → token-reduce-paths.sh <topic>
+Need a snippet too?        → token-reduce-snippet.sh <topic>
+After paths returned?      → Grep or Read on exact paths only
+```
+
+## What the hooks enforce
+
+Once installed, the hooks enforce this automatically:
+
+- `enforce-token-reduce-first.py` (PreToolUse) — blocks broad Bash scans (`find .`, `ls -R`, `rg --files`), broad Glob patterns, and directory-wide Grep until a path helper has run
+- `remind-token-reduce.py` (UserPromptSubmit) — injects a reminder on discovery-shaped prompts
+
+If you see "Blocked broad exploratory Bash scan", run `token-reduce-paths.sh` first.
+
+## Savings benchmark
+
+| Approach | Tokens | vs naive |
+|----------|--------|---------|
+| `rg --files .` broad scan | 259 | baseline |
+| `token-reduce-paths.sh` (QMD warm) | ~3 | -99% |
+| `rg -n -i -g '*.md' "topic" .` scoped | 25 | -90% |
+
+## MCP tools (if using MCP)
+
+| Tool | What it does |
+|------|-------------|
+| `token_reduce_paths` | BM25 path list for a query |
+| `token_reduce_snippet` | Paths + one ranked excerpt |
+| `token_reduce_setup` | Run full setup (QMD + RTK + hooks) |
+| `token_reduce_benchmark` | Run local benchmark |
+| `token_reduce_install_info` | Print install commands |
+
+MCP config:
+
+```json
+{
+  "mcpServers": {
+    "token-reduce-mcp": {
+      "command": "node",
+      "args": ["/path/to/token-reduce-skill/mcp/server.mjs"]
+    }
+  }
+}
+```
+
+## Source
+
+- Full docs: `SKILL.md`
+- Codex overrides: `AGENTS.md`
+- Setup details: `references/agent-setup.md`
+- Repo: https://github.com/chimera-defi/token-reduce-skill
