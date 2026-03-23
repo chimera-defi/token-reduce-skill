@@ -11,7 +11,19 @@ Most context waste in a coding session happens at the front — the agent scans 
 
 > **Agents:** read [`llms.txt`](./llms.txt) for a self-contained install + usage guide.
 
-## Install
+## Agent Install
+
+Paste this into your agent chat and it will install itself:
+
+```
+Read https://raw.githubusercontent.com/chimera-defi/token-reduce-skill/main/llms.txt and follow the install instructions.
+```
+
+That's it. The agent reads `llms.txt`, runs `setup.sh`, and starts enforcing lean discovery automatically.
+
+---
+
+## Manual Install
 
 **Quickest — full stack (QMD + RTK + hooks wired in one shot):**
 
