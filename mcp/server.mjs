@@ -56,6 +56,15 @@ const TOOLS = [
     },
   },
   {
+    name: "token_reduce_setup",
+    description: "Run the one-command full setup: installs QMD (BM25 search) and RTK (output compression), wires both hook layers into Claude Code globally, and indexes the repo. Safe to re-run.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "anthropic_cache_plan",
     description: "Annotate Anthropic API payloads with cache_control and estimate repeated-call savings.",
     inputSchema: {
@@ -177,6 +186,8 @@ async function callTool(params) {
       return commandResult(
         await runProcess("uv", ["run", "--with", "tiktoken", "scripts/benchmark-token-reduce.py"])
       );
+    case "token_reduce_setup":
+      return commandResult(await runProcess("./scripts/setup.sh", []));
     case "token_reduce_install_info":
       return {
         content: [

@@ -85,8 +85,6 @@ def mark_pending(repo: Path, key: str, prompt: str) -> None:
     root.mkdir(parents=True, exist_ok=True)
     payload = json.dumps({"prompt": prompt, "created_at": time.time()}) + "\n"
     state_path(repo, key).write_text(payload)
-    if key != "default":
-        state_path(repo, "default").write_text(payload)
 
 
 def clear_pending(repo: Path, key: str | None = None) -> None:
@@ -94,11 +92,10 @@ def clear_pending(repo: Path, key: str | None = None) -> None:
     if not root.exists():
         return
     if key:
-        for current in {key, "default"}:
-            try:
-                state_path(repo, current).unlink()
-            except FileNotFoundError:
-                pass
+        try:
+            state_path(repo, key).unlink()
+        except FileNotFoundError:
+            pass
         return
     for path in root.glob("*.json"):
         try:
@@ -109,7 +106,7 @@ def clear_pending(repo: Path, key: str | None = None) -> None:
 
 def is_pending(repo: Path, key: str) -> bool:
     prune(repo)
-    return state_path(repo, key).exists() or state_path(repo, "default").exists()
+    return state_path(repo, key).exists()
 
 
 def main() -> int:
