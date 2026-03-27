@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
 MEASURE_CMD="cd $ROOT && ./scripts/baseline-measurement.sh --scope repo >> ./artifacts/token-reduction/cron.log 2>&1"
-SUMMARY_CMD="cd $ROOT && python3 ./scripts/summarize_token_reduction.py >> ./artifacts/token-reduction/cron.log 2>&1"
+SUMMARY_CMD="cd $ROOT && uv run ./scripts/summarize_token_reduction.py >> ./artifacts/token-reduction/cron.log 2>&1"
 
 mkdir -p "$ROOT/artifacts/token-reduction"
 touch "$ROOT/artifacts/token-reduction/cron.log"

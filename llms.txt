@@ -31,6 +31,8 @@ Before reading any file whose path you don't already know, run one of:
 
 `token-reduce-snippet.sh` returns paths plus one ranked excerpt when you need more context to pick the right file.
 
+Do **not** replace the first helper call with raw `rg --files`, raw repo-wide `rg -n`, `find .`, or `grep -R` just because they feel narrow enough. The helper is the first compliant move whenever the path is not already known.
+
 ## Decision flow
 
 ```
@@ -85,4 +87,5 @@ MCP config:
 - Full docs: `SKILL.md`
 - Codex overrides: `AGENTS.md`
 - Setup details: `references/agent-setup.md`
+- Manager CLI: `scripts/token-reduce-manage.sh`
 - Repo: https://github.com/chimera-defi/token-reduce-skill

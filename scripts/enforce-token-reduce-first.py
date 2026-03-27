@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from token_reduce_state import is_pending, repo_root, session_key
+from token_reduce_telemetry import record_event
 
 
 BROAD_BASH_PATTERNS = [
@@ -27,7 +28,25 @@ _SAFE_TOOL_RE = re.compile(
 HELPER_COMMAND_RE = re.compile(r"token-reduce-(?:paths|snippet)\.sh\b")
 
 
-def block(reason: str) -> int:
+def block(reason: str, data: dict[str, object] | None = None) -> int:
+    if data is not None:
+        repo = repo_root()
+        tool_name = str(data.get("tool_name", "unknown"))
+        tool_input = data.get("tool_input", {}) or {}
+        meta = {}
+        if isinstance(tool_input, dict):
+            for key in ("command", "pattern", "path", "glob"):
+                value = str(tool_input.get(key, "") or "")[:240]
+                if value:
+                    meta[key] = value
+        record_event(
+            repo,
+            event="hook_block",
+            source="hook",
+            tool=tool_name,
+            status="blocked",
+            meta=meta or None,
+        )
     json.dump({"decision": "block", "reason": reason}, sys.stdout)
     print()
     return 2
@@ -56,7 +75,6 @@ def is_exploratory_glob(pattern: str) -> bool:
 def is_exploratory_grep(tool_input: dict[str, object], repo: Path) -> bool:
     path_value = str(tool_input.get("path", "") or "")
     glob_value = str(tool_input.get("glob", "") or "")
-    output_mode = str(tool_input.get("output_mode", "") or "")
 
     # Broad glob filter always exploratory
     if any(char in glob_value for char in "*?["):
@@ -102,9 +120,9 @@ def main() -> int:
             command = tool_input.get("command", "") or ""
             if HELPER_COMMAND_RE.search(command.split("\n")[0]):
                 return 0
-            return block(helper_required_reason())
+            return block(helper_required_reason(), data)
         if tool_name in {"Glob", "Grep", "Read"}:
-            return block(helper_required_reason())
+            return block(helper_required_reason(), data)
         return 0
 
     if tool_name == "Bash":
@@ -123,7 +141,8 @@ def main() -> int:
             return block(
                 "Blocked broad exploratory Bash scan. "
                 "Use a path-only kickoff first: ./scripts/token-reduce-paths.sh topic words. "
-                "If you need one excerpt after the file list: ./scripts/token-reduce-snippet.sh topic words."
+                "If you need one excerpt after the file list: ./scripts/token-reduce-snippet.sh topic words.",
+                data,
             )
         return 0
 
@@ -134,14 +153,16 @@ def main() -> int:
                 "Blocked exploratory Glob pattern. "
                 "Use ./scripts/token-reduce-paths.sh for a path-only kickoff, "
                 "./scripts/token-reduce-snippet.sh for one ranked excerpt, "
-                "then switch to Read on an exact file path."
+                "then switch to Read on an exact file path.",
+                data,
             )
         return 0
 
     if tool_name == "Grep" and is_exploratory_grep(tool_input, repo):
         return block(
             "Blocked exploratory Grep before helper kickoff. "
-            "Run ./scripts/token-reduce-paths.sh topic words first, then use Grep on an exact file path or a much narrower scope."
+            "Run ./scripts/token-reduce-paths.sh topic words first, then use Grep on an exact file path or a much narrower scope.",
+            data,
         )
 
     return 0

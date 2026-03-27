@@ -47,6 +47,24 @@ const TOOLS = [
     },
   },
   {
+    name: "token_reduce_measure",
+    description: "Measure recent token-reduce adoption and write fresh repo-local artifacts.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "token_reduce_self_review",
+    description: "Generate a telemetry-driven self-review with prioritized next improvements.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
+  {
     name: "token_reduce_install_info",
     description: "Return plugin and MCP install instructions for this repo.",
     inputSchema: {
@@ -186,6 +204,10 @@ async function callTool(params) {
       return commandResult(
         await runProcess("uv", ["run", "--with", "tiktoken", "scripts/benchmark-token-reduce.py"])
       );
+    case "token_reduce_measure":
+      return commandResult(await runProcess("./scripts/baseline-measurement.sh", ["--scope", "repo"]));
+    case "token_reduce_self_review":
+      return commandResult(await runProcess("uv", ["run", "scripts/review_token_reduction.py", "--scope", "repo"]));
     case "token_reduce_setup":
       return commandResult(await runProcess("./scripts/setup.sh", []));
     case "token_reduce_install_info":
