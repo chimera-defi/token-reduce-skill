@@ -27,13 +27,15 @@ done
 mkdir -p "$OUT_DIR"
 OUTPUT="${OUTPUT:-$OUT_DIR/adoption-${SCOPE}-${DATE_STAMP}.json}"
 SUMMARY_MD="${OUTPUT%.json}.md"
+REVIEW_JSON="${OUTPUT%.json}-review.json"
+REVIEW_MD="${OUTPUT%.json}-review.md"
 
-python3 "$SCRIPT_DIR/measure_token_reduction.py" \
+uv run "$SCRIPT_DIR/measure_token_reduction.py" \
   --scope "$SCOPE" \
   --repo-root "$ROOT" \
   --output "$OUTPUT"
 
-python3 - "$OUTPUT" "$SUMMARY_MD" <<'PY'
+uv run python - "$OUTPUT" "$SUMMARY_MD" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -75,7 +77,15 @@ dst.write_text(summary)
 print(summary)
 PY
 
+uv run "$SCRIPT_DIR/review_token_reduction.py" \
+  --scope "$SCOPE" \
+  --repo-root "$ROOT" \
+  --output-json "$REVIEW_JSON" \
+  --output-md "$REVIEW_MD" >/dev/null
+
 echo
 echo "Wrote:"
 echo "  $OUTPUT"
 echo "  $SUMMARY_MD"
+echo "  $REVIEW_JSON"
+echo "  $REVIEW_MD"

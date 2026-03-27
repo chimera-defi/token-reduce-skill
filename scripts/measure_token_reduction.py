@@ -9,6 +9,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from token_reduce_telemetry import load_events, summarize_events
+
 
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
@@ -102,30 +104,32 @@ def fresh_metrics(source: str) -> dict:
         "broad_scan_violation": False,
         "first_discovery_compliant": False,
         "first_discovery_seen": False,
+        "first_discovery_kind": "unknown",
     }
 
 
-def note_first_discovery(metrics: dict, compliant: bool) -> None:
+def note_first_discovery(metrics: dict, compliant: bool, kind: str) -> None:
     if not metrics["first_discovery_seen"]:
         metrics["first_discovery_seen"] = True
         metrics["first_discovery_compliant"] = compliant
+        metrics["first_discovery_kind"] = kind
 
 
 def apply_command_metrics(metrics: dict, command: str) -> None:
     if QMD_RE.search(command):
         metrics["qmd_search"] = True
-        note_first_discovery(metrics, True)
+        note_first_discovery(metrics, True, "qmd_search")
     if TOKEN_REDUCE_SEARCH_RE.search(command):
         metrics["token_reduce_search"] = True
-        note_first_discovery(metrics, True)
+        note_first_discovery(metrics, True, "token_reduce_search")
     if SCOPED_RG_RE.search(command):
         metrics["scoped_rg"] = True
-        note_first_discovery(metrics, True)
+        note_first_discovery(metrics, True, "scoped_rg")
     if TARGETED_BASH_RE.search(command):
         metrics["targeted_reads"] = True
     if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command):
         metrics["broad_scan_violation"] = True
-        note_first_discovery(metrics, False)
+        note_first_discovery(metrics, False, "broad_scan")
 
 
 def parse_claude_session(session_file: Path) -> dict:
@@ -162,7 +166,7 @@ def parse_claude_session(session_file: Path) -> dict:
                     if name == "Read":
                         if tool_input.get("limit") is not None or tool_input.get("offset") is not None:
                             metrics["targeted_reads"] = True
-                        note_first_discovery(metrics, True)
+                        note_first_discovery(metrics, True, "targeted_read")
 
                     if name == "Bash":
                         command = tool_input.get("command", "")
@@ -171,7 +175,7 @@ def parse_claude_session(session_file: Path) -> dict:
                     if name == "Glob":
                         pattern = tool_input.get("pattern", "")
                         if "**/*" in pattern or pattern.startswith("**/"):
-                            note_first_discovery(metrics, False)
+                            note_first_discovery(metrics, False, "broad_scan")
                             metrics["broad_scan_violation"] = True
 
     return metrics
@@ -218,6 +222,8 @@ def measure(scope: str, repo_root: str) -> dict:
     session_count = len(parsed)
 
     adoption = defaultdict(int)
+    per_source = defaultdict(lambda: defaultdict(int))
+    discovery_kinds = defaultdict(int)
     compliant_sessions = 0
     broad_violation_sessions = 0
     broad_violation_count = 0
@@ -228,11 +234,43 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["targeted_read_sessions"] += int(item["targeted_reads"])
         adoption["subagent_sessions"] += int(item["subagents"])
         adoption["token_reduce_mentions"] += int(item["token_reduce_mention"])
+        adoption["helper_sessions"] += int(item["token_reduce_search"])
+        adoption["mention_without_helper_sessions"] += int(
+            item["token_reduce_mention"] and not item["token_reduce_search"]
+        )
         compliant_sessions += int(item["first_discovery_compliant"])
         broad_violation_sessions += int(item["broad_scan_violation"])
         broad_violation_count += int(item["broad_scan_violation"])
+        discovery_kinds[item["first_discovery_kind"]] += 1
+
+        source = str(item["source"])
+        per_source[source]["sessions"] += 1
+        per_source[source]["helper_sessions"] += int(item["token_reduce_search"])
+        per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
+        per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
 
     pct = lambda n: round((n * 100.0 / session_count), 1) if session_count else 0.0
+    telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
+
+    by_source_payload = {}
+    for source, counts in sorted(per_source.items()):
+        source_sessions = counts["sessions"]
+        by_source_payload[source] = {
+            "sessions": source_sessions,
+            "helper_first_or_helper_any_pct": round(
+                (counts["helper_sessions"] * 100.0 / source_sessions), 1
+            )
+            if source_sessions
+            else 0.0,
+            "discovery_compliance_pct": round(
+                (counts["compliant_sessions"] * 100.0 / source_sessions), 1
+            )
+            if source_sessions
+            else 0.0,
+            "broad_scan_pct": round((counts["broad_scan_sessions"] * 100.0 / source_sessions), 1)
+            if source_sessions
+            else 0.0,
+        }
 
     return {
         "measured_at": datetime.now(timezone.utc).isoformat(),
@@ -251,6 +289,8 @@ def measure(scope: str, repo_root: str) -> dict:
             "targeted_read_pct": pct(adoption["targeted_read_sessions"]),
             "subagent_pct": pct(adoption["subagent_sessions"]),
             "token_reduce_mention_pct": pct(adoption["token_reduce_mentions"]),
+            "helper_sessions_pct": pct(adoption["helper_sessions"]),
+            "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,
@@ -258,6 +298,12 @@ def measure(scope: str, repo_root: str) -> dict:
             "broad_scan_violations": broad_violation_count,
             "discovery_compliance_pct": pct(compliant_sessions),
         },
+        "routing": {
+            "first_discovery_kind_counts": dict(sorted(discovery_kinds.items())),
+            "helper_first_or_helper_any_pct": pct(adoption["helper_sessions"]),
+        },
+        "by_source": by_source_payload,
+        "telemetry": telemetry,
     }
 
 
