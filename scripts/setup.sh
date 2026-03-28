@@ -41,8 +41,49 @@ else
   warn "rtk not in PATH after install — run 'rtk init -g' manually after adding rtk to PATH"
 fi
 
-# ── Index this repo in QMD ────────────────────────────────────────────────────
+# ── Install token-reduce enforcement hooks globally ───────────────────────────
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
+mkdir -p "$HOOK_INSTALL_DIR"
+
+for f in token_reduce_state.py token_reduce_telemetry.py remind-token-reduce.py enforce-token-reduce-first.py; do
+  cp "$REPO_ROOT/scripts/$f" "$HOOK_INSTALL_DIR/$f"
+done
+ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
+
+python3 - <<'PYEOF'
+import json, pathlib
+
+settings_path = pathlib.Path.home() / ".claude" / "settings.json"
+settings_path.parent.mkdir(parents=True, exist_ok=True)
+settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+
+hook_dir = str(pathlib.Path.home() / ".claude" / "hooks" / "token-reduce")
+remind_cmd = f"uv run {hook_dir}/remind-token-reduce.py"
+enforce_cmd = f"uv run {hook_dir}/enforce-token-reduce-first.py"
+
+hooks = settings.setdefault("hooks", {})
+
+ups = hooks.setdefault("UserPromptSubmit", [])
+remind_entry = {"hooks": [{"type": "command", "command": remind_cmd}]}
+if not any(h.get("hooks", [{}])[0].get("command") == remind_cmd for h in ups if h.get("hooks")):
+    ups.append(remind_entry)
+
+ptu = hooks.setdefault("PreToolUse", [])
+for matcher in ("Bash", "Glob", "Grep", "Read"):
+    enforce_entry = {"matcher": matcher, "hooks": [{"type": "command", "command": enforce_cmd}]}
+    if not any(
+        h.get("matcher") == matcher and any(hh.get("command") == enforce_cmd for hh in h.get("hooks", []))
+        for h in ptu
+    ):
+        ptu.append(enforce_entry)
+
+settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+print("patched ~/.claude/settings.json with token-reduce global hooks")
+PYEOF
+ok "global Claude Code hooks patched"
+
+# ── Index this repo in QMD ────────────────────────────────────────────────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 if command -v qmd >/dev/null 2>&1; then
   qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask '**/*.md' >/dev/null 2>&1 \
