@@ -88,6 +88,16 @@ The helper can be efficient while the host still ignores it.
 - Snippet mode is intentionally more expensive and should be a second step.
 - This repo improves discovery workflow; it does not change Codex model internals.
 
+## Telemetry Loop
+
+The repo now has a direct telemetry and self-review loop:
+
+- helper wrappers append repo-local events to `artifacts/token-reduction/events.jsonl`
+- session measurement still parses Claude and Codex history for adoption/compliance
+- `review_token_reduction.py` converts the latest evidence into prioritized next fixes
+
+That means the skill can do more than claim savings. It can inspect whether it is actually being used, where routing is weak, and which improvements should be made next.
+
 ## Read Next
 
 - `README.md`

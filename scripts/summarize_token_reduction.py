@@ -22,7 +22,9 @@ def main() -> int:
         repo_root = script_dir.parents[2]
 
     out_dir = repo_root / "artifacts" / "token-reduction"
-    files = sorted(out_dir.glob("adoption-repo-*.json"))
+    files = sorted(
+        path for path in out_dir.glob("adoption-repo-*.json") if not path.name.endswith("-review.json")
+    )
     if not files:
         print("No repo-local adoption measurements found.")
         return 0
@@ -38,6 +40,12 @@ def main() -> int:
     print(f"Avg scoped rg usage: {avg('scoped_rg_pct')}%")
     print(f"Avg targeted read usage: {avg('targeted_read_pct')}%")
     print(f"Avg broad-scan violations: {avg('broad_scan_violations')}")
+    review_files = sorted(out_dir.glob("adoption-repo-*-review.json"))
+    if review_files:
+        review = json.loads(review_files[-1].read_text())
+        top = review.get("findings", [{}])[0]
+        if top:
+            print(f"Top recommendation: {top.get('recommendation', 'n/a')}")
     return 0
 
 

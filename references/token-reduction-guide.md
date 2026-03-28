@@ -49,6 +49,13 @@ Spot-checked locally on `2026-03-20` with better-fit prompts for this repo:
 
 Interpret that as better Claude hook coverage and only partial Codex routing improvement: the helper path is getting used more often, but host approval settings and Codex-side routing still matter.
 
+Follow-up maintenance work on `2026-03-27` tightened two weak points:
+
+- `remind-token-reduce.py` now extracts prompt text from multiple payload shapes so Claude hook state is less likely to clear incorrectly.
+- `token_reduce_state.py` now falls back to a shared `default` pending key so prompt-submit and pre-tool hooks line up more often across session IDs.
+
+The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.
+
 ## Decision Tree
 
 1. Unknown location or broad concept? Use `../scripts/token-reduce-paths.sh topic words` first.
@@ -76,6 +83,18 @@ This package cannot guarantee skill use on its own. The host must wire:
 - pre-tool hooks that block broad Bash scans and broad `Glob` patterns
 
 Skills provide intent. Hooks enforce behavior.
+
+## Maintenance Loop
+
+Future agents maintaining this repo should use the evidence loop, not just edit docs or hooks and stop:
+
+```bash
+./scripts/token-reduce-manage.sh validate
+./scripts/token-reduce-manage.sh measure
+./scripts/token-reduce-manage.sh review
+```
+
+Use `./scripts/token-reduce-manage.sh benchmark` when helper output or search behavior changes. Review artifacts live under `artifacts/token-reduction/`.
 
 ## 1. Concise Communication (89%)
 

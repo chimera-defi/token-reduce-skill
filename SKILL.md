@@ -1,11 +1,13 @@
 ---
 name: token-reduce
+license: MIT
 description: |
   Reduce total token usage across AI coding tasks by keeping discovery, reading, and follow-up context minimal.
   Use when file location is uncertain, the repo is large, or the user asks to explore, review, gather context, or work across multiple files.
   Prefer QMD BM25 when available; otherwise fall back to scoped `rg`. Skip for small edits with an exact file path.
 metadata:
   author: "GPT-5 Codex"
+  category: "productivity"
   version: "5.1.0"
   argument_hint: "[file-or-directory]"
 allowed-tools:
@@ -17,9 +19,11 @@ allowed-tools:
 
 # Token Reduction Skill
 
+## Description
+
 Use targeted retrieval and short summaries for `$ARGUMENTS`.
 
-## Trigger
+## Triggers
 
 - The user asks to review, explore, search for context, or find where something lives.
 - You do not know the file location yet.
@@ -38,12 +42,9 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 - If file location is unknown, start with one standalone discovery command:
   - `scripts/token-reduce-paths.sh topic words`
   - `scripts/token-reduce-snippet.sh topic words`
-  - `scripts/token-reduce-search.sh "topic"`
-  - `scripts/token-reduce-search.sh --snippets "topic"`
-  - `qmd search "topic" -n 5 --files`
-  - `rg -n -g '<glob>' '<pattern>'`
 - Prefer `scripts/token-reduce-paths.sh` for the initial path-only kickoff.
 - Use `scripts/token-reduce-snippet.sh` only when the path list is not enough.
+- Do not treat raw `qmd search` or raw `rg` as the first compliant move when the helper is available; those belong inside the helper workflow or as a narrow follow-up after helper output.
 - Do not chain discovery commands with `||`, `&&`, `find`, `ls`, or extra fallback shell logic.
 - Do not treat `rg --files .` as compliant discovery.
 - Do not start with `find .`, `ls -R`, `grep -R`, or broad `Glob` patterns such as `**/*`.

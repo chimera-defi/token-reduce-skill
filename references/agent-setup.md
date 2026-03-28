@@ -43,12 +43,24 @@ Then run:
 
 ```bash
 "$CODEX_HOME/skills/token-reduce/scripts/setup.sh"
+"$CODEX_HOME/skills/token-reduce/scripts/token-reduce-manage.sh" validate
 ```
 
 Point repo instructions at:
 
 - `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
+
+For Codex specifically, make the repo-local rule explicit: if the file path is unknown, the first compliant move is `token-reduce-paths.sh`. Raw `rg --files` or repo-wide `rg -n` should only happen as follow-up after the helper returns candidate paths.
+
+When updating the skill itself, also run:
+
+```bash
+"$CODEX_HOME/skills/token-reduce/scripts/token-reduce-manage.sh" measure
+"$CODEX_HOME/skills/token-reduce/scripts/token-reduce-manage.sh" review
+```
+
+That keeps the package aligned with the same evidence loop it asks hosts to follow.
 
 ## MCP
 
