@@ -3,7 +3,7 @@
 import json
 import sys
 
-from token_reduce_state import clear_pending, mark_pending, prompt_requires_helper, repo_root, session_key
+from token_reduce_state import clear_pending, discovery_hint, mark_pending, prompt_requires_helper, repo_root, session_key
 from token_reduce_telemetry import record_event
 
 
@@ -46,21 +46,18 @@ def main() -> int:
         query=prompt[:240],
     )
 
+    hint = discovery_hint()
     json.dump(
         {
             "continue": True,
             "systemMessage": (
-                "For repo discovery in this workspace, start with the token-reduce workflow. "
-                "If the task is about maintaining this skill itself, use the skill instructions and then begin discovery with a single standalone Bash command: "
-                "./scripts/token-reduce-paths.sh topic words. "
-                "That helper gives a low-token path-only kickoff. "
-                "Use the user's literal filenames, identifiers, or key nouns as the query words; "
-                "do not replace them with generic synonyms or drop key qualifiers like Bash, Glob, hook, or token reduction. "
-                "If you need one ranked excerpt after the file list, use "
-                "./scripts/token-reduce-snippet.sh topic words. "
-                "For token-reduction hook or script questions, the likely answers are under ./scripts, not .githooks. "
-                "Do not start with find, ls, grep, Grep, Read, or broad Glob fallbacks before the helper runs. "
-                "After the helper runs, prefer Grep or Read for follow-up narrowing; do not switch back to Bash search commands unless you are calling the helper again."
+                "TOKEN-REDUCE ENFORCEMENT ACTIVE. "
+                f"Your FIRST tool call MUST be a Bash discovery call: {hint}. "
+                "The hooks will block any Grep, Glob, Read, or broad Bash scan until discovery runs. "
+                "This applies even for skill maintenance tasks — if you do not know the exact file path already, run discovery first. "
+                "Use the user's literal filenames, identifiers, or key nouns as query words; "
+                "do not use generic synonyms or omit qualifiers like Bash, Glob, hook, or token reduction. "
+                "After discovery runs, use targeted Grep or Read for narrowing — do not switch back to broad Bash search commands."
             ),
         },
         sys.stdout,

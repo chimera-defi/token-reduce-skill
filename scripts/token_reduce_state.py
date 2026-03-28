@@ -15,10 +15,26 @@ TRIGGERS = (
     r"\b(find|locate|where)\b.{0,60}\b(file|class|function|hook|script|lives?|defined|lives?)\b",
     r"\b(read|load|gather)\b.{0,60}\bcontext\b",
     r"\bsearch\b.{0,60}\b(repo|codebase|files?)\b",
-    r"\breview\b.{0,60}\b(repo|codebase|entire|whole)\b",
+    r"\breview\b.{0,60}\b(repo|codebase|entire|whole|skill|hook|script)\b",
     r"\bwhere\s+(is|are|does|do)\b",
     r"\bwhere.{0,20}\blive[s]?\b",
+    # Maintenance and improvement tasks on code/skills/hooks/scripts
+    r"\b(validate|check|verify)\b.{0,80}\b(skill|hook|script|code|file|package)\b",
+    r"\b(improve|fix|update|enhance|tighten)\b.{0,80}\b(skill|hook|script|file|code|routing|trigger|enforcement)\b",
+    r"\bhow\s+(does|do|is)\b.{0,60}\b(work|used|structured|enforced|triggered)\b",
+    r"\bso\s+it'?s\s+actually\b",
+    r"\b(being\s+used|getting\s+used|actually\s+used)\b",
 )
+
+
+def discovery_hint() -> str:
+    """Return the appropriate first-move discovery command for the current repo."""
+    helper = Path.cwd() / "scripts" / "token-reduce-paths.sh"
+    if helper.exists():
+        return "./scripts/token-reduce-paths.sh <topic words>"
+    return "qmd search '<topic words>' -n 5 --files  (or scoped: rg --files -g '*.ext' | head -20)"
+
+
 STATE_TTL_SECONDS = 20 * 60
 STATE_DIR = ".claude/token-reduce-state"
 
