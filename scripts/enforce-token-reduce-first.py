@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-from token_reduce_state import is_pending, repo_root, session_key
+from token_reduce_state import discovery_hint, is_pending, repo_root, session_key
 from token_reduce_telemetry import record_event
 
 
@@ -25,7 +25,7 @@ BROAD_BASH_PATTERNS = [
 _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
 )
-HELPER_COMMAND_RE = re.compile(r"token-reduce-(?:paths|snippet)\.sh\b")
+HELPER_COMMAND_RE = re.compile(r"token-reduce-(?:paths|snippet)\.sh\b|qmd\s+search\b")
 
 
 def block(reason: str, data: dict[str, object] | None = None) -> int:
@@ -96,11 +96,11 @@ def is_exploratory_grep(tool_input: dict[str, object], repo: Path) -> bool:
 
 
 def helper_required_reason() -> str:
+    hint = discovery_hint()
     return (
-        "token-reduce helper required for this prompt. "
-        "Run ./scripts/token-reduce-paths.sh topic words first, or "
-        "./scripts/token-reduce-snippet.sh topic words if you explicitly need one excerpt. "
-        "After the helper runs, targeted Grep, Glob, and Read follow-ups are allowed."
+        f"token-reduce helper required for this prompt. "
+        f"Run {hint} first. "
+        f"After discovery runs, targeted Grep, Glob, and Read follow-ups are allowed."
     )
 
 
@@ -139,9 +139,7 @@ def main() -> int:
             for pattern in BROAD_BASH_PATTERNS
         ):
             return block(
-                "Blocked broad exploratory Bash scan. "
-                "Use a path-only kickoff first: ./scripts/token-reduce-paths.sh topic words. "
-                "If you need one excerpt after the file list: ./scripts/token-reduce-snippet.sh topic words.",
+                f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
                 data,
             )
         return 0
@@ -150,18 +148,14 @@ def main() -> int:
         pattern = tool_input.get("pattern", "") or ""
         if is_broad_glob(pattern) or is_exploratory_glob(pattern):
             return block(
-                "Blocked exploratory Glob pattern. "
-                "Use ./scripts/token-reduce-paths.sh for a path-only kickoff, "
-                "./scripts/token-reduce-snippet.sh for one ranked excerpt, "
-                "then switch to Read on an exact file path.",
+                f"Blocked exploratory Glob pattern. Use {discovery_hint()} for path-only kickoff, then switch to Read on an exact file path.",
                 data,
             )
         return 0
 
     if tool_name == "Grep" and is_exploratory_grep(tool_input, repo):
         return block(
-            "Blocked exploratory Grep before helper kickoff. "
-            "Run ./scripts/token-reduce-paths.sh topic words first, then use Grep on an exact file path or a much narrower scope.",
+            f"Blocked exploratory Grep before helper kickoff. Run {discovery_hint()} first, then use Grep on an exact file path or a much narrower scope.",
             data,
         )
 

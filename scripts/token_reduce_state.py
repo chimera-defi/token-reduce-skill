@@ -25,6 +25,16 @@ TRIGGERS = (
     r"\bso\s+it'?s\s+actually\b",
     r"\b(being\s+used|getting\s+used|actually\s+used)\b",
 )
+
+
+def discovery_hint() -> str:
+    """Return the appropriate first-move discovery command for the current repo."""
+    helper = Path.cwd() / "scripts" / "token-reduce-paths.sh"
+    if helper.exists():
+        return "./scripts/token-reduce-paths.sh <topic words>"
+    return "qmd search '<topic words>' -n 5 --files  (or scoped: rg --files -g '*.ext' | head -20)"
+
+
 STATE_TTL_SECONDS = 20 * 60
 STATE_DIR = ".claude/token-reduce-state"
 
