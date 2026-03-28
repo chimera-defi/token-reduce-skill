@@ -26,7 +26,9 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 ## Triggers
 
 - The user asks to review, explore, search for context, or find where something lives.
-- You do not know the file location yet.
+- The user asks to validate, check, verify, improve, fix, or update a skill, hook, script, or file.
+- The user's request implies the skill is not being used correctly or needs to work better.
+- You do not know the exact file path yet.
 - The task spans several files or areas of the repo.
 - Broad scans or full-file reads would likely waste context.
 - When maintaining this skill itself, the same narrow-discovery rules apply.
