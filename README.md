@@ -101,6 +101,29 @@ Local benchmark in this repo (small — scales up on larger codebases):
 
 Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
+## Telemetry
+
+token-reduce now logs direct helper and hook events under `artifacts/token-reduction/events.jsonl`, measures recent Claude/Codex session compliance, and can generate a self-review report with prioritized next improvements.
+
+Useful commands:
+
+```bash
+./scripts/token-reduce-manage.sh benchmark
+./scripts/token-reduce-manage.sh measure
+./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh telemetry
+./scripts/token-reduce-manage.sh validate
+```
+
+Future agents should treat `measure` and `review` as part of the normal maintenance loop, not optional cleanup after the fact.
+
+This is the self-improvement loop:
+
+1. collect helper and hook events
+2. measure actual session adoption and compliance
+3. generate a review with the next routing, docs, or enforcement fixes
+4. rerun after changes
+
 ## What Makes It Different
 
 **vs [RTK](https://github.com/rtk-ai/rtk):** RTK compresses command *output* after it runs — a great complement. token-reduce works upstream: it prevents expensive discovery commands from being issued in the first place. Use both for maximum savings.

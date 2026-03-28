@@ -84,6 +84,12 @@ Add one line:
 If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-paths.sh topic words before any Grep, Glob, or Read.
 ```
 
+For Codex repos, also add one line telling future agents to validate and measure after routing or hook changes:
+
+```text
+After changing token-reduce routing, hooks, or benchmarks, run ./tools/token-reduce-skill/scripts/token-reduce-manage.sh validate && ./tools/token-reduce-skill/scripts/token-reduce-manage.sh review.
+```
+
 ## Codex
 
 ```text
@@ -102,3 +108,15 @@ repo/
 └── tools/
     └── token-reduce-skill/  ← git clone here
 ```
+
+## Operational Loop
+
+Future agents should maintain the skill with the same low-token discipline:
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh validate
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh measure
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh review
+```
+
+Use `benchmark` when changing helper output or search behavior. Use `telemetry` when debugging whether hooks or helpers were actually invoked.

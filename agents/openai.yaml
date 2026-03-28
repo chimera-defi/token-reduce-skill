@@ -1,6 +1,6 @@
 interface:
   display_name: "Token Reduce"
   short_description: "Make coding sessions last longer by keeping context lean."
-  default_prompt: "Use $token-reduce to reduce total token burn across discovery, reading, and implementation."
+  default_prompt: "Use $token-reduce to cut token burn across coding tasks. If file location is unknown, start with scripts/token-reduce-paths.sh and only expand after the helper returns."
 policy:
   allow_implicit_invocation: true

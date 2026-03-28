@@ -135,6 +135,7 @@ def main() -> int:
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--timeout-seconds", type=int, default=60)
     parser.add_argument("--agents", choices=["claude", "codex", "both"], default="claude")
+    parser.add_argument("--output")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
@@ -167,7 +168,10 @@ def main() -> int:
                 **analyze_codex(codex_out, codex_err, expect),
             }
 
-    print(json.dumps(results, indent=2))
+    payload = json.dumps(results, indent=2)
+    if args.output:
+        Path(args.output).write_text(payload + "\n")
+    print(payload)
     return 0
 
 
