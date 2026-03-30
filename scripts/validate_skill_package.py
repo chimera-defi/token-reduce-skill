@@ -63,6 +63,10 @@ def validate(skill_path: Path, openai_yaml: Path) -> list[str]:
     if not openai_yaml.exists():
         errors.append("agents/openai.yaml: missing UI metadata file")
 
+    evals_path = Path(openai_yaml.parent.parent) / "evals" / "evals.json"
+    if not evals_path.exists():
+        print("warning: evals/evals.json not found — add test cases for full compliance", file=sys.stderr)
+
     return errors
 
 

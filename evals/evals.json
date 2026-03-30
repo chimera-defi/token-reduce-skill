@@ -1,0 +1,53 @@
+{
+  "skill_name": "token-reduce",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Explore the hook enforcement system in this repo and explain how broad Bash scans get blocked.",
+      "expected_output": "Explanation citing scripts/enforce-token-reduce-first.py and the BROAD_BASH_PATTERNS list, discovered via the token-reduce-paths helper or qmd search — not via find/ls/grep -R.",
+      "files": [],
+      "expectations": [
+        "The agent used ./scripts/token-reduce-paths.sh or qmd search as the first discovery step, not find/ls -R/grep -R/broad Glob",
+        "The agent identified scripts/enforce-token-reduce-first.py as the relevant file",
+        "The response describes BROAD_BASH_PATTERNS or the block() function",
+        "The agent did not read more than 3 files to answer the question"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Validate this skill and check whether the trigger patterns actually fire for maintenance tasks like 'improve the hook'.",
+      "expected_output": "The agent uses the token-reduce helper or qmd search first, finds scripts/token_reduce_state.py, reads the TRIGGERS tuple, and evaluates whether 'improve the hook' matches any pattern.",
+      "files": [],
+      "expectations": [
+        "The agent used ./scripts/token-reduce-paths.sh or qmd search as the first discovery step",
+        "The agent located scripts/token_reduce_state.py and read the TRIGGERS tuple",
+        "The agent ran ./scripts/token-reduce-manage.sh validate or uv run scripts/validate_skill_package.py",
+        "The agent did not start with a broad Glob like **/*.py or find . -name"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "How does the remind-token-reduce hook decide what system message to inject?",
+      "expected_output": "Explanation of how remind-token-reduce.py checks prompt_requires_helper() against TRIGGERS and emits a systemMessage via the UserPromptSubmit hook, discovered via targeted search.",
+      "files": [],
+      "expectations": [
+        "The agent used ./scripts/token-reduce-paths.sh or qmd search rather than broad search to locate the file",
+        "The agent identified scripts/remind-token-reduce.py as the primary file",
+        "The response mentions discovery_hint() and how it adapts the message for different repos",
+        "The agent did not read the entire scripts/ directory — only targeted file reads"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Where does the skill store pending discovery state and how long does it last?",
+      "expected_output": "The .claude/token-reduce-state/ directory, 20-minute TTL, managed by token_reduce_state.py mark_pending/clear_pending/is_pending functions.",
+      "files": [],
+      "expectations": [
+        "The agent used ./scripts/token-reduce-paths.sh or qmd search to locate the relevant file",
+        "The agent identified .claude/token-reduce-state/ as the state directory",
+        "The response mentions the 20-minute TTL (STATE_TTL_SECONDS = 20 * 60)",
+        "The agent read scripts/token_reduce_state.py rather than guessing the answer"
+      ]
+    }
+  ]
+}
