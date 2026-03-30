@@ -3,8 +3,10 @@ name: token-reduce
 license: MIT
 description: |
   Reduce total token usage across AI coding tasks by keeping discovery, reading, and follow-up context minimal.
-  Use when file location is uncertain, the repo is large, or the user asks to explore, review, gather context, or work across multiple files.
-  Prefer QMD BM25 when available; otherwise fall back to scoped `rg`. Skip for small edits with an exact file path.
+  Use this skill whenever you need to find, explore, review, validate, improve, or fix anything in a codebase —
+  even if the user does not explicitly ask for "token reduction". If you do not already have the exact file path,
+  this skill applies. Prefer QMD BM25 when available; otherwise fall back to scoped `rg`.
+  Skip only for small edits where the exact file path is already known.
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
