@@ -106,3 +106,13 @@ When changing routing, hooks, telemetry, or benchmark logic, also run:
 ```
 
 Treat the review output as the current evidence source for weak adoption, weak routing, or benchmark drift.
+
+### Companion Tool Intake
+
+For additions like alternate search backends, structural indexers, or external MCP servers:
+
+1. verify the external project directly
+2. run its tests or validation first
+3. benchmark it on representative token-reduce tasks
+4. integrate it only if it improves a specific task class without harming the default workflow
+5. propagate the decision into docs and validation
