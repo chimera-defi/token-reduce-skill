@@ -124,6 +124,33 @@ This is the self-improvement loop:
 3. generate a review with the next routing, docs, or enforcement fixes
 4. rerun after changes
 
+## Optional Structural Accelerator
+
+`token-reduce` can also consume [`token-savior`](https://github.com/Mibayy/token-savior) as an optional companion for exact symbol lookup and change-impact questions.
+
+Install it only if you want the structural helper:
+
+```bash
+git clone https://github.com/Mibayy/token-savior /tmp/token-savior-bench
+cd /tmp/token-savior-bench
+uv sync --extra mcp
+```
+
+Use it only when the exact symbol is already known:
+
+```bash
+uv run python scripts/token-reduce-structural.py --project-root . find-symbol discovery_hint
+uv run python scripts/token-reduce-structural.py --project-root . change-impact prompt_requires_helper
+```
+
+Do not use it as the default first move for vague repo discovery. For that, keep using:
+
+```bash
+./scripts/token-reduce-paths.sh topic words
+```
+
+Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens to `56`, but broad-topic search quality was worse even when raw output was shorter. See [references/token-savior-evaluation.md](references/token-savior-evaluation.md).
+
 ## What Makes It Different
 
 **vs [RTK](https://github.com/rtk-ai/rtk):** RTK compresses command *output* after it runs — a great complement. token-reduce works upstream: it prevents expensive discovery commands from being issued in the first place. Use both for maximum savings.
@@ -138,6 +165,8 @@ This is the self-improvement loop:
 - [references/workspace-integration.md](references/workspace-integration.md) — hook wiring for consumer repos
 - [references/token-reduction-guide.md](references/token-reduction-guide.md) — benchmark notes and workflow details
 - [references/architecture.md](references/architecture.md) — high-level system design
+- [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
+- [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
 
 ## FAQ
 
