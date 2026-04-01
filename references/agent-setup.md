@@ -17,6 +17,10 @@ Or from a fresh clone of the skill into a consumer repo:
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
+It also:
+- links global helper commands into `~/.local/bin`
+- links the Codex skill into `$CODEX_HOME/skills/token-reduce`
+
 ## Claude Code
 
 ### Plugin Install
@@ -61,6 +65,8 @@ When updating the skill itself, also run:
 ```
 
 That keeps the package aligned with the same evidence loop it asks hosts to follow.
+
+If `scripts/setup.sh` has already been run on the machine, the Codex link and the global helper wrappers should already be present.
 
 ## MCP
 

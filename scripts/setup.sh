@@ -7,6 +7,14 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 ok()   { printf "${GREEN}✔${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}!${NC} %s\n" "$*"; }
 
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+BIN_DIR="${HOME}/.local/bin"
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+CODEX_SKILL_DIR="${CODEX_HOME_DIR}/skills/token-reduce"
+
+mkdir -p "$BIN_DIR"
+export PATH="$BIN_DIR:$PATH"
+
 # ── QMD (BM25 search backend) ─────────────────────────────────────────────────
 if command -v qmd >/dev/null 2>&1; then
   ok "qmd already installed ($(qmd --version 2>/dev/null || echo 'unknown version'))"
@@ -42,7 +50,6 @@ else
 fi
 
 # ── Install token-reduce enforcement hooks globally ───────────────────────────
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
 mkdir -p "$HOOK_INSTALL_DIR"
 
@@ -83,6 +90,40 @@ print("patched ~/.claude/settings.json with token-reduce global hooks")
 PYEOF
 ok "global Claude Code hooks patched"
 
+# ── Global helper wrappers for any repo ───────────────────────────────────────
+write_wrapper() {
+  local target_name="$1"
+  local target_path="$2"
+  rm -f "$BIN_DIR/$target_name"
+  cat >"$BIN_DIR/$target_name" <<EOF
+#!/usr/bin/env bash
+exec "$target_path" "\$@"
+EOF
+  chmod +x "$BIN_DIR/$target_name"
+}
+
+write_wrapper "token-reduce-paths" "$REPO_ROOT/scripts/token-reduce-paths.sh"
+write_wrapper "token-reduce-snippet" "$REPO_ROOT/scripts/token-reduce-snippet.sh"
+write_wrapper "token-reduce-manage" "$REPO_ROOT/scripts/token-reduce-manage.sh"
+write_wrapper "token-reduce-setup" "$REPO_ROOT/scripts/setup.sh"
+write_wrapper "token-reduce-structural" "$REPO_ROOT/scripts/token-reduce-structural.py"
+ok "global helper wrappers linked in $BIN_DIR"
+
+# ── Codex global skill install ────────────────────────────────────────────────
+mkdir -p "${CODEX_HOME_DIR}/skills"
+if [[ -L "$CODEX_SKILL_DIR" || ! -e "$CODEX_SKILL_DIR" ]]; then
+  ln -sfn "$REPO_ROOT" "$CODEX_SKILL_DIR"
+  ok "Codex skill linked at $CODEX_SKILL_DIR"
+else
+  EXISTING_REALPATH="$(cd "$CODEX_SKILL_DIR" && pwd)"
+  REPO_REALPATH="$(cd "$REPO_ROOT" && pwd)"
+  if [[ "$EXISTING_REALPATH" == "$REPO_REALPATH" ]]; then
+    ok "Codex skill already installed at $CODEX_SKILL_DIR"
+  else
+    warn "Codex skill path already exists at $CODEX_SKILL_DIR and points elsewhere; inspect manually"
+  fi
+fi
+
 # ── Index this repo in QMD ────────────────────────────────────────────────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 if command -v qmd >/dev/null 2>&1; then
@@ -96,5 +137,7 @@ echo "Setup complete. What each layer does:"
 echo "  token-reduce hooks  →  block wasteful discovery before it happens"
 echo "  RTK hook            →  compress output of commands that do run"
 echo "  QMD                 →  BM25 search backend for path helpers"
+echo "  global wrappers     →  token-reduce-paths / token-reduce-snippet from any repo"
+echo "  Codex skill link    →  $CODEX_SKILL_DIR"
 echo ""
 echo "Restart Claude Code for hook changes to take effect."

@@ -34,6 +34,10 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 
 `setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search) and [RTK](https://github.com/rtk-ai/rtk) (output compression), wires both sets of hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
 
+It also:
+- links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
+- links the Codex skill into `$CODEX_HOME/skills/token-reduce`
+
 ---
 
 **Claude Code plugin** (2 commands):
@@ -151,6 +155,29 @@ Do not use it as the default first move for vague repo discovery. For that, keep
 
 Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens to `56`, but broad-topic search quality was worse even when raw output was shorter. See [references/token-savior-evaluation.md](references/token-savior-evaluation.md).
 
+## Dependencies And Attribution
+
+token-reduce is intentionally composite. It combines:
+
+- [QMD](https://github.com/tobi/qmd) for BM25 path and snippet retrieval
+- [RTK](https://github.com/rtk-ai/rtk) for command-output compression
+- [`token-savior`](https://github.com/Mibayy/token-savior) as an optional structural accelerator for exact symbol and dependency questions
+- Anthropic prompt-caching guidance as an optional API-layer companion, documented in [references/anthropic-prompt-caching.md](references/anthropic-prompt-caching.md)
+
+Direct runtime dependencies:
+- `qmd`
+- `rtk`
+- the token-reduce helper, hook, telemetry, and MCP runtime in this repo
+
+Optional companions:
+- `token-savior`
+- Anthropic API prompt-caching workflows
+
+The design goal is explicit:
+- token-reduce remains the reliable control plane
+- companion tools stay behind task-specific routing rules
+- no single dependency replaces the helper-first workflow by default
+
 ## What Makes It Different
 
 **vs [RTK](https://github.com/rtk-ai/rtk):** RTK compresses command *output* after it runs — a great complement. token-reduce works upstream: it prevents expensive discovery commands from being issued in the first place. Use both for maximum savings.
@@ -167,6 +194,7 @@ Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens 
 - [references/architecture.md](references/architecture.md) — high-level system design
 - [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
+- [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
 
 ## FAQ
 
