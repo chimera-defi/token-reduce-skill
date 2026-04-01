@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import time
 from pathlib import Path
 
@@ -29,6 +30,8 @@ TRIGGERS = (
 
 def discovery_hint() -> str:
     """Return the appropriate first-move discovery command for the current repo."""
+    if shutil.which("token-reduce-paths"):
+        return "token-reduce-paths <topic words>"
     helper = Path.cwd() / "scripts" / "token-reduce-paths.sh"
     if helper.exists():
         return "./scripts/token-reduce-paths.sh <topic words>"
