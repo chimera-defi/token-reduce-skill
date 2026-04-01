@@ -19,16 +19,37 @@ def health_score(report: dict) -> float:
 
 def build_findings(report: dict) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
+    session_count = int(report.get("session_count", 0))
     compliance = float(report["compliance"]["discovery_compliance_pct"])
     helper = float(report["routing"]["helper_first_or_helper_any_pct"])
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
-    mentions_without_helper = int(report["adoption"]["mention_without_helper_sessions"])
+    mentions_without_helper = int(report["adoption"].get("mention_without_helper_sessions", 0))
     telemetry_events = int(report["telemetry"]["event_count"])
 
     codex = report["by_source"].get("codex", {})
     claude = report["by_source"].get("claude", {})
     codex_helper = float(codex.get("helper_first_or_helper_any_pct", 0.0))
     claude_helper = float(claude.get("helper_first_or_helper_any_pct", 0.0))
+
+    if session_count == 0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "sample_size",
+                "finding": "No Claude or Codex session logs were found for this scope yet.",
+                "recommendation": "Finish setup, exercise the helper in a few real sessions, then rerun measure and review.",
+            }
+        )
+        if telemetry_events == 0:
+            findings.append(
+                {
+                    "priority": "medium",
+                    "area": "telemetry",
+                    "finding": "No helper or hook telemetry has been recorded yet.",
+                    "recommendation": "Run token-reduce-paths or token-reduce-snippet after setup to confirm events land in artifacts/token-reduction/events.jsonl.",
+                }
+            )
+        return findings
 
     if telemetry_events == 0:
         findings.append(

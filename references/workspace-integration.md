@@ -8,6 +8,13 @@ Add token-reduce to any repo in three steps:
 
 For maximum savings also run `./tools/token-reduce-skill/scripts/setup.sh` to install QMD and RTK.
 
+If the machine already ran token-reduce global setup, you can also call:
+
+```bash
+token-reduce-paths topic words
+token-reduce-snippet topic words
+```
+
 ## Claude Code — Hook Wiring
 
 Two hook layers work together:
