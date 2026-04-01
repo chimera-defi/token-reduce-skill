@@ -96,6 +96,16 @@ Future agents maintaining this repo should use the evidence loop, not just edit 
 
 Use `./scripts/token-reduce-manage.sh benchmark` when helper output or search behavior changes. Review artifacts live under `artifacts/token-reduction/`.
 
+## Companion Backends
+
+Structural tools like `token-savior` can improve exact symbol lookup and dependency analysis, but they should remain optional accelerators rather than replacing the default helper-first workflow.
+
+Use:
+- `../scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`
+- `../scripts/token-reduce-structural.py --project-root . change-impact ExactSymbol`
+
+Keep using `../scripts/token-reduce-paths.sh` as the default first move for broad or fuzzy discovery.
+
 ## 1. Concise Communication (89%)
 
 Bad: "I understand you'd like me to check..."
@@ -184,6 +194,7 @@ git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills
 Typical entrypoints:
 - `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
+- `./tools/token-reduce-skill/scripts/token-reduce-structural.py`
 - `./tools/token-reduce-skill/scripts/enforce-token-reduce-first.py`
 - `./tools/token-reduce-skill/scripts/remind-token-reduce.py`
 

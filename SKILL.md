@@ -44,7 +44,11 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 - If file location is unknown, start with one standalone discovery command:
   - `scripts/token-reduce-paths.sh topic words`
   - `scripts/token-reduce-snippet.sh topic words`
+- If the exact symbol is already known and `token-savior` is installed, you may use:
+  - `uv run python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`
+  - `uv run python scripts/token-reduce-structural.py --project-root . change-impact ExactSymbol`
 - Prefer `scripts/token-reduce-paths.sh` for the initial path-only kickoff.
+- Prefer the structural helper only for exact symbol or dependency questions; do not use it as the default for vague repo discovery.
 - Use `scripts/token-reduce-snippet.sh` only when the path list is not enough.
 - Do not treat raw `qmd search` or raw `rg` as the first compliant move when the helper is available; those belong inside the helper workflow or as a narrow follow-up after helper output.
 - Do not chain discovery commands with `||`, `&&`, `find`, `ls`, or extra fallback shell logic.
@@ -116,3 +120,4 @@ Skip `qmd embed`, `qmd vsearch`, and `qmd query` for this workflow.
 
 ---
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
+Read `references/companion-tools.md` for how to evaluate future companion backends.
