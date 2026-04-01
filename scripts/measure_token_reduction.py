@@ -222,6 +222,17 @@ def measure(scope: str, repo_root: str) -> dict:
     session_count = len(parsed)
 
     adoption = defaultdict(int)
+    for key in (
+        "qmd_search_sessions",
+        "token_reduce_search_sessions",
+        "scoped_rg_sessions",
+        "targeted_read_sessions",
+        "subagent_sessions",
+        "token_reduce_mentions",
+        "helper_sessions",
+        "mention_without_helper_sessions",
+    ):
+        adoption[key] = 0
     per_source = defaultdict(lambda: defaultdict(int))
     discovery_kinds = defaultdict(int)
     compliant_sessions = 0
