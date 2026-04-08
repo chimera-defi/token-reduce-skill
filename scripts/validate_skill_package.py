@@ -12,6 +12,11 @@ from pathlib import Path
 REQUIRED_FRONTMATTER = ("name", "license", "description")
 REQUIRED_METADATA_FIELDS = ("author", "category")
 REQUIRED_SECTIONS = ("# Token Reduction Skill", "## Description", "## Triggers")
+REQUIRED_ATTRIBUTION_LINKS = {
+    "QMD": r"\[QMD\]\(https://github\.com/tobi/qmd\)",
+    "RTK": r"\[RTK\]\(https://github\.com/rtk-ai/rtk\)",
+    "caveman": r"\[`?caveman`?\]\(https://github\.com/JuliusBrussee/caveman\)",
+}
 
 
 def repo_root() -> Path:
@@ -35,7 +40,7 @@ def parse_frontmatter(text: str) -> str:
     return match.group(1)
 
 
-def validate(skill_path: Path, openai_yaml: Path) -> list[str]:
+def validate(skill_path: Path, openai_yaml: Path, readme_path: Path) -> list[str]:
     errors: list[str] = []
     text = skill_path.read_text(encoding="utf-8")
     try:
@@ -63,6 +68,15 @@ def validate(skill_path: Path, openai_yaml: Path) -> list[str]:
     if not openai_yaml.exists():
         errors.append("agents/openai.yaml: missing UI metadata file")
 
+    if not readme_path.exists():
+        errors.append("README.md: missing")
+        return errors
+
+    readme = readme_path.read_text(encoding="utf-8")
+    for name, pattern in REQUIRED_ATTRIBUTION_LINKS.items():
+        if not re.search(pattern, readme):
+            errors.append(f"README.md: missing attribution link for `{name}`")
+
     return errors
 
 
@@ -72,7 +86,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve()
-    errors = validate(root / "SKILL.md", root / "agents" / "openai.yaml")
+    errors = validate(root / "SKILL.md", root / "agents" / "openai.yaml", root / "README.md")
     if errors:
         for error in errors:
             print(error, file=sys.stderr)

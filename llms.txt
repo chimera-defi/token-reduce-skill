@@ -59,6 +59,15 @@ If you see "Blocked broad exploratory Bash scan", run `token-reduce-paths.sh` fi
 | `token-reduce-paths.sh` (QMD warm) | ~3 | -99% |
 | `rg -n -i -g '*.md' "topic" .` scoped | 25 | -90% |
 
+## Optional companion (extra output/input compression)
+
+If installed, `caveman` can be layered on top of token-reduce:
+
+- output compression: `/caveman lite` (or `$caveman lite`)
+- memory-file compression: `/caveman:compress CLAUDE.md`
+
+Use this as a companion only. `token-reduce` still owns discovery routing and hook enforcement.
+
 ## MCP tools (if using MCP)
 
 | Tool | What it does |
@@ -87,5 +96,6 @@ MCP config:
 - Full docs: `SKILL.md`
 - Codex overrides: `AGENTS.md`
 - Setup details: `references/agent-setup.md`
+- Companion verdicts: `references/token-savior-evaluation.md`, `references/caveman-evaluation.md`
 - Manager CLI: `scripts/token-reduce-manage.sh`
 - Repo: https://github.com/chimera-defi/token-reduce-skill

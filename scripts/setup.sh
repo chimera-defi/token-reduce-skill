@@ -11,6 +11,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 BIN_DIR="${HOME}/.local/bin"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_SKILL_DIR="${CODEX_HOME_DIR}/skills/token-reduce"
+TOKEN_SAVIOR_PY="${HOME}/.local/share/token-savior/.venv/bin/python"
 
 mkdir -p "$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
@@ -106,7 +107,18 @@ write_wrapper "token-reduce-paths" "$REPO_ROOT/scripts/token-reduce-paths.sh"
 write_wrapper "token-reduce-snippet" "$REPO_ROOT/scripts/token-reduce-snippet.sh"
 write_wrapper "token-reduce-manage" "$REPO_ROOT/scripts/token-reduce-manage.sh"
 write_wrapper "token-reduce-setup" "$REPO_ROOT/scripts/setup.sh"
-write_wrapper "token-reduce-structural" "$REPO_ROOT/scripts/token-reduce-structural.py"
+if [[ -x "$TOKEN_SAVIOR_PY" ]]; then
+  rm -f "$BIN_DIR/token-reduce-structural"
+  cat >"$BIN_DIR/token-reduce-structural" <<EOF
+#!/usr/bin/env bash
+exec "$TOKEN_SAVIOR_PY" "$REPO_ROOT/scripts/token-reduce-structural.py" "\$@"
+EOF
+  chmod +x "$BIN_DIR/token-reduce-structural"
+  ok "token-reduce-structural wrapper bound to token-savior venv ($TOKEN_SAVIOR_PY)"
+else
+  write_wrapper "token-reduce-structural" "$REPO_ROOT/scripts/token-reduce-structural.py"
+  warn "token-savior venv not found at $TOKEN_SAVIOR_PY (structural helper may require manual install)"
+fi
 ok "global helper wrappers linked in $BIN_DIR"
 
 # ── Codex global skill install ────────────────────────────────────────────────
@@ -127,9 +139,13 @@ fi
 # ── Index this repo in QMD ────────────────────────────────────────────────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 if command -v qmd >/dev/null 2>&1; then
-  qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask '**/*.md' >/dev/null 2>&1 \
-    && ok "qmd collection indexed ($COLLECTION)" \
-    || warn "qmd collection add failed — run manually: qmd collection add . --name $COLLECTION --mask '**/*.md'"
+  if qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask '**/*.md' >/dev/null 2>&1; then
+    ok "qmd collection indexed ($COLLECTION)"
+  elif qmd collection list 2>/dev/null | grep -qE "^${COLLECTION}[[:space:]]"; then
+    ok "qmd collection already indexed ($COLLECTION)"
+  else
+    warn "qmd collection add failed — run manually: qmd collection add . --name $COLLECTION --mask '**/*.md'"
+  fi
 fi
 
 echo ""
