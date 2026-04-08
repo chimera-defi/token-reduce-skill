@@ -90,6 +90,7 @@ If `scripts/setup.sh` has already been run on the machine, the Codex link and th
 | Path kickoff | `token-reduce-paths.sh` | QMD BM25 → candidate paths, minimal tokens |
 | Output compression | RTK (`rtk-rewrite.sh`) | Compresses output of commands that do run |
 | Search backend | QMD | BM25 index, fallback to scoped `rg` |
+| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |
 
 ## Read Next
 

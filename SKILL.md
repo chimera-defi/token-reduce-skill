@@ -64,6 +64,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | QMD BM25 search | 99% vs naive reads | Finding which files to read |
 | Targeted reads | 33% | Large files |
 | Parallel calls | 20% | Independent lookups |
+| Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 
 ## Process
 
@@ -77,6 +78,17 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 4. If you need one ranked excerpt after the kickoff, use `scripts/token-reduce-snippet.sh topic words`.
 5. If a file is large, read only the relevant section.
 6. If the search space stays broad, stop expanding and ask the user to narrow it.
+
+## Output Brevity Profile (Companion)
+
+When the user asks for tighter responses, apply a caveman-inspired **lite** profile:
+
+- remove pleasantries, hedging, and filler
+- keep technical terms exact
+- keep code blocks, commands, and error text exact
+- prefer short, direct statements over narrative framing
+
+Do not force this style when clarity or safety would degrade. This is optional, not the default for every user.
 
 ## Success Criteria
 
@@ -121,3 +133,4 @@ Skip `qmd embed`, `qmd vsearch`, and `qmd query` for this workflow.
 ---
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
 Read `references/companion-tools.md` for how to evaluate future companion backends.
+Read `references/caveman-evaluation.md` for the caveman companion verdict.
