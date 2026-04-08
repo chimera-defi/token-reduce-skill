@@ -10,6 +10,11 @@ import argparse
 import json
 from pathlib import Path
 
+try:
+    from token_reduce_telemetry import record_event
+except Exception:  # pragma: no cover - host dependent
+    record_event = None
+
 
 def build_queries(project_root: str):
     try:
@@ -29,6 +34,34 @@ def emit(data) -> None:
         print(data)
     else:
         print(json.dumps(data, indent=2))
+
+
+def telemetry_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def log_helper_event(*, status: str, command: str, query: str, output: object | None = None) -> None:
+    if record_event is None:
+        return
+    if output is None:
+        chars = 0
+        lines = 0
+    elif isinstance(output, str):
+        chars = len(output)
+        lines = len([line for line in output.splitlines() if line.strip()])
+    else:
+        text = json.dumps(output, indent=2)
+        chars = len(text)
+        lines = len([line for line in text.splitlines() if line.strip()])
+    record_event(
+        telemetry_root(),
+        event="helper_invocation",
+        source="helper",
+        tool="token_reduce_structural",
+        status=status,
+        query=f"{command}:{query}",
+        meta={"backend": "token-savior", "chars": chars, "lines": lines},
+    )
 
 
 def compact_find_symbol(result: dict) -> dict:
@@ -97,20 +130,33 @@ def main() -> int:
     p_impact.add_argument("symbol")
 
     args = parser.parse_args()
-    queries = build_queries(args.project_root)
+    try:
+        queries = build_queries(args.project_root)
 
-    if args.command == "find-symbol":
-        emit(compact_find_symbol(queries["find_symbol"](args.symbol)))
+        result: object
+        lookup_value = ""
+        if args.command == "find-symbol":
+            lookup_value = args.symbol
+            result = compact_find_symbol(queries["find_symbol"](args.symbol))
+        elif args.command == "function-source":
+            lookup_value = args.symbol
+            result = queries["get_function_source"](args.symbol)
+        elif args.command == "search":
+            lookup_value = args.query
+            result = compact_search(queries["search_codebase"](args.query))
+        elif args.command == "change-impact":
+            lookup_value = args.symbol
+            result = compact_change_impact(queries["get_change_impact"](args.symbol))
+        else:
+            return 2
+
+        emit(result)
+        log_helper_event(status="ok", command=args.command, query=lookup_value, output=result)
         return 0
-    if args.command == "function-source":
-        emit(queries["get_function_source"](args.symbol))
-        return 0
-    if args.command == "search":
-        emit(compact_search(queries["search_codebase"](args.query)))
-        return 0
-    if args.command == "change-impact":
-        emit(compact_change_impact(queries["get_change_impact"](args.symbol)))
-        return 0
+    except Exception:
+        arg_value = getattr(args, "symbol", "") or getattr(args, "query", "")
+        log_helper_event(status="error", command=args.command, query=str(arg_value), output=None)
+        raise
 
     return 2
 
