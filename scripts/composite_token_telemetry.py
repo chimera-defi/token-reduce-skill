@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""Composite telemetry for token-reduce + companion tooling (RTK/QMD/hooks)."""
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from measure_token_reduction import measure
+
+
+def run_command(command: list[str], *, cwd: Path | None = None, timeout: int = 30) -> dict[str, Any]:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        return {
+            "ok": completed.returncode == 0,
+            "exit_code": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
+    except FileNotFoundError as exc:
+        return {"ok": False, "exit_code": 127, "stdout": "", "stderr": str(exc)}
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "exit_code": 124,
+            "stdout": exc.stdout or "",
+            "stderr": (exc.stderr or "") + "\ncommand timed out",
+        }
+
+
+def maybe_json(text: str) -> Any | None:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
+def capture(command: list[str], *, cwd: Path | None = None) -> dict[str, Any]:
+    result = run_command(command, cwd=cwd)
+    payload: dict[str, Any] = {
+        "command": command,
+        "ok": result["ok"],
+        "exit_code": result["exit_code"],
+    }
+    stderr = str(result.get("stderr", "")).strip()
+    stdout = str(result.get("stdout", "")).strip()
+    if stderr:
+        payload["stderr"] = stderr
+    if stdout:
+        parsed = maybe_json(stdout)
+        payload["data"] = parsed if parsed is not None else stdout
+    return payload
+
+
+def binary_info(name: str, version_cmd: list[str] | None = None) -> dict[str, Any]:
+    path = shutil.which(name)
+    info: dict[str, Any] = {"installed": bool(path), "path": path}
+    if path and version_cmd:
+        result = run_command(version_cmd)
+        if result["ok"] and str(result.get("stdout", "")).strip():
+            info["version"] = str(result["stdout"]).strip().splitlines()[0]
+        elif str(result.get("stderr", "")).strip():
+            info["version_error"] = str(result["stderr"]).strip().splitlines()[0]
+    return info
+
+
+def codex_skill_status(repo_root: Path) -> dict[str, Any]:
+    skill_path = Path.home() / ".codex" / "skills" / "token-reduce"
+    status: dict[str, Any] = {
+        "path": str(skill_path),
+        "exists": skill_path.exists(),
+        "is_symlink": skill_path.is_symlink(),
+    }
+    if skill_path.exists():
+        target = skill_path.resolve()
+        status["resolved_target"] = str(target)
+        status["points_to_repo"] = target == repo_root.resolve()
+    return status
+
+
+def _extract_commands(hook_entries: list[dict[str, Any]]) -> list[str]:
+    commands: list[str] = []
+    for entry in hook_entries:
+        for hook in entry.get("hooks", []):
+            command = hook.get("command")
+            if isinstance(command, str):
+                commands.append(command)
+    return commands
+
+
+def claude_hook_status() -> dict[str, Any]:
+    settings_path = Path.home() / ".claude" / "settings.json"
+    status: dict[str, Any] = {
+        "settings_path": str(settings_path),
+        "settings_exists": settings_path.exists(),
+        "read_error": None,
+        "token_reduce_remind_count": 0,
+        "token_reduce_enforce_matchers": [],
+        "rtk_hook_commands": [],
+    }
+    if not settings_path.exists():
+        return status
+
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except Exception as exc:  # pragma: no cover - defensive only
+        status["read_error"] = str(exc)
+        return status
+
+    hooks = settings.get("hooks", {})
+    user_prompt_submit = hooks.get("UserPromptSubmit", [])
+    pre_tool_use = hooks.get("PreToolUse", [])
+    ups_commands = _extract_commands(user_prompt_submit)
+    ptu_commands = _extract_commands(pre_tool_use)
+
+    status["token_reduce_remind_count"] = sum(
+        1 for cmd in ups_commands if "remind-token-reduce.py" in cmd
+    )
+    status["token_reduce_enforce_matchers"] = sorted(
+        {
+            str(entry.get("matcher"))
+            for entry in pre_tool_use
+            for hook in entry.get("hooks", [])
+            if "enforce-token-reduce-first.py" in str(hook.get("command", ""))
+        }
+    )
+    status["rtk_hook_commands"] = sorted(
+        {
+            cmd
+            for cmd in [*ups_commands, *ptu_commands]
+            if "rtk-rewrite.sh" in cmd or "rtk rewrite" in cmd
+        }
+    )
+    return status
+
+
+def _extract_rtk_summary(command_payload: dict[str, Any]) -> dict[str, Any]:
+    data = command_payload.get("data")
+    if not isinstance(data, dict):
+        return {}
+    summary = data.get("summary")
+    if not isinstance(summary, dict):
+        return {}
+    return {
+        "total_commands": summary.get("total_commands"),
+        "total_saved": summary.get("total_saved"),
+        "avg_savings_pct": summary.get("avg_savings_pct"),
+    }
+
+
+def rtk_status(scope: str, repo_root: Path) -> dict[str, Any]:
+    info = binary_info("rtk", ["rtk", "--version"])
+    if not info["installed"]:
+        return {"available": False, "binary": info}
+
+    gain_cmd = ["rtk", "gain", "-f", "json"]
+    if scope == "repo":
+        gain_cmd.append("--project")
+
+    discover_cmd = ["rtk", "discover", "--format", "json", "--since", "30"]
+    if scope == "repo":
+        discover_cmd.extend(["--project", str(repo_root)])
+    else:
+        discover_cmd.append("--all")
+
+    gain = capture(gain_cmd, cwd=repo_root)
+    discover = capture(discover_cmd, cwd=repo_root)
+    session = capture(["rtk", "session"], cwd=repo_root)
+    hook_audit = capture(["rtk", "hook-audit", "--since", "14"], cwd=repo_root)
+
+    return {
+        "available": True,
+        "binary": info,
+        "gain": gain,
+        "discover": discover,
+        "session": session,
+        "hook_audit": hook_audit,
+        "gain_summary": _extract_rtk_summary(gain),
+    }
+
+
+def composite(scope: str, repo_root: Path) -> dict[str, Any]:
+    token_reduce = measure(scope, str(repo_root))
+    return {
+        "measured_at": datetime.now(timezone.utc).isoformat(),
+        "scope": scope,
+        "repo_root": str(repo_root),
+        "token_reduce": token_reduce,
+        "integration_status": {
+            "binaries": {
+                "token_reduce_paths": binary_info("token-reduce-paths"),
+                "token_reduce_snippet": binary_info("token-reduce-snippet"),
+                "token_reduce_manage": binary_info("token-reduce-manage"),
+                "qmd": binary_info("qmd", ["qmd", "--version"]),
+                "rtk": binary_info("rtk", ["rtk", "--version"]),
+            },
+            "codex_skill": codex_skill_status(repo_root),
+            "claude_hooks": claude_hook_status(),
+        },
+        "rtk": rtk_status(scope, repo_root),
+    }
+
+
+def write_markdown(report: dict[str, Any], output_path: Path) -> None:
+    token_reduce = report["token_reduce"]
+    adoption = token_reduce["adoption"]
+    compliance = token_reduce["compliance"]
+    telemetry = token_reduce["telemetry"]
+    rtk = report["rtk"]
+    gain_summary = rtk.get("gain_summary", {})
+    md = f"""# Composite Token Telemetry
+
+- Scope: `{report['scope']}`
+- Measured at: `{report['measured_at']}`
+- Repo: `{report['repo_root']}`
+
+## Token-Reduce
+
+- Session count: `{token_reduce['session_count']}`
+- Helper usage pct: `{adoption['helper_sessions_pct']}`
+- Discovery compliance pct: `{compliance['discovery_compliance_pct']}`
+- Broad scan violations: `{compliance['broad_scan_violations']}`
+- Telemetry events (14d): `{telemetry['event_count']}`
+
+## RTK
+
+- Available: `{rtk.get('available', False)}`
+- Gain command ok: `{rtk.get('gain', {}).get('ok', False)}`
+- Discover command ok: `{rtk.get('discover', {}).get('ok', False)}`
+- Session command ok: `{rtk.get('session', {}).get('ok', False)}`
+- Hook audit command ok: `{rtk.get('hook_audit', {}).get('ok', False)}`
+- RTK total commands: `{gain_summary.get('total_commands')}`
+- RTK total saved: `{gain_summary.get('total_saved')}`
+- RTK avg savings pct: `{gain_summary.get('avg_savings_pct')}`
+
+## Integration Health
+
+- Codex skill installed: `{report['integration_status']['codex_skill']['exists']}`
+- Token-reduce remind hooks: `{report['integration_status']['claude_hooks']['token_reduce_remind_count']}`
+- Token-reduce enforce matchers: `{len(report['integration_status']['claude_hooks']['token_reduce_enforce_matchers'])}`
+- RTK rewrite hooks: `{len(report['integration_status']['claude_hooks']['rtk_hook_commands'])}`
+"""
+    output_path.write_text(md, encoding="utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scope", choices=["repo", "global"], default="repo")
+    parser.add_argument("--repo-root", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--output-md", required=False)
+    args = parser.parse_args()
+
+    repo_root = Path(args.repo_root).resolve()
+    report = composite(args.scope, repo_root)
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2))
+
+    if args.output_md:
+        write_markdown(report, Path(args.output_md))
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

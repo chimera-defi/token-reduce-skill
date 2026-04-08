@@ -94,6 +94,7 @@ The repo now has a direct telemetry and self-review loop:
 
 - helper wrappers append repo-local events to `artifacts/token-reduction/events.jsonl`
 - session measurement still parses Claude and Codex history for adoption/compliance
+- composite telemetry adds RTK inputs (`gain`, `discover`, `session`, `hook-audit`) plus install/hook wiring checks
 - `review_token_reduction.py` converts the latest evidence into prioritized next fixes
 
 That means the skill can do more than claim savings. It can inspect whether it is actually being used, where routing is weak, and which improvements should be made next.
