@@ -155,6 +155,20 @@ Do not use it as the default first move for vague repo discovery. For that, keep
 
 Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens to `56`, but broad-topic search quality was worse even when raw output was shorter. See [references/token-savior-evaluation.md](references/token-savior-evaluation.md).
 
+## Optional Brevity + Memory Companion
+
+`token-reduce` can also pair with [`caveman`](https://github.com/JuliusBrussee/caveman) for two optional layers outside helper routing:
+
+- output-side compression (`/caveman lite|full|ultra`) when you explicitly want terse agent responses
+- input-side memory compression (`/caveman:compress CLAUDE.md`) to shrink always-loaded memory files
+
+Use this as a companion, not a replacement:
+
+- `token-reduce` still owns discovery discipline, hook enforcement, and targeted file-context routing
+- `caveman` is for response style and memory-file compression workflows
+
+See [references/caveman-evaluation.md](references/caveman-evaluation.md) for integration verdict and evidence.
+
 ## Dependencies And Attribution
 
 token-reduce is intentionally composite. It combines:
@@ -162,6 +176,7 @@ token-reduce is intentionally composite. It combines:
 - [QMD](https://github.com/tobi/qmd) for BM25 path and snippet retrieval
 - [RTK](https://github.com/rtk-ai/rtk) for command-output compression
 - [`token-savior`](https://github.com/Mibayy/token-savior) as an optional structural accelerator for exact symbol and dependency questions
+- [`caveman`](https://github.com/JuliusBrussee/caveman) as an optional response-style and memory-compression companion
 - Anthropic prompt-caching guidance as an optional API-layer companion, documented in [references/anthropic-prompt-caching.md](references/anthropic-prompt-caching.md)
 
 Direct runtime dependencies:
@@ -171,6 +186,7 @@ Direct runtime dependencies:
 
 Optional companions:
 - `token-savior`
+- `caveman`
 - Anthropic API prompt-caching workflows
 
 The design goal is explicit:
@@ -194,6 +210,7 @@ The design goal is explicit:
 - [references/architecture.md](references/architecture.md) — high-level system design
 - [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
+- [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
 
 ## FAQ

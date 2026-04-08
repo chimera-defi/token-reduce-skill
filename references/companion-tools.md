@@ -1,6 +1,7 @@
 # Companion Tool Intake
 
 Use this when evaluating additions like structural indexers, alternate search backends, or new MCP servers.
+Also use it for response-style or memory-compression companions (for example caveman).
 
 ## Rule
 
@@ -16,11 +17,15 @@ Do not replace the core token-reduce workflow just because a tool claims better 
    - broad topic discovery
    - impact analysis
 4. Measure both output size and latency.
-5. Decide whether it is:
+5. For style/memory companions, also measure:
+   - output-token effect (response verbosity)
+   - session-input effect (always-loaded memory files like `CLAUDE.md`)
+   - fidelity checks (code/URLs/headings/commands preserved)
+6. Decide whether it is:
    - replacement
    - optional accelerator
    - not worth integrating
-6. Propagate the verdict into:
+7. Propagate the verdict into:
    - `README.md`
    - `SKILL.md`
    - a dedicated evaluation note under `references/`
@@ -37,6 +42,7 @@ Do not integrate a companion tool on intuition alone.
 ## Default Decision Heuristic
 
 - If the tool is clearly better only for exact symbol / dependency questions, integrate it as an optional structural accelerator.
+- If the tool is clearly better only for response brevity or memory-file compression, integrate it as an optional style/input companion.
 - If it degrades broad topic discovery or adds heavy runtime/install cost, do not make it the default first move.
 - If it cannot beat token-reduce on real repo tasks, document the result and reject it.
 

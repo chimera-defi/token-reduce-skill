@@ -62,9 +62,13 @@ summary = f"""# Token Reduction Adoption Summary
 - `targeted_read_sessions`: {ad['targeted_read_sessions']}
 - `subagent_sessions`: {ad['subagent_sessions']}
 - `token_reduce_mentions`: {ad['token_reduce_mentions']}
+- `caveman_mentions`: {ad.get('caveman_mentions', 0)}
+- `structural_helper_sessions`: {ad.get('structural_helper_sessions', 0)}
 - `qmd_search_pct`: {ad['qmd_search_pct']}
 - `token_reduce_search_pct`: {ad['token_reduce_search_pct']}
 - `scoped_rg_pct`: {ad['scoped_rg_pct']}
+- `caveman_mention_pct`: {ad.get('caveman_mention_pct', 0.0)}
+- `structural_helper_sessions_pct`: {ad.get('structural_helper_sessions_pct', 0.0)}
 
 ## Compliance
 

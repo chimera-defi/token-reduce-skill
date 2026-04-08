@@ -16,11 +16,15 @@ QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet)\.sh\b|\btoken-reduce-(?:search|paths|snippet)\.sh\b"
 )
+TOKEN_REDUCE_STRUCTURAL_RE = re.compile(
+    r"(?:^|/)(?:\.claude/)?token-reduce-structural(?:\.py)?\b|\btoken-reduce-structural(?:\.py)?\b"
+)
 SCOPED_RG_RE = re.compile(r"\brg\b(?=.*(?:\s-g\s|\s--glob\s))(?!.*\s--files\b)")
 RG_FILES_BROAD_RE = re.compile(r"\brg\b.*\s--files(?:\s+\.|\s*$)")
 TARGETED_BASH_RE = re.compile(r"\b(head|tail)\b|\bsed\s+-n\b|\bqmd\s+get\b")
 BROAD_SCAN_RE = re.compile(r"\bfind\s+(\.|/)|\bls\s+-R\b|\bgrep\s+-R\b|\bgrep\s+--recursive\b")
 TOKEN_REDUCE_RE = re.compile(r"token-reduce|/token-reduce", re.IGNORECASE)
+CAVEMAN_RE = re.compile(r"(?:^|[^a-z])(?:caveman|/caveman|\$caveman)(?:[^a-z]|$)", re.IGNORECASE)
 
 
 def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
@@ -99,8 +103,10 @@ def fresh_metrics(source: str) -> dict:
         "token_reduce_search": False,
         "scoped_rg": False,
         "targeted_reads": False,
+        "structural_helper": False,
         "subagents": False,
         "token_reduce_mention": False,
+        "caveman_mention": False,
         "broad_scan_violation": False,
         "first_discovery_compliant": False,
         "first_discovery_seen": False,
@@ -122,6 +128,8 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
     if TOKEN_REDUCE_SEARCH_RE.search(command):
         metrics["token_reduce_search"] = True
         note_first_discovery(metrics, True, "token_reduce_search")
+    if TOKEN_REDUCE_STRUCTURAL_RE.search(command):
+        metrics["structural_helper"] = True
     if SCOPED_RG_RE.search(command):
         metrics["scoped_rg"] = True
         note_first_discovery(metrics, True, "scoped_rg")
@@ -152,11 +160,15 @@ def parse_claude_session(session_file: Path) -> dict:
             content = message.get("content")
             if isinstance(content, str) and TOKEN_REDUCE_RE.search(content):
                 metrics["token_reduce_mention"] = True
+            if isinstance(content, str) and CAVEMAN_RE.search(content):
+                metrics["caveman_mention"] = True
 
             if isinstance(content, list):
                 for item in content:
                     if item.get("type") == "text" and TOKEN_REDUCE_RE.search(item.get("text", "")):
                         metrics["token_reduce_mention"] = True
+                    if item.get("type") == "text" and CAVEMAN_RE.search(item.get("text", "")):
+                        metrics["caveman_mention"] = True
                     if item.get("type") != "tool_use":
                         continue
 
@@ -191,6 +203,8 @@ def parse_codex_session(session_file: Path) -> dict:
     for line in lines:
         if TOKEN_REDUCE_RE.search(line):
             metrics["token_reduce_mention"] = True
+        if CAVEMAN_RE.search(line):
+            metrics["caveman_mention"] = True
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
@@ -229,7 +243,9 @@ def measure(scope: str, repo_root: str) -> dict:
         "targeted_read_sessions",
         "subagent_sessions",
         "token_reduce_mentions",
+        "caveman_mentions",
         "helper_sessions",
+        "structural_helper_sessions",
         "mention_without_helper_sessions",
     ):
         adoption[key] = 0
@@ -245,7 +261,9 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["targeted_read_sessions"] += int(item["targeted_reads"])
         adoption["subagent_sessions"] += int(item["subagents"])
         adoption["token_reduce_mentions"] += int(item["token_reduce_mention"])
+        adoption["caveman_mentions"] += int(item["caveman_mention"])
         adoption["helper_sessions"] += int(item["token_reduce_search"])
+        adoption["structural_helper_sessions"] += int(item["structural_helper"])
         adoption["mention_without_helper_sessions"] += int(
             item["token_reduce_mention"] and not item["token_reduce_search"]
         )
@@ -300,7 +318,9 @@ def measure(scope: str, repo_root: str) -> dict:
             "targeted_read_pct": pct(adoption["targeted_read_sessions"]),
             "subagent_pct": pct(adoption["subagent_sessions"]),
             "token_reduce_mention_pct": pct(adoption["token_reduce_mentions"]),
+            "caveman_mention_pct": pct(adoption["caveman_mentions"]),
             "helper_sessions_pct": pct(adoption["helper_sessions"]),
+            "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
             "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
         },
         "compliance": {

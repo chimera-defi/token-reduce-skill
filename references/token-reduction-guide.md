@@ -99,6 +99,7 @@ Use `./scripts/token-reduce-manage.sh benchmark` when helper output or search be
 ## Companion Backends
 
 Structural tools like `token-savior` can improve exact symbol lookup and dependency analysis, but they should remain optional accelerators rather than replacing the default helper-first workflow.
+Style/input tools like `caveman` can reduce response verbosity and memory-file token load, but they should remain optional companions rather than mandatory install paths.
 
 Use:
 - `../scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`
