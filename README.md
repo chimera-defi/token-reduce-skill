@@ -107,12 +107,18 @@ Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
 ## Telemetry
 
-token-reduce now logs direct helper and hook events under `artifacts/token-reduction/events.jsonl`, measures recent Claude/Codex session compliance, and can generate a self-review report with prioritized next improvements.
+token-reduce now supports a composite telemetry loop:
+
+- direct helper and hook events (`artifacts/token-reduction/events.jsonl`)
+- Claude/Codex session adoption + discovery-compliance measurement
+- RTK companion inputs (gain/discover/session/hook-audit) for downstream output-compression signal
+- install/wiring health checks (binary availability + Claude/Codex hook binding)
 
 Useful commands:
 
 ```bash
 ./scripts/token-reduce-manage.sh benchmark
+./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh telemetry
@@ -124,9 +130,10 @@ Future agents should treat `measure` and `review` as part of the normal maintena
 This is the self-improvement loop:
 
 1. collect helper and hook events
-2. measure actual session adoption and compliance
-3. generate a review with the next routing, docs, or enforcement fixes
-4. rerun after changes
+2. run composite telemetry to include RTK + wiring health input
+3. measure actual session adoption and compliance
+4. generate a review with the next routing, docs, or enforcement fixes
+5. rerun after changes
 
 ## Optional Structural Accelerator
 
