@@ -1,6 +1,6 @@
 # token-reduce
 
-> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD) and compresses command output (RTK) before context is consumed.
+> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional AXI/caveman companions.
 
 ## Install (run this once, then restart Claude Code)
 
@@ -9,7 +9,7 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-`setup.sh` installs QMD and RTK, wires both hook layers into Claude Code globally, and indexes your repo. Safe to re-run.
+`setup.sh` installs QMD and RTK, installs AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`) when `npm` is available, wires hook layers into Claude Code globally, and indexes your repo. Safe to re-run.
 
 Claude Code plugin alternative:
 
@@ -68,6 +68,15 @@ If installed, `caveman` can be layered on top of token-reduce:
 
 Use this as a companion only. `token-reduce` still owns discovery routing and hook enforcement.
 
+## Optional companion (GitHub/browser execution)
+
+If installed, AXI tools can reduce turns for interface-heavy tasks:
+
+- `gh-axi` for GitHub tasks
+- `chrome-devtools-axi` for browser tasks
+
+Use AXI for execution surfaces only. Keep token-reduce as the first move when file location is unknown.
+
 ## MCP tools (if using MCP)
 
 | Tool | What it does |
@@ -97,5 +106,6 @@ MCP config:
 - Codex overrides: `AGENTS.md`
 - Setup details: `references/agent-setup.md`
 - Companion verdicts: `references/token-savior-evaluation.md`, `references/caveman-evaluation.md`
+- AXI verdict: `references/axi-evaluation.md`
 - Manager CLI: `scripts/token-reduce-manage.sh`
 - Repo: https://github.com/chimera-defi/token-reduce-skill

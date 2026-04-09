@@ -25,6 +25,12 @@ TARGETED_BASH_RE = re.compile(r"\b(head|tail)\b|\bsed\s+-n\b|\bqmd\s+get\b")
 BROAD_SCAN_RE = re.compile(r"\bfind\s+(\.|/)|\bls\s+-R\b|\bgrep\s+-R\b|\bgrep\s+--recursive\b")
 TOKEN_REDUCE_RE = re.compile(r"token-reduce|/token-reduce", re.IGNORECASE)
 CAVEMAN_RE = re.compile(r"(?:^|[^a-z])(?:caveman|/caveman|\$caveman)(?:[^a-z]|$)", re.IGNORECASE)
+GH_AXI_RE = re.compile(r"\bgh-axi\b")
+CHROME_DEVTOOLS_AXI_RE = re.compile(r"\bchrome-devtools-axi\b")
+CAVEMAN_COMMAND_RE = re.compile(
+    r"(?:(?:/|\$)caveman(?:-cn|-es)?(?:\s+\w+|:compress)?|caveman:compress)",
+    re.IGNORECASE,
+)
 
 
 def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
@@ -107,6 +113,10 @@ def fresh_metrics(source: str) -> dict:
         "subagents": False,
         "token_reduce_mention": False,
         "caveman_mention": False,
+        "caveman_command": False,
+        "axi_tool": False,
+        "gh_axi_tool": False,
+        "chrome_devtools_axi_tool": False,
         "broad_scan_violation": False,
         "first_discovery_compliant": False,
         "first_discovery_seen": False,
@@ -121,6 +131,15 @@ def note_first_discovery(metrics: dict, compliant: bool, kind: str) -> None:
         metrics["first_discovery_kind"] = kind
 
 
+def apply_text_metrics(metrics: dict, text: str) -> None:
+    if TOKEN_REDUCE_RE.search(text):
+        metrics["token_reduce_mention"] = True
+    if CAVEMAN_RE.search(text):
+        metrics["caveman_mention"] = True
+    if CAVEMAN_COMMAND_RE.search(text):
+        metrics["caveman_command"] = True
+
+
 def apply_command_metrics(metrics: dict, command: str) -> None:
     if QMD_RE.search(command):
         metrics["qmd_search"] = True
@@ -130,6 +149,14 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "token_reduce_search")
     if TOKEN_REDUCE_STRUCTURAL_RE.search(command):
         metrics["structural_helper"] = True
+    if GH_AXI_RE.search(command):
+        metrics["axi_tool"] = True
+        metrics["gh_axi_tool"] = True
+    if CHROME_DEVTOOLS_AXI_RE.search(command):
+        metrics["axi_tool"] = True
+        metrics["chrome_devtools_axi_tool"] = True
+    if CAVEMAN_COMMAND_RE.search(command):
+        metrics["caveman_command"] = True
     if SCOPED_RG_RE.search(command):
         metrics["scoped_rg"] = True
         note_first_discovery(metrics, True, "scoped_rg")
@@ -158,17 +185,13 @@ def parse_claude_session(session_file: Path) -> dict:
 
             message = event.get("message", {})
             content = message.get("content")
-            if isinstance(content, str) and TOKEN_REDUCE_RE.search(content):
-                metrics["token_reduce_mention"] = True
-            if isinstance(content, str) and CAVEMAN_RE.search(content):
-                metrics["caveman_mention"] = True
+            if isinstance(content, str):
+                apply_text_metrics(metrics, content)
 
             if isinstance(content, list):
                 for item in content:
-                    if item.get("type") == "text" and TOKEN_REDUCE_RE.search(item.get("text", "")):
-                        metrics["token_reduce_mention"] = True
-                    if item.get("type") == "text" and CAVEMAN_RE.search(item.get("text", "")):
-                        metrics["caveman_mention"] = True
+                    if item.get("type") == "text":
+                        apply_text_metrics(metrics, item.get("text", ""))
                     if item.get("type") != "tool_use":
                         continue
 
@@ -201,10 +224,7 @@ def parse_codex_session(session_file: Path) -> dict:
         return metrics
 
     for line in lines:
-        if TOKEN_REDUCE_RE.search(line):
-            metrics["token_reduce_mention"] = True
-        if CAVEMAN_RE.search(line):
-            metrics["caveman_mention"] = True
+        apply_text_metrics(metrics, line)
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
@@ -244,6 +264,10 @@ def measure(scope: str, repo_root: str) -> dict:
         "subagent_sessions",
         "token_reduce_mentions",
         "caveman_mentions",
+        "caveman_command_sessions",
+        "axi_tool_sessions",
+        "gh_axi_sessions",
+        "chrome_devtools_axi_sessions",
         "helper_sessions",
         "structural_helper_sessions",
         "mention_without_helper_sessions",
@@ -262,6 +286,10 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["subagent_sessions"] += int(item["subagents"])
         adoption["token_reduce_mentions"] += int(item["token_reduce_mention"])
         adoption["caveman_mentions"] += int(item["caveman_mention"])
+        adoption["caveman_command_sessions"] += int(item["caveman_command"])
+        adoption["axi_tool_sessions"] += int(item["axi_tool"])
+        adoption["gh_axi_sessions"] += int(item["gh_axi_tool"])
+        adoption["chrome_devtools_axi_sessions"] += int(item["chrome_devtools_axi_tool"])
         adoption["helper_sessions"] += int(item["token_reduce_search"])
         adoption["structural_helper_sessions"] += int(item["structural_helper"])
         adoption["mention_without_helper_sessions"] += int(
@@ -277,6 +305,8 @@ def measure(scope: str, repo_root: str) -> dict:
         per_source[source]["helper_sessions"] += int(item["token_reduce_search"])
         per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
         per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
+        per_source[source]["caveman_command_sessions"] += int(item["caveman_command"])
+        per_source[source]["axi_tool_sessions"] += int(item["axi_tool"])
 
     pct = lambda n: round((n * 100.0 / session_count), 1) if session_count else 0.0
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
@@ -299,6 +329,14 @@ def measure(scope: str, repo_root: str) -> dict:
             "broad_scan_pct": round((counts["broad_scan_sessions"] * 100.0 / source_sessions), 1)
             if source_sessions
             else 0.0,
+            "caveman_command_pct": round(
+                (counts["caveman_command_sessions"] * 100.0 / source_sessions), 1
+            )
+            if source_sessions
+            else 0.0,
+            "axi_tool_pct": round((counts["axi_tool_sessions"] * 100.0 / source_sessions), 1)
+            if source_sessions
+            else 0.0,
         }
 
     return {
@@ -319,6 +357,10 @@ def measure(scope: str, repo_root: str) -> dict:
             "subagent_pct": pct(adoption["subagent_sessions"]),
             "token_reduce_mention_pct": pct(adoption["token_reduce_mentions"]),
             "caveman_mention_pct": pct(adoption["caveman_mentions"]),
+            "caveman_command_pct": pct(adoption["caveman_command_sessions"]),
+            "axi_tool_sessions_pct": pct(adoption["axi_tool_sessions"]),
+            "gh_axi_sessions_pct": pct(adoption["gh_axi_sessions"]),
+            "chrome_devtools_axi_sessions_pct": pct(adoption["chrome_devtools_axi_sessions"]),
             "helper_sessions_pct": pct(adoption["helper_sessions"]),
             "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
             "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),

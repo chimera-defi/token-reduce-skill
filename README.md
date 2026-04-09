@@ -25,14 +25,14 @@ That's it. The agent reads `llms.txt`, runs `setup.sh`, and starts enforcing lea
 
 ## Manual Install
 
-**Quickest — full stack (QMD + RTK + hooks wired in one shot):**
+**Quickest — full stack (QMD + RTK + hooks + AXI companions wired in one shot):**
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search) and [RTK](https://github.com/rtk-ai/rtk) (output compression), wires both sets of hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
+`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
 
 It also:
 - links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
@@ -120,8 +120,11 @@ Useful commands:
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh measure
+./scripts/token-reduce-manage.sh measure-global
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh review-global
 ./scripts/token-reduce-manage.sh telemetry
+./scripts/token-reduce-manage.sh workspace-audit
 ./scripts/token-reduce-manage.sh validate
 ```
 
@@ -134,6 +137,8 @@ This is the self-improvement loop:
 3. measure actual session adoption and compliance
 4. generate a review with the next routing, docs, or enforcement fixes
 5. rerun after changes
+
+Recent telemetry also reports optional companion adoption, including caveman command activation and AXI tool usage rates.
 
 ## Optional Structural Accelerator
 
@@ -176,6 +181,18 @@ Use this as a companion, not a replacement:
 
 See [references/caveman-evaluation.md](references/caveman-evaluation.md) for integration verdict and evidence.
 
+## Optional AXI Companion (Agent-Native Tool Interfaces)
+
+`token-reduce` can also pair with [AXI](https://github.com/kunchenguid/axi) companion CLIs to reduce turns/retries when tasks are GitHub- or browser-heavy:
+
+- `gh-axi` for GitHub operations
+- `chrome-devtools-axi` for browser automation
+
+These tools are optional and do not replace token-reduce helper-first routing.
+Use them when the task is clearly in their domain; keep discovery kickoff discipline unchanged.
+
+See [references/axi-evaluation.md](references/axi-evaluation.md) for validation notes and integration policy.
+
 ## Dependencies And Attribution
 
 token-reduce is intentionally composite. It combines:
@@ -184,6 +201,7 @@ token-reduce is intentionally composite. It combines:
 - [RTK](https://github.com/rtk-ai/rtk) for command-output compression
 - [`token-savior`](https://github.com/Mibayy/token-savior) as an optional structural accelerator for exact symbol and dependency questions
 - [`caveman`](https://github.com/JuliusBrussee/caveman) as an optional response-style and memory-compression companion
+- [AXI](https://github.com/kunchenguid/axi) plus `gh-axi` and `chrome-devtools-axi` as optional agent-native tool companions for GitHub/browser workflows
 - Anthropic prompt-caching guidance as an optional API-layer companion, documented in [references/anthropic-prompt-caching.md](references/anthropic-prompt-caching.md)
 
 Direct runtime dependencies:
@@ -194,6 +212,7 @@ Direct runtime dependencies:
 Optional companions:
 - `token-savior`
 - `caveman`
+- `gh-axi` / `chrome-devtools-axi`
 - Anthropic API prompt-caching workflows
 
 The design goal is explicit:
@@ -218,7 +237,9 @@ The design goal is explicit:
 - [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
 - [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
+- [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
+- [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
 
 ## FAQ
 
