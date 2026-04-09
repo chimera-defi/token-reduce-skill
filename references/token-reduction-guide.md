@@ -4,6 +4,7 @@
 **Activation:** via local workspace rules or direct helper invocation
 **Validation in this repo:** `uv run --with pyyaml /path/to/quick_validate.py /path/to/token-reduce-skill`
 **Local benchmark:** `uv run --with tiktoken /path/to/token-reduce-skill/scripts/benchmark-token-reduce.py`
+**Composite benchmark:** `uv run --with tiktoken /path/to/token-reduce-skill/scripts/benchmark-composite-stack.py`
 **Scope:** reusable runtime skill package
 
 ---
@@ -39,6 +40,10 @@ This repo is intentionally small, so an exact scoped `rg` is cheaper than the he
 The warm helper now matches raw QMD output exactly, so the wrapper is not adding extra payload above QMD on the steady-state path.
 The helper also refreshes the QMD collection when the repo's Markdown fingerprint changes, which avoids stale search results after editing the skill docs.
 For a better-fit query like `architecture`, the path helper returned `51` tokens against `265` for broad inventory, which is about `80.8%` savings.
+
+Composite artifact: `references/benchmarks/composite-benchmark.json`
+
+This matrix is quality-gated and compares composite routing against single-tool strategies on mixed workloads (fuzzy discovery, exact symbol lookup, output-heavy scans). In the latest run, composite beat all single-tool strategies that passed quality checks.
 
 ## Claude And Codex Spot Check
 

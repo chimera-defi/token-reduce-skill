@@ -105,6 +105,20 @@ Local benchmark in this repo (small — scales up on larger codebases):
 
 Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
+Composite benchmark in this repo (quality-gated mixed workload):
+
+| Strategy | Tokens | vs broad shell | Status |
+|----------|--------|----------------|--------|
+| `broad_shell` | `963` | baseline | `ok` |
+| `qmd_only` | `266` | `72.4%` saved | `quality-fail` |
+| `token_reduce_only` | `326` | `66.1%` saved | `quality-fail` |
+| `token_savior_only` | `598` | `37.9%` saved | `ok` |
+| `rtk_only` | `566` | `41.2%` saved | `ok` |
+| `composite_stack` | `322` | `66.6%` saved | `ok` |
+
+In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
+See [references/composite-benchmark.md](references/composite-benchmark.md) for methodology and caveats.
+
 ## Telemetry
 
 token-reduce now supports a composite telemetry loop:
@@ -119,6 +133,7 @@ Useful commands:
 ```bash
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh composite
+./scripts/token-reduce-manage.sh benchmark-composite
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh measure-global
 ./scripts/token-reduce-manage.sh review
@@ -238,6 +253,7 @@ The design goal is explicit:
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
 - [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
 - [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
+- [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
 - [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
 
