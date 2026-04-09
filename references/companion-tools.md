@@ -1,6 +1,6 @@
 # Companion Tool Intake
 
-Use this when evaluating additions like structural indexers, alternate search backends, or new MCP servers.
+Use this when evaluating additions like structural indexers, alternate search backends, new MCP servers, or agent-native CLI companions.
 Also use it for response-style or memory-compression companions (for example caveman).
 
 ## Rule
@@ -21,11 +21,15 @@ Do not replace the core token-reduce workflow just because a tool claims better 
    - output-token effect (response verbosity)
    - session-input effect (always-loaded memory files like `CLAUDE.md`)
    - fidelity checks (code/URLs/headings/commands preserved)
-6. Decide whether it is:
+6. For CLI-interface companions (for example AXI-style tools), also measure:
+   - turn count on real execution tasks
+   - retry/error rate for common mutations
+   - whether outputs are concise by default without lossy truncation
+7. Decide whether it is:
    - replacement
    - optional accelerator
    - not worth integrating
-7. Propagate the verdict into:
+8. Propagate the verdict into:
    - `README.md`
    - `SKILL.md`
    - a dedicated evaluation note under `references/`
@@ -43,6 +47,7 @@ Do not integrate a companion tool on intuition alone.
 
 - If the tool is clearly better only for exact symbol / dependency questions, integrate it as an optional structural accelerator.
 - If the tool is clearly better only for response brevity or memory-file compression, integrate it as an optional style/input companion.
+- If the tool is clearly better only for specific operational surfaces (for example GitHub/browser), integrate it as an optional interface companion and keep core discovery defaults unchanged.
 - If it degrades broad topic discovery or adds heavy runtime/install cost, do not make it the default first move.
 - If it cannot beat token-reduce on real repo tasks, document the result and reject it.
 

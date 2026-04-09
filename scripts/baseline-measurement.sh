@@ -63,11 +63,19 @@ summary = f"""# Token Reduction Adoption Summary
 - `subagent_sessions`: {ad['subagent_sessions']}
 - `token_reduce_mentions`: {ad['token_reduce_mentions']}
 - `caveman_mentions`: {ad.get('caveman_mentions', 0)}
+- `caveman_command_sessions`: {ad.get('caveman_command_sessions', 0)}
+- `axi_tool_sessions`: {ad.get('axi_tool_sessions', 0)}
+- `gh_axi_sessions`: {ad.get('gh_axi_sessions', 0)}
+- `chrome_devtools_axi_sessions`: {ad.get('chrome_devtools_axi_sessions', 0)}
 - `structural_helper_sessions`: {ad.get('structural_helper_sessions', 0)}
 - `qmd_search_pct`: {ad['qmd_search_pct']}
 - `token_reduce_search_pct`: {ad['token_reduce_search_pct']}
 - `scoped_rg_pct`: {ad['scoped_rg_pct']}
 - `caveman_mention_pct`: {ad.get('caveman_mention_pct', 0.0)}
+- `caveman_command_pct`: {ad.get('caveman_command_pct', 0.0)}
+- `axi_tool_sessions_pct`: {ad.get('axi_tool_sessions_pct', 0.0)}
+- `gh_axi_sessions_pct`: {ad.get('gh_axi_sessions_pct', 0.0)}
+- `chrome_devtools_axi_sessions_pct`: {ad.get('chrome_devtools_axi_sessions_pct', 0.0)}
 - `structural_helper_sessions_pct`: {ad.get('structural_helper_sessions_pct', 0.0)}
 
 ## Compliance

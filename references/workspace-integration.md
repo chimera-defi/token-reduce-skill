@@ -6,7 +6,7 @@ Add token-reduce to any repo in three steps:
 2. Wire the hooks below into your `.claude/settings.json`
 3. Add one line to your `AGENTS.md` or `CLAUDE.md`
 
-For maximum savings also run `./tools/token-reduce-skill/scripts/setup.sh` to install QMD and RTK.
+For maximum savings also run `./tools/token-reduce-skill/scripts/setup.sh` to install QMD, RTK, and AXI companion CLIs.
 
 If the machine already ran token-reduce global setup, you can also call:
 
@@ -89,6 +89,12 @@ Add one line:
 
 ```text
 If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-paths.sh topic words before any Grep, Glob, or Read.
+```
+
+Optional companion line for brevity-sensitive projects:
+
+```text
+When the user asks for extra terse output or memory-file compression, use /caveman lite or /caveman:compress <file>.
 ```
 
 For Codex repos, also add one line telling future agents to validate and measure after routing or hook changes:

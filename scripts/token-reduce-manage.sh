@@ -11,9 +11,12 @@ commands:
   benchmark   Run the local output-size benchmark
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
   measure     Measure repo-local adoption and write artifacts
+  measure-global  Measure global adoption across local session logs
   review      Generate the telemetry-driven self-review
+  review-global   Generate the telemetry-driven self-review for global scope
   validate    Validate the skill package shape
   telemetry   Summarize recent helper/hook telemetry
+  workspace-audit  Audit skill install and doc adoption across sibling repos
 EOF
 }
 
@@ -38,14 +41,23 @@ case "$cmd" in
   measure)
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope repo
     ;;
+  measure-global)
+    exec "$SCRIPT_DIR/baseline-measurement.sh" --scope global
+    ;;
   review)
     exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo
+    ;;
+  review-global)
+    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
     ;;
   validate)
     exec uv run "$SCRIPT_DIR/validate_skill_package.py"
     ;;
   telemetry)
     exec uv run "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14
+    ;;
+  workspace-audit)
+    exec uv run "$SCRIPT_DIR/audit_workspace_skills.py"
     ;;
   *)
     usage >&2
