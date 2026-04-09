@@ -10,6 +10,7 @@ usage: ./scripts/token-reduce-manage.sh <command>
 commands:
   benchmark   Run the local output-size benchmark
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
+  benchmark-composite  Run the composite stack benchmark
   measure     Measure repo-local adoption and write artifacts
   measure-global  Measure global adoption across local session logs
   review      Generate the telemetry-driven self-review
@@ -37,6 +38,9 @@ case "$cmd" in
       --repo-root "$ROOT" \
       --output "$OUTPUT" \
       --output-md "$OUTPUT_MD"
+    ;;
+  benchmark-composite)
+    exec uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
     ;;
   measure)
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope repo
