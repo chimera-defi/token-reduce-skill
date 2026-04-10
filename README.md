@@ -32,7 +32,7 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
+`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, indexes your repo, and prompts telemetry opt-in during install. Re-run any time — it's idempotent.
 
 It also:
 - links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
@@ -136,12 +136,15 @@ Useful commands:
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh benchmark-composite
+./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-update
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh measure-global
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh review-global
 ./scripts/token-reduce-manage.sh telemetry
 ./scripts/token-reduce-manage.sh settings show
+./scripts/token-reduce-manage.sh settings onboard
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://example.com/ingest
 ./scripts/token-reduce-manage.sh telemetry-sync
@@ -175,8 +178,17 @@ Telemetry upload is disabled by default. When enabled, token-reduce sends anonym
 Enable and configure:
 
 ```bash
+./scripts/token-reduce-manage.sh settings onboard
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
+./scripts/token-reduce-manage.sh telemetry-sync
+```
+
+Receive metrics (local ingest service example):
+
+```bash
+uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
 
@@ -188,6 +200,8 @@ token-reduce can check for new commits and optionally fast-forward itself when s
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh settings set updates.auto_update true
 ./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-update
 ```
 
 `auto-update` only runs when the worktree is clean and can fast-forward.
