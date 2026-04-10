@@ -77,6 +77,18 @@ If installed, AXI tools can reduce turns for interface-heavy tasks:
 
 Use AXI for execution surfaces only. Keep token-reduce as the first move when file location is unknown.
 
+## Managed Harness Controls (optional)
+
+Enable opt-in telemetry summaries and update checks:
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings set telemetry.enabled true
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh telemetry-sync
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh updates
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh auto-update
+```
+
 ## MCP tools (if using MCP)
 
 | Tool | What it does |

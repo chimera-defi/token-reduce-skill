@@ -128,6 +128,9 @@ write_wrapper "token-reduce-paths" "$REPO_ROOT/scripts/token-reduce-paths.sh"
 write_wrapper "token-reduce-snippet" "$REPO_ROOT/scripts/token-reduce-snippet.sh"
 write_wrapper "token-reduce-manage" "$REPO_ROOT/scripts/token-reduce-manage.sh"
 write_wrapper "token-reduce-setup" "$REPO_ROOT/scripts/setup.sh"
+write_wrapper "token-reduce-settings" "$REPO_ROOT/scripts/token-reduce-settings.py"
+write_wrapper "token-reduce-telemetry-sync" "$REPO_ROOT/scripts/token-reduce-telemetry-sync.py"
+write_wrapper "token-reduce-updates" "$REPO_ROOT/scripts/token-reduce-update-check.py"
 if [[ -x "$TOKEN_SAVIOR_PY" ]]; then
   rm -f "$BIN_DIR/token-reduce-structural"
   cat >"$BIN_DIR/token-reduce-structural" <<EOF
@@ -213,5 +216,7 @@ echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn too
 echo "  global wrappers     →  token-reduce-paths / token-reduce-snippet from any repo"
 echo "  Codex skill link    →  $CODEX_SKILL_DIR"
 echo "  companion links     →  axi / caveman / compress under $CODEX_SKILLS_DIR"
+echo "  opt-in telemetry    →  token-reduce-manage settings set telemetry.enabled true"
+echo "  update checks       →  token-reduce-manage updates / token-reduce-manage auto-update"
 echo ""
 echo "Restart Claude Code for hook changes to take effect."

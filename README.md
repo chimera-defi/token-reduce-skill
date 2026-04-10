@@ -109,12 +109,12 @@ Composite benchmark in this repo (quality-gated mixed workload):
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `963` | baseline | `ok` |
-| `qmd_only` | `266` | `72.4%` saved | `quality-fail` |
-| `token_reduce_only` | `326` | `66.1%` saved | `quality-fail` |
-| `token_savior_only` | `598` | `37.9%` saved | `ok` |
-| `rtk_only` | `566` | `41.2%` saved | `ok` |
-| `composite_stack` | `322` | `66.6%` saved | `ok` |
+| `broad_shell` | `1033` | baseline | `ok` |
+| `qmd_only` | `313` | `69.7%` saved | `quality-fail` |
+| `token_reduce_only` | `374` | `63.8%` saved | `quality-fail` |
+| `token_savior_only` | `621` | `39.9%` saved | `ok` |
+| `rtk_only` | `595` | `42.4%` saved | `ok` |
+| `composite_stack` | `340` | `67.1%` saved | `ok` |
 
 In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
 See [references/composite-benchmark.md](references/composite-benchmark.md) for methodology and caveats.
@@ -128,6 +128,8 @@ token-reduce now supports a composite telemetry loop:
 - RTK companion inputs (gain/discover/session/hook-audit) for downstream output-compression signal
 - install/wiring health checks (binary availability + Claude/Codex hook binding)
 
+Telemetry upload remains **opt-in** for install-level improvement tracking.
+
 Useful commands:
 
 ```bash
@@ -139,6 +141,13 @@ Useful commands:
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh review-global
 ./scripts/token-reduce-manage.sh telemetry
+./scripts/token-reduce-manage.sh settings show
+./scripts/token-reduce-manage.sh settings set telemetry.enabled true
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://example.com/ingest
+./scripts/token-reduce-manage.sh telemetry-sync
+./scripts/token-reduce-manage.sh updates
+./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh self-improve
 ./scripts/token-reduce-manage.sh workspace-audit
 ./scripts/token-reduce-manage.sh validate
 ```
@@ -154,6 +163,34 @@ This is the self-improvement loop:
 5. rerun after changes
 
 Recent telemetry also reports optional companion adoption, including caveman command activation and AXI tool usage rates.
+
+### Opt-In Telemetry
+
+Telemetry upload is disabled by default. When enabled, token-reduce sends anonymized summary metrics only (no file contents):
+
+- helper/adoption/compliance percentages
+- 14-day event counts
+- workspace-level adoption summary
+
+Enable and configure:
+
+```bash
+./scripts/token-reduce-manage.sh settings set telemetry.enabled true
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
+./scripts/token-reduce-manage.sh telemetry-sync
+```
+
+### Updates And Auto-Update
+
+token-reduce can check for new commits and optionally fast-forward itself when safe:
+
+```bash
+./scripts/token-reduce-manage.sh updates
+./scripts/token-reduce-manage.sh settings set updates.auto_update true
+./scripts/token-reduce-manage.sh auto-update
+```
+
+`auto-update` only runs when the worktree is clean and can fast-forward.
 
 ## Optional Structural Accelerator
 
@@ -254,6 +291,7 @@ The design goal is explicit:
 - [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
 - [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
 - [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
+- [references/self-improving-harness.md](references/self-improving-harness.md) — opt-in telemetry, updates, and self-improve loop
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
 - [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
 
