@@ -98,10 +98,11 @@ Local benchmark in this repo (small — scales up on larger codebases):
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `259` | baseline |
-| `guidance_scoped_rg` | `25` | `90.3%` saved |
-| `token_reduce_paths` | `132` | `49.0%` saved |
-| `token_reduce_snippet` | `217` | `16.2%` saved |
+| `broad_inventory` | `346` | baseline |
+| `guidance_scoped_rg` | `92` | `73.4%` saved |
+| `qmd_files` | `146` | `57.8%` saved |
+| `token_reduce_paths_warm` | `146` | `57.8%` saved |
+| `token_reduce_snippet_warm` | `233` | `32.7%` saved |
 
 Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
 
@@ -143,6 +144,7 @@ Useful commands:
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh review-global
 ./scripts/token-reduce-manage.sh telemetry
+./scripts/token-reduce-manage.sh doctor
 ./scripts/token-reduce-manage.sh settings show
 ./scripts/token-reduce-manage.sh settings onboard
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
@@ -181,13 +183,15 @@ Enable and configure:
 ./scripts/token-reduce-manage.sh settings onboard
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
+./scripts/token-reduce-manage.sh settings set telemetry.api_key your-shared-key
+./scripts/token-reduce-manage.sh settings set telemetry.signing_secret your-hmac-secret
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
 
 Receive metrics (local ingest service example):
 
 ```bash
-uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest
+uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest --api-key your-shared-key --signing-secret your-hmac-secret
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
@@ -202,6 +206,7 @@ token-reduce can check for new commits and optionally fast-forward itself when s
 ./scripts/token-reduce-manage.sh auto-update
 ./scripts/token-reduce-manage.sh deps-check
 ./scripts/token-reduce-manage.sh deps-update
+./scripts/token-reduce-manage.sh doctor
 ```
 
 `auto-update` only runs when the worktree is clean and can fast-forward.

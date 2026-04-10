@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import hashlib
 import socket
@@ -48,13 +49,30 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         fh.write(json.dumps(payload) + "\n")
 
 
-def post_json(url: str, payload: dict[str, Any], timeout_seconds: int) -> tuple[bool, str]:
+def payload_signature(body: bytes, secret: str) -> str:
+    return hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+
+
+def post_json(
+    url: str,
+    payload: dict[str, Any],
+    timeout_seconds: int,
+    *,
+    api_key: str = "",
+    signing_secret: str = "",
+) -> tuple[bool, str]:
     body = json.dumps(payload).encode("utf-8")
+    headers = {"content-type": "application/json"}
+    if api_key:
+        headers["x-token-reduce-key"] = api_key
+    if signing_secret:
+        headers["x-token-reduce-signature"] = payload_signature(body, signing_secret)
+
     req = urllib.request.Request(
         url=url,
         data=body,
         method="POST",
-        headers={"content-type": "application/json"},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
@@ -99,6 +117,8 @@ def main() -> int:
     telemetry_cfg = config.get("telemetry", {})
     enabled = bool(telemetry_cfg.get("enabled", False))
     endpoint = str(telemetry_cfg.get("endpoint", "") or "").strip()
+    api_key = str(telemetry_cfg.get("api_key", "") or "").strip()
+    signing_secret = str(telemetry_cfg.get("signing_secret", "") or "").strip()
     workspace_root = str(telemetry_cfg.get("workspace_root", "/root/.openclaw/workspace/dev"))
     timeout_seconds = int(telemetry_cfg.get("upload_timeout_seconds", 10) or 10)
 
@@ -116,6 +136,8 @@ def main() -> int:
         "config": {
             "enabled": enabled,
             "endpoint_configured": bool(endpoint),
+            "api_key_configured": bool(api_key),
+            "signing_secret_configured": bool(signing_secret),
             "workspace_root": workspace_root,
         },
         "remote_payload": remote_payload,
@@ -133,7 +155,13 @@ def main() -> int:
 
     upload_status = "skipped"
     if endpoint and enabled and not args.dry_run:
-        ok, detail = post_json(endpoint, remote_payload, timeout_seconds)
+        ok, detail = post_json(
+            endpoint,
+            remote_payload,
+            timeout_seconds,
+            api_key=api_key,
+            signing_secret=signing_secret,
+        )
         upload_status = f"uploaded ({detail})" if ok else f"failed ({detail})"
     elif endpoint and args.dry_run:
         upload_status = "dry-run"

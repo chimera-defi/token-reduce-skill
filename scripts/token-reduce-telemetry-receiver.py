@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 import json
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,6 +14,8 @@ from pathlib import Path
 class TelemetryHandler(BaseHTTPRequestHandler):
     output_path: Path
     ingest_path: str
+    api_key: str
+    signing_secret: str
 
     def _write_json(self, status: int, payload: dict) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -25,8 +29,25 @@ class TelemetryHandler(BaseHTTPRequestHandler):
         if self.path != self.ingest_path:
             self._write_json(404, {"ok": False, "error": "not_found"})
             return
+
+        if self.api_key:
+            provided_key = self.headers.get("x-token-reduce-key", "")
+            if provided_key != self.api_key:
+                self._write_json(401, {"ok": False, "error": "invalid_api_key"})
+                return
+
         content_length = int(self.headers.get("content-length", "0") or "0")
         raw = self.rfile.read(content_length)
+
+        if self.signing_secret:
+            provided_sig = self.headers.get("x-token-reduce-signature", "")
+            expected_sig = hmac.new(
+                self.signing_secret.encode("utf-8"), raw, hashlib.sha256
+            ).hexdigest()
+            if not provided_sig or not hmac.compare_digest(provided_sig, expected_sig):
+                self._write_json(401, {"ok": False, "error": "invalid_signature"})
+                return
+
         try:
             payload = json.loads(raw.decode("utf-8", errors="ignore"))
         except json.JSONDecodeError:
@@ -59,10 +80,14 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--path", default="/ingest")
     parser.add_argument("--output", default="./artifacts/token-reduction/ingest.jsonl")
+    parser.add_argument("--api-key", default="")
+    parser.add_argument("--signing-secret", default="")
     args = parser.parse_args()
 
     TelemetryHandler.output_path = Path(args.output).expanduser().resolve()
     TelemetryHandler.ingest_path = args.path
+    TelemetryHandler.api_key = args.api_key
+    TelemetryHandler.signing_secret = args.signing_secret
 
     server = HTTPServer((args.host, args.port), TelemetryHandler)
     print(

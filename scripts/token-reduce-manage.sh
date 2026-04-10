@@ -18,6 +18,7 @@ commands:
   review      Generate the telemetry-driven self-review
   review-global   Generate the telemetry-driven self-review for global scope
   validate    Validate the skill package shape
+  doctor      Run a compact health pass (validate + deps + updates + settings)
   telemetry   Summarize recent helper/hook telemetry
   settings    Show/set/reset local config (telemetry and updates)
   telemetry-sync  Run opt-in telemetry snapshot and optional upload
@@ -71,7 +72,11 @@ case "$cmd" in
     exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
     ;;
   validate)
-    exec uv run "$SCRIPT_DIR/validate_skill_package.py"
+    uv run "$SCRIPT_DIR/validate_skill_package.py"
+    exec uv run "$SCRIPT_DIR/validate-benchmark-artifacts.py"
+    ;;
+  doctor)
+    exec uv run "$SCRIPT_DIR/token-reduce-doctor.py" "$@"
     ;;
   telemetry)
     exec uv run "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14
