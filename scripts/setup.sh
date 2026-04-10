@@ -207,6 +207,29 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 fi
 
+# ── Telemetry opt-in onboarding (gstack-style prompt) ────────────────────────
+if [[ "${TOKEN_REDUCE_SETUP_TELEMETRY_PROMPT:-1}" != "0" ]]; then
+  if [[ -t 0 ]]; then
+    onboard_args=(onboard)
+    if [[ -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
+      onboard_args+=(--endpoint "$TOKEN_REDUCE_TELEMETRY_ENDPOINT")
+    fi
+    uv run "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
+      || warn "telemetry onboarding prompt failed"
+  elif [[ -n "${TOKEN_REDUCE_TELEMETRY_OPT_IN:-}" || -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
+    onboard_args=(onboard --non-interactive)
+    case "${TOKEN_REDUCE_TELEMETRY_OPT_IN,,}" in
+      1|true|yes|y) onboard_args+=(--yes) ;;
+      0|false|no|n) onboard_args+=(--no) ;;
+    esac
+    if [[ -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
+      onboard_args+=(--endpoint "$TOKEN_REDUCE_TELEMETRY_ENDPOINT")
+    fi
+    uv run "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
+      || warn "non-interactive telemetry onboarding failed"
+  fi
+fi
+
 echo ""
 echo "Setup complete. What each layer does:"
 echo "  token-reduce hooks  →  block wasteful discovery before it happens"
@@ -216,7 +239,9 @@ echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn too
 echo "  global wrappers     →  token-reduce-paths / token-reduce-snippet from any repo"
 echo "  Codex skill link    →  $CODEX_SKILL_DIR"
 echo "  companion links     →  axi / caveman / compress under $CODEX_SKILLS_DIR"
-echo "  opt-in telemetry    →  token-reduce-manage settings set telemetry.enabled true"
+echo "  opt-in telemetry    →  prompted now or run token-reduce-settings onboard"
+echo "  receive metrics     →  uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787"
+echo "  dependency checks   →  token-reduce-manage deps-check / token-reduce-manage deps-update"
 echo "  update checks       →  token-reduce-manage updates / token-reduce-manage auto-update"
 echo ""
 echo "Restart Claude Code for hook changes to take effect."

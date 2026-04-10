@@ -35,6 +35,7 @@ Manage config:
 
 ```bash
 ./scripts/token-reduce-manage.sh settings show
+./scripts/token-reduce-manage.sh settings onboard
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
 ./scripts/token-reduce-manage.sh settings set updates.auto_update true
@@ -55,6 +56,13 @@ Command:
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
 
+Local receiver example:
+
+```bash
+uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
+```
+
 ## Update Checks
 
 `updates` checks branch/upstream state and reports behind/ahead counts.
@@ -71,6 +79,8 @@ Commands:
 ```bash
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-update
 ```
 
 ## One-Shot Maintenance
@@ -78,6 +88,7 @@ Commands:
 `self-improve` runs a compact maintenance pass:
 
 - composite benchmark
+- dependency freshness check
 - global measure + review refresh
 - telemetry sync
 - update check
