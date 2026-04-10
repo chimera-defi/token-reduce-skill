@@ -13,8 +13,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "telemetry": {
         "enabled": False,
         "endpoint": "",
+        "api_key": "",
+        "signing_secret": "",
         "workspace_root": "/root/.openclaw/workspace/dev",
         "upload_timeout_seconds": 10,
+    },
+    "benchmark": {
+        "max_age_days": 14,
     },
     "updates": {
         "auto_update": False,
