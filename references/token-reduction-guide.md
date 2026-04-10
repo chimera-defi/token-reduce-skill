@@ -100,6 +100,7 @@ Future agents maintaining this repo should use the evidence loop, not just edit 
 ```
 
 Use `./scripts/token-reduce-manage.sh benchmark` when helper output or search behavior changes. Review artifacts live under `artifacts/token-reduction/`.
+Use `./scripts/token-reduce-manage.sh self-improve` for a one-shot benchmark + global measure/review + telemetry sync + update check pass.
 
 ## Companion Backends
 

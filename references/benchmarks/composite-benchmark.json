@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-09T23:58:10.597039+00:00",
+  "generated_at": "2026-04-10T00:07:58.050572+00:00",
   "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main",
   "qmd_collection": "repo-92c7c9c293c8",
   "benchmarks": [
@@ -12,9 +12,9 @@
       "skipped_reason": "",
       "exit_code": 0,
       "duration_ms": 22,
-      "bytes": 4227,
-      "lines": 70,
-      "tokens": 963,
+      "bytes": 4529,
+      "lines": 77,
+      "tokens": 1033,
       "quality_pass": true,
       "savings_vs_broad_pct": 0.0,
       "steps": [
@@ -23,12 +23,12 @@
           "command": "rg --files . | head -200",
           "exit_code": 0,
           "duration_ms": 8,
-          "bytes": 1597,
-          "lines": 50,
-          "tokens": 402,
+          "bytes": 1820,
+          "lines": 56,
+          "tokens": 454,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "./SKILL.md\n./scripts/enforce-token-reduce-first.py\n./scripts/token-reduce-manage.sh\n./scripts/benchmark-companion-tools.py\n./scripts/setup.sh\n./scripts/token-reduce-snippet.sh"
+          "stdout_preview": "./package.json\n./README.md\n./llms.txt\n./SKILL.md\n./scripts/benchmark-token-reduce.py\n./scripts/measure_token_reduction.py"
         },
         {
           "label": "exact_symbol",
@@ -47,12 +47,12 @@
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
           "duration_ms": 7,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |"
+          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |"
         }
       ]
     },
@@ -65,30 +65,30 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 658,
-      "bytes": 992,
-      "lines": 9,
-      "tokens": 266,
+      "duration_ms": 693,
+      "bytes": 1142,
+      "lines": 11,
+      "tokens": 313,
       "quality_pass": false,
-      "savings_vs_broad_pct": 72.4,
+      "savings_vs_broad_pct": 69.7,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "qmd search \"hook enforcement system\" -n 8 --files -c repo-92c7c9c293c8",
           "exit_code": 0,
-          "duration_ms": 416,
-          "bytes": 186,
-          "lines": 3,
-          "tokens": 89,
+          "duration_ms": 454,
+          "bytes": 257,
+          "lines": 4,
+          "tokens": 118,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "#2a6339,0.92,qmd://repo-92c7c9c293c8/references/token-savior-evaluation.md\n#f1d15a,0.92,qmd://repo-92c7c9c293c8/references/architecture.md\n#b377a6,0.91,qmd://repo-92c7c9c293c8/readme.md"
+          "stdout_preview": "#2a6339,0.92,qmd://repo-92c7c9c293c8/references/token-savior-evaluation.md\n#f1d15a,0.92,qmd://repo-92c7c9c293c8/references/architecture.md\n#828580,0.91,qmd://repo-92c7c9c293c8/references/composite-benchmark.md\n#e8894c,0.90,qmd://repo-92c7c9c293c8/readme.md"
         },
         {
           "label": "exact_symbol",
           "command": "qmd search \"prompt_requires_helper\" -n 8 --files -c repo-92c7c9c293c8",
           "exit_code": 0,
-          "duration_ms": 233,
+          "duration_ms": 231,
           "bytes": 18,
           "lines": 1,
           "tokens": 4,
@@ -100,13 +100,13 @@
           "label": "output_scan",
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 9,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "duration_ms": 8,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |"
+          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |"
         }
       ]
     },
@@ -119,12 +119,12 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 1169,
-      "bytes": 1286,
-      "lines": 18,
-      "tokens": 326,
+      "duration_ms": 4086,
+      "bytes": 1436,
+      "lines": 20,
+      "tokens": 374,
       "quality_pass": false,
-      "savings_vs_broad_pct": 66.1,
+      "savings_vs_broad_pct": 63.8,
       "steps": [
         {
           "label": "fuzzy_discovery",
@@ -142,25 +142,25 @@
           "label": "exact_symbol",
           "command": "token-reduce-paths prompt requires helper | head -40",
           "exit_code": 0,
-          "duration_ms": 1005,
-          "bytes": 122,
-          "lines": 2,
-          "tokens": 59,
+          "duration_ms": 3922,
+          "bytes": 193,
+          "lines": 3,
+          "tokens": 89,
           "quality_pass": false,
           "quality_note": "missing: prompt_requires_helper, scripts/token_reduce_state.py",
-          "stdout_preview": "#b377a6,0.89,qmd://repo-92c7c9c293c8/readme.md\n#2a6339,0.88,qmd://repo-92c7c9c293c8/references/token-savior-evaluation.md"
+          "stdout_preview": "#7ab2a2,0.89,qmd://repo-92c7c9c293c8/readme.md\n#790168,0.88,qmd://repo-92c7c9c293c8/references/composite-benchmark.md\n#2a6339,0.88,qmd://repo-92c7c9c293c8/references/token-savior-evaluation.md"
         },
         {
           "label": "output_scan",
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
           "duration_ms": 8,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |"
+          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |"
         }
       ]
     },
@@ -173,30 +173,30 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 345,
-      "bytes": 2267,
-      "lines": 40,
-      "tokens": 598,
+      "duration_ms": 396,
+      "bytes": 2346,
+      "lines": 41,
+      "tokens": 621,
       "quality_pass": true,
-      "savings_vs_broad_pct": 37.9,
+      "savings_vs_broad_pct": 39.9,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "token-reduce-structural --project-root . search \"hook enforcement system\" | head -80",
           "exit_code": 0,
-          "duration_ms": 163,
+          "duration_ms": 180,
           "bytes": 1290,
           "lines": 27,
-          "tokens": 370,
+          "tokens": 375,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "[\n  {\n    \"file\": \"references/benchmarks/composite-benchmark.json\",\n    \"line_number\": 69,\n    \"content\": \"          \\\"command\\\": \\\"qmd search \\\\\\\"hook enforcement system\\\\\\\" -n 8 --files -c repo-92c7c9c293c8\\\",\"\n  },"
+          "stdout_preview": "[\n  {\n    \"file\": \"references/benchmarks/composite-benchmark.json\",\n    \"line_number\": 77,\n    \"content\": \"          \\\"command\\\": \\\"qmd search \\\\\\\"hook enforcement system\\\\\\\" -n 8 --files -c repo-92c7c9c293c8\\\",\"\n  },"
         },
         {
           "label": "exact_symbol",
           "command": "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80",
           "exit_code": 0,
-          "duration_ms": 173,
+          "duration_ms": 204,
           "bytes": 189,
           "lines": 8,
           "tokens": 55,
@@ -208,13 +208,13 @@
           "label": "output_scan",
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 9,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "duration_ms": 12,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |"
+          "stdout_preview": "references/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nSKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |"
         }
       ]
     },
@@ -226,30 +226,30 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 264,
-      "bytes": 2331,
-      "lines": 34,
-      "tokens": 566,
+      "duration_ms": 272,
+      "bytes": 2459,
+      "lines": 35,
+      "tokens": 595,
       "quality_pass": true,
-      "savings_vs_broad_pct": 41.2,
+      "savings_vs_broad_pct": 42.4,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "rtk find . -name '*.md' | head -40",
           "exit_code": 0,
-          "duration_ms": 58,
-          "bytes": 248,
+          "duration_ms": 61,
+          "bytes": 297,
           "lines": 4,
-          "tokens": 59,
+          "tokens": 70,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "12F 2D:\n\n./ AGENTS.md README.md SKILL.md\nreferences/ agent-setup.md anthropic-prompt-caching.md architecture.md axi-evaluation.md caveman-evaluation.md companion-tools.md token-reduction-guide.md token-savior-evaluation.md workspace-integration.md"
+          "stdout_preview": "14F 2D:\n\n./ AGENTS.md README.md SKILL.md\nreferences/ agent-setup.md anthropic-prompt-caching.md architecture.md axi-evaluation.md caveman-evaluation.md companion-tools.md composite-benchmark.md self-improving-harness.md token-reduction-guide.md token-savior-evaluation.md workspace-integration.md"
         },
         {
           "label": "exact_symbol",
           "command": "rtk grep -n \"prompt_requires_helper\" scripts/*.py | head -40",
           "exit_code": 0,
-          "duration_ms": 69,
+          "duration_ms": 73,
           "bytes": 1295,
           "lines": 25,
           "tokens": 334,
@@ -261,13 +261,13 @@
           "label": "output_scan",
           "command": "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 137,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "duration_ms": 138,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "SKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nreferences/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes."
+          "stdout_preview": "SKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes."
         }
       ]
     },
@@ -281,18 +281,18 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 500,
-      "bytes": 1353,
-      "lines": 24,
-      "tokens": 322,
+      "duration_ms": 537,
+      "bytes": 1432,
+      "lines": 25,
+      "tokens": 340,
       "quality_pass": true,
-      "savings_vs_broad_pct": 66.6,
+      "savings_vs_broad_pct": 67.1,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "token-reduce-paths hook enforcement system | head -40",
           "exit_code": 0,
-          "duration_ms": 225,
+          "duration_ms": 222,
           "bytes": 376,
           "lines": 11,
           "tokens": 94,
@@ -304,7 +304,7 @@
           "label": "exact_symbol",
           "command": "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80",
           "exit_code": 0,
-          "duration_ms": 161,
+          "duration_ms": 186,
           "bytes": 189,
           "lines": 8,
           "tokens": 55,
@@ -316,20 +316,20 @@
           "label": "output_scan",
           "command": "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 114,
-          "bytes": 788,
-          "lines": 5,
-          "tokens": 173,
+          "duration_ms": 129,
+          "bytes": 867,
+          "lines": 6,
+          "tokens": 191,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "SKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:94:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nreferences/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:57:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes."
+          "stdout_preview": "SKILL.md:21:# Token Reduction Skill\nSKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/agent-setup.md:105:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/token-reduction-guide.md:1:# Token Reduction Guide\nreferences/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes."
         }
       ]
     }
   ],
-  "table": "| Strategy | Tokens | Savings vs broad | Duration | Status |\n|----------|--------|------------------|----------|--------|\n| `broad_shell` | `963` | `0.0%` | `22 ms` | ok |\n| `qmd_only` | `266` | `72.4%` | `658 ms` | quality-fail |\n| `token_reduce_only` | `326` | `66.1%` | `1169 ms` | quality-fail |\n| `token_savior_only` | `598` | `37.9%` | `345 ms` | ok |\n| `rtk_only` | `566` | `41.2%` | `264 ms` | ok |\n| `composite_stack` | `322` | `66.6%` | `500 ms` | ok |",
+  "table": "| Strategy | Tokens | Savings vs broad | Duration | Status |\n|----------|--------|------------------|----------|--------|\n| `broad_shell` | `1033` | `0.0%` | `22 ms` | ok |\n| `qmd_only` | `313` | `69.7%` | `693 ms` | quality-fail |\n| `token_reduce_only` | `374` | `63.8%` | `4086 ms` | quality-fail |\n| `token_savior_only` | `621` | `39.9%` | `396 ms` | ok |\n| `rtk_only` | `595` | `42.4%` | `272 ms` | ok |\n| `composite_stack` | `340` | `67.1%` | `537 ms` | ok |",
   "composite_vs_single": {
-    "composite_tokens": 322,
+    "composite_tokens": 340,
     "composite_quality_pass": true,
     "single_tool_candidates": [
       "broad_shell",
