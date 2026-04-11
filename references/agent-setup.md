@@ -5,7 +5,7 @@ The main `README.md` is user-facing; this file is for integrators.
 
 ## Full Setup (recommended)
 
-One command installs QMD (BM25 search) and RTK (output compression) and wires both:
+One command installs QMD (BM25 search), RTK (output compression), optional AXI companion CLIs, and wires hooks:
 
 ```bash
 ./scripts/setup.sh
@@ -20,6 +20,8 @@ Or from a fresh clone of the skill into a consumer repo:
 It also:
 - links global helper commands into `~/.local/bin`
 - links the Codex skill into `$CODEX_HOME/skills/token-reduce`
+- links local companion skills (`axi`, `caveman`, `compress`) into Codex when available under `~/.agents/skills`
+- installs management wrappers for settings, telemetry sync, and update checks
 
 ## Claude Code
 
@@ -68,6 +70,18 @@ That keeps the package aligned with the same evidence loop it asks hosts to foll
 
 If `scripts/setup.sh` has already been run on the machine, the Codex link and the global helper wrappers should already be present.
 
+Optional managed-harness controls:
+
+```bash
+token-reduce-manage settings set telemetry.enabled true
+token-reduce-manage settings set telemetry.endpoint https://your-endpoint.example/ingest
+token-reduce-manage telemetry-sync
+token-reduce-manage updates
+token-reduce-manage auto-update
+token-reduce-manage deps-check
+token-reduce-manage deps-update
+```
+
 ## MCP
 
 ```json
@@ -91,6 +105,7 @@ If `scripts/setup.sh` has already been run on the machine, the Codex link and th
 | Output compression | RTK (`rtk-rewrite.sh`) | Compresses output of commands that do run |
 | Search backend | QMD | BM25 index, fallback to scoped `rg` |
 | Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |
+| Optional interface companion | AXI (`gh-axi`, `chrome-devtools-axi`) | Lower-turn GitHub/browser tool interactions |
 
 ## Read Next
 

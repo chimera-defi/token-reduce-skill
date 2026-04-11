@@ -10,14 +10,29 @@ usage: ./scripts/token-reduce-manage.sh <command>
 commands:
   benchmark   Run the local output-size benchmark
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
+  benchmark-composite  Run the composite stack benchmark
+  deps-check  Check underlying companion/dependency freshness
+  deps-update  Apply companion/dependency updates when possible
   measure     Measure repo-local adoption and write artifacts
+  measure-global  Measure global adoption across local session logs
   review      Generate the telemetry-driven self-review
+  review-global   Generate the telemetry-driven self-review for global scope
   validate    Validate the skill package shape
+  doctor      Run a compact health pass (validate + deps + updates + settings)
   telemetry   Summarize recent helper/hook telemetry
+  settings    Show/set/reset local config (telemetry and updates)
+  telemetry-sync  Run opt-in telemetry snapshot and optional upload
+  updates     Check for updates and print status
+  auto-update Safely fast-forward update when eligible
+  self-improve  Run benchmark + telemetry + review + update check
+  workspace-audit  Audit skill install and doc adoption across sibling repos
 EOF
 }
 
 cmd="${1:-}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
 case "$cmd" in
   benchmark)
     exec uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
@@ -35,17 +50,62 @@ case "$cmd" in
       --output "$OUTPUT" \
       --output-md "$OUTPUT_MD"
     ;;
+  benchmark-composite)
+    exec uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    ;;
+  deps-check)
+    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py"
+    ;;
+  deps-update)
+    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --apply
+    ;;
   measure)
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope repo
+    ;;
+  measure-global)
+    exec "$SCRIPT_DIR/baseline-measurement.sh" --scope global
     ;;
   review)
     exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo
     ;;
+  review-global)
+    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
+    ;;
   validate)
-    exec uv run "$SCRIPT_DIR/validate_skill_package.py"
+    uv run "$SCRIPT_DIR/validate_skill_package.py"
+    exec uv run "$SCRIPT_DIR/validate-benchmark-artifacts.py"
+    ;;
+  doctor)
+    exec uv run "$SCRIPT_DIR/token-reduce-doctor.py" "$@"
     ;;
   telemetry)
     exec uv run "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14
+    ;;
+  settings)
+    if [[ $# -eq 0 ]]; then
+      set -- show
+    fi
+    exec uv run "$SCRIPT_DIR/token-reduce-settings.py" "$@"
+    ;;
+  telemetry-sync)
+    exec uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" "$@"
+    ;;
+  updates)
+    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify "$@"
+    ;;
+  auto-update)
+    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update "$@"
+    ;;
+  self-improve)
+    uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" || true
+    "$SCRIPT_DIR/baseline-measurement.sh" --scope global >/dev/null
+    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global >/dev/null
+    uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" || true
+    uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify
+    ;;
+  workspace-audit)
+    exec uv run "$SCRIPT_DIR/audit_workspace_skills.py" "$@"
     ;;
   *)
     usage >&2

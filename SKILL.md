@@ -5,6 +5,7 @@ description: |
   Reduce total token usage across AI coding tasks by keeping discovery, reading, and follow-up context minimal.
   Use when file location is uncertain, the repo is large, or the user asks to explore, review, gather context, or work across multiple files.
   Prefer QMD BM25 when available; otherwise fall back to scoped `rg`. Skip for small edits with an exact file path.
+  For GitHub/browser-heavy tool tasks, prefer AXI companions (`gh-axi`, `chrome-devtools-axi`) when installed.
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
@@ -65,6 +66,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | Targeted reads | 33% | Large files |
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
+| AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
 
 ## Process
 
@@ -78,6 +80,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 4. If you need one ranked excerpt after the kickoff, use `scripts/token-reduce-snippet.sh topic words`.
 5. If a file is large, read only the relevant section.
 6. If the search space stays broad, stop expanding and ask the user to narrow it.
+7. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
 
 ## Output Brevity Profile (Companion)
 
@@ -134,3 +137,4 @@ Skip `qmd embed`, `qmd vsearch`, and `qmd query` for this workflow.
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
 Read `references/companion-tools.md` for how to evaluate future companion backends.
 Read `references/caveman-evaluation.md` for the caveman companion verdict.
+Read `references/axi-evaluation.md` for the AXI companion verdict.
