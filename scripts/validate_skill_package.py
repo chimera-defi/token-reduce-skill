@@ -16,6 +16,7 @@ REQUIRED_ATTRIBUTION_LINKS = {
     "QMD": r"\[QMD\]\(https://github\.com/tobi/qmd\)",
     "RTK": r"\[RTK\]\(https://github\.com/rtk-ai/rtk\)",
     "caveman": r"\[`?caveman`?\]\(https://github\.com/JuliusBrussee/caveman\)",
+    "AXI": r"\[AXI\]\(https://github\.com/kunchenguid/axi\)",
 }
 
 

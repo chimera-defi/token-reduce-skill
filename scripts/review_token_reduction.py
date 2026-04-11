@@ -24,6 +24,10 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     helper = float(report["routing"]["helper_first_or_helper_any_pct"])
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
     mentions_without_helper = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
+    caveman_command_sessions = int(report["adoption"].get("caveman_command_sessions", 0))
+    caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
+    axi_tool_pct = float(report["adoption"].get("axi_tool_sessions_pct", 0.0))
     telemetry_events = int(report["telemetry"]["event_count"])
 
     codex = report["by_source"].get("codex", {})
@@ -105,6 +109,33 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "Tighten wording and examples so mentioning the skill correlates with helper invocation instead of vague compliance.",
             }
         )
+    if caveman_mentions > 0 and caveman_command_sessions == 0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "caveman_activation_gap",
+                "finding": "Caveman is being mentioned but not actually activated in measured sessions.",
+                "recommendation": "Add explicit examples (`/caveman lite`, `/caveman:compress CLAUDE.md`) to repo instructions so mentions convert into usage.",
+            }
+        )
+    if session_count >= 20 and caveman_command_pct < 5.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "caveman_adoption",
+                "finding": f"Caveman command usage is low at {caveman_command_pct:.1f}% of sessions.",
+                "recommendation": "Install caveman globally and add short trigger cues in AGENTS.md/CLAUDE.md where terse output is useful.",
+            }
+        )
+    if session_count >= 20 and axi_tool_pct < 2.0:
+        findings.append(
+            {
+                "priority": "low",
+                "area": "axi_adoption",
+                "finding": f"AXI companion tool usage is low at {axi_tool_pct:.1f}% of sessions.",
+                "recommendation": "For GitHub/browser-heavy tasks, prefer gh-axi or chrome-devtools-axi where available to reduce turns and retries.",
+            }
+        )
     if not findings:
         findings.append(
             {
@@ -125,6 +156,8 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
         f"- Session count: `{report['session_count']}`",
         f"- Discovery compliance: `{report['compliance']['discovery_compliance_pct']}%`",
         f"- Helper usage: `{report['routing']['helper_first_or_helper_any_pct']}%`",
+        f"- Caveman command usage: `{report['adoption'].get('caveman_command_pct', 0.0)}%`",
+        f"- AXI tool usage: `{report['adoption'].get('axi_tool_sessions_pct', 0.0)}%`",
         f"- Telemetry events (14d): `{report['telemetry']['event_count']}`",
         "",
         "## Prioritized Findings",

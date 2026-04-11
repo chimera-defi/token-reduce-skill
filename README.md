@@ -25,14 +25,14 @@ That's it. The agent reads `llms.txt`, runs `setup.sh`, and starts enforcing lea
 
 ## Manual Install
 
-**Quickest — full stack (QMD + RTK + hooks wired in one shot):**
+**Quickest — full stack (QMD + RTK + hooks + AXI companions wired in one shot):**
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search) and [RTK](https://github.com/rtk-ai/rtk) (output compression), wires both sets of hooks into Claude Code globally, and indexes your repo. Re-run any time — it's idempotent.
+`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, indexes your repo, and prompts telemetry opt-in during install. Re-run any time — it's idempotent.
 
 It also:
 - links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
@@ -98,12 +98,27 @@ Local benchmark in this repo (small — scales up on larger codebases):
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `259` | baseline |
-| `guidance_scoped_rg` | `25` | `90.3%` saved |
-| `token_reduce_paths` | `132` | `49.0%` saved |
-| `token_reduce_snippet` | `217` | `16.2%` saved |
+| `broad_inventory` | `346` | baseline |
+| `guidance_scoped_rg` | `92` | `73.4%` saved |
+| `qmd_files` | `146` | `57.8%` saved |
+| `token_reduce_paths_warm` | `146` | `57.8%` saved |
+| `token_reduce_snippet_warm` | `233` | `32.7%` saved |
 
 Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
+
+Composite benchmark in this repo (quality-gated mixed workload):
+
+| Strategy | Tokens | vs broad shell | Status |
+|----------|--------|----------------|--------|
+| `broad_shell` | `1033` | baseline | `ok` |
+| `qmd_only` | `313` | `69.7%` saved | `quality-fail` |
+| `token_reduce_only` | `374` | `63.8%` saved | `quality-fail` |
+| `token_savior_only` | `621` | `39.9%` saved | `ok` |
+| `rtk_only` | `595` | `42.4%` saved | `ok` |
+| `composite_stack` | `340` | `67.1%` saved | `ok` |
+
+In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
+See [references/composite-benchmark.md](references/composite-benchmark.md) for methodology and caveats.
 
 ## Telemetry
 
@@ -114,14 +129,31 @@ token-reduce now supports a composite telemetry loop:
 - RTK companion inputs (gain/discover/session/hook-audit) for downstream output-compression signal
 - install/wiring health checks (binary availability + Claude/Codex hook binding)
 
+Telemetry upload remains **opt-in** for install-level improvement tracking.
+
 Useful commands:
 
 ```bash
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh composite
+./scripts/token-reduce-manage.sh benchmark-composite
+./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-update
 ./scripts/token-reduce-manage.sh measure
+./scripts/token-reduce-manage.sh measure-global
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh review-global
 ./scripts/token-reduce-manage.sh telemetry
+./scripts/token-reduce-manage.sh doctor
+./scripts/token-reduce-manage.sh settings show
+./scripts/token-reduce-manage.sh settings onboard
+./scripts/token-reduce-manage.sh settings set telemetry.enabled true
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://example.com/ingest
+./scripts/token-reduce-manage.sh telemetry-sync
+./scripts/token-reduce-manage.sh updates
+./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh self-improve
+./scripts/token-reduce-manage.sh workspace-audit
 ./scripts/token-reduce-manage.sh validate
 ```
 
@@ -134,6 +166,50 @@ This is the self-improvement loop:
 3. measure actual session adoption and compliance
 4. generate a review with the next routing, docs, or enforcement fixes
 5. rerun after changes
+
+Recent telemetry also reports optional companion adoption, including caveman command activation and AXI tool usage rates.
+
+### Opt-In Telemetry
+
+Telemetry upload is disabled by default. When enabled, token-reduce sends anonymized summary metrics only (no file contents):
+
+- helper/adoption/compliance percentages
+- 14-day event counts
+- workspace-level adoption summary
+
+Enable and configure:
+
+```bash
+./scripts/token-reduce-manage.sh settings onboard
+./scripts/token-reduce-manage.sh settings set telemetry.enabled true
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
+./scripts/token-reduce-manage.sh settings set telemetry.api_key your-shared-key
+./scripts/token-reduce-manage.sh settings set telemetry.signing_secret your-hmac-secret
+./scripts/token-reduce-manage.sh telemetry-sync
+```
+
+Receive metrics (local ingest service example):
+
+```bash
+uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest --api-key your-shared-key --signing-secret your-hmac-secret
+./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
+./scripts/token-reduce-manage.sh telemetry-sync
+```
+
+### Updates And Auto-Update
+
+token-reduce can check for new commits and optionally fast-forward itself when safe:
+
+```bash
+./scripts/token-reduce-manage.sh updates
+./scripts/token-reduce-manage.sh settings set updates.auto_update true
+./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-update
+./scripts/token-reduce-manage.sh doctor
+```
+
+`auto-update` only runs when the worktree is clean and can fast-forward.
 
 ## Optional Structural Accelerator
 
@@ -176,6 +252,18 @@ Use this as a companion, not a replacement:
 
 See [references/caveman-evaluation.md](references/caveman-evaluation.md) for integration verdict and evidence.
 
+## Optional AXI Companion (Agent-Native Tool Interfaces)
+
+`token-reduce` can also pair with [AXI](https://github.com/kunchenguid/axi) companion CLIs to reduce turns/retries when tasks are GitHub- or browser-heavy:
+
+- `gh-axi` for GitHub operations
+- `chrome-devtools-axi` for browser automation
+
+These tools are optional and do not replace token-reduce helper-first routing.
+Use them when the task is clearly in their domain; keep discovery kickoff discipline unchanged.
+
+See [references/axi-evaluation.md](references/axi-evaluation.md) for validation notes and integration policy.
+
 ## Dependencies And Attribution
 
 token-reduce is intentionally composite. It combines:
@@ -184,6 +272,7 @@ token-reduce is intentionally composite. It combines:
 - [RTK](https://github.com/rtk-ai/rtk) for command-output compression
 - [`token-savior`](https://github.com/Mibayy/token-savior) as an optional structural accelerator for exact symbol and dependency questions
 - [`caveman`](https://github.com/JuliusBrussee/caveman) as an optional response-style and memory-compression companion
+- [AXI](https://github.com/kunchenguid/axi) plus `gh-axi` and `chrome-devtools-axi` as optional agent-native tool companions for GitHub/browser workflows
 - Anthropic prompt-caching guidance as an optional API-layer companion, documented in [references/anthropic-prompt-caching.md](references/anthropic-prompt-caching.md)
 
 Direct runtime dependencies:
@@ -194,6 +283,7 @@ Direct runtime dependencies:
 Optional companions:
 - `token-savior`
 - `caveman`
+- `gh-axi` / `chrome-devtools-axi`
 - Anthropic API prompt-caching workflows
 
 The design goal is explicit:
@@ -218,7 +308,11 @@ The design goal is explicit:
 - [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
 - [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
+- [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
+- [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
+- [references/self-improving-harness.md](references/self-improving-harness.md) — opt-in telemetry, updates, and self-improve loop
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
+- [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
 
 ## FAQ
 
