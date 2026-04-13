@@ -8,6 +8,7 @@ Run with:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -25,6 +26,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "composite-benchmark.json"
 QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8')).hexdigest()[:12]}"
+BENCH_ENV = {**os.environ, "TOKEN_REDUCE_TELEMETRY_CONTEXT": "benchmark"}
 
 
 @dataclass
@@ -72,6 +74,7 @@ def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
         check=False,
         capture_output=True,
         text=True,
+        env=BENCH_ENV,
     )
     duration_ms = int((time.perf_counter() - started) * 1000)
     stdout = proc.stdout or ""
@@ -106,6 +109,7 @@ def ensure_qmd_collection() -> None:
         check=False,
         capture_output=True,
         text=True,
+        env=BENCH_ENV,
     )
 
 

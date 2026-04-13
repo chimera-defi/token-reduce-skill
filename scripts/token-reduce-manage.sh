@@ -22,10 +22,12 @@ commands:
   telemetry   Summarize recent helper/hook telemetry
   settings    Show/set/reset local config (telemetry and updates)
   telemetry-sync  Run opt-in telemetry snapshot and optional upload
+  rolling-baseline  Generate rolling pre/post trend report from telemetry snapshots
   updates     Check for updates and print status
   auto-update Safely fast-forward update when eligible
   self-improve  Run benchmark + telemetry + review + update check
   workspace-audit  Audit skill install and doc adoption across sibling repos
+  workspace-install  Install skill links and token-reduce routing guidance across sibling repos
 EOF
 }
 
@@ -35,7 +37,7 @@ if [[ $# -gt 0 ]]; then
 fi
 case "$cmd" in
   benchmark)
-    exec uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
     ;;
   composite)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
@@ -51,7 +53,7 @@ case "$cmd" in
       --output-md "$OUTPUT_MD"
     ;;
   benchmark-composite)
-    exec uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
     ;;
   deps-check)
     exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py"
@@ -90,6 +92,16 @@ case "$cmd" in
   telemetry-sync)
     exec uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" "$@"
     ;;
+  rolling-baseline)
+    ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
+    OUT_DIR="$ROOT/artifacts/token-reduction"
+    DATE_STAMP="$(date +%Y-%m-%d)"
+    mkdir -p "$OUT_DIR"
+    exec uv run "$SCRIPT_DIR/rolling_baseline_report.py" \
+      --output-json "$OUT_DIR/rolling-baseline-$DATE_STAMP.json" \
+      --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" \
+      "$@"
+    ;;
   updates)
     exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify "$@"
     ;;
@@ -97,15 +109,29 @@ case "$cmd" in
     exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update "$@"
     ;;
   self-improve)
-    uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
+    OUT_DIR="$ROOT/artifacts/token-reduction"
+    DATE_STAMP="$(date +%Y-%m-%d)"
+    WORKSPACE_AUDIT="$OUT_DIR/workspace-audit-$DATE_STAMP.json"
+    mkdir -p "$OUT_DIR"
+
+    env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
     uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" || true
-    "$SCRIPT_DIR/baseline-measurement.sh" --scope global >/dev/null
-    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global >/dev/null
+    "$SCRIPT_DIR/baseline-measurement.sh" --scope global
+    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
+    uv run "$SCRIPT_DIR/audit_workspace_skills.py" --days 30 --output "$WORKSPACE_AUDIT" >/dev/null
     uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" || true
+    uv run "$SCRIPT_DIR/rolling_baseline_report.py" \
+      --output-json "$OUT_DIR/rolling-baseline-$DATE_STAMP.json" \
+      --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" >/dev/null
     uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify
+    echo "workspace audit snapshot: $WORKSPACE_AUDIT"
     ;;
   workspace-audit)
     exec uv run "$SCRIPT_DIR/audit_workspace_skills.py" "$@"
+    ;;
+  workspace-install)
+    exec uv run "$SCRIPT_DIR/install_workspace_skill.py" "$@"
     ;;
   *)
     usage >&2

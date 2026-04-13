@@ -86,6 +86,9 @@ def post_json(
 def build_remote_payload(
     measured: dict[str, Any], workspace: dict[str, Any], commit_sha: str
 ) -> dict[str, Any]:
+    efficiency = measured.get("telemetry", {}).get("efficiency", {})
+    workspace_summary = workspace.get("summary", {})
+    workspace_gaps = workspace.get("gaps", {})
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "host_id": host_fingerprint(),
@@ -96,12 +99,29 @@ def build_remote_payload(
         "metrics": {
             "session_count": measured.get("session_count", 0),
             "helper_sessions_pct": measured.get("adoption", {}).get("helper_sessions_pct", 0.0),
+            "helper_sessions_pct_observed_discovery": measured.get("adoption", {}).get(
+                "helper_sessions_pct_observed_discovery", 0.0
+            ),
             "discovery_compliance_pct": measured.get("compliance", {}).get("discovery_compliance_pct", 0.0),
+            "discovery_compliance_pct_observed": measured.get("compliance", {}).get(
+                "discovery_compliance_pct_observed", 0.0
+            ),
             "broad_scan_sessions": measured.get("compliance", {}).get("sessions_with_broad_scan_violation", 0),
             "caveman_command_pct": measured.get("adoption", {}).get("caveman_command_pct", 0.0),
             "axi_tool_sessions_pct": measured.get("adoption", {}).get("axi_tool_sessions_pct", 0.0),
             "telemetry_event_count_14d": measured.get("telemetry", {}).get("event_count", 0),
-            "workspace": workspace.get("summary", {}),
+            "telemetry_excluded_event_count_14d": measured.get("telemetry", {}).get("excluded_event_count", 0),
+            "helper_error_rate_pct": efficiency.get("helper_error_rate_pct", 0.0),
+            "helper_failure_overhead_pct": efficiency.get("failure_overhead_pct", 0.0),
+            "helper_rapid_repeat_calls": efficiency.get("rapid_repeat_calls", 0),
+            "helper_error_recovery_retries": efficiency.get("error_recovery_retries", 0),
+            "hook_error_count": efficiency.get("hook_error_count", 0),
+            "pending_leak_count": efficiency.get("pending_leak_count", 0),
+            "workspace": workspace_summary,
+            "workspace_active_without_helper_usage_count": len(
+                workspace_gaps.get("active_without_helper_usage", [])
+            ),
+            "workspace_missing_local_skill_count": len(workspace_gaps.get("missing_local_skill", [])),
         },
     }
 
@@ -120,6 +140,8 @@ def main() -> int:
     api_key = str(telemetry_cfg.get("api_key", "") or "").strip()
     signing_secret = str(telemetry_cfg.get("signing_secret", "") or "").strip()
     workspace_root = str(telemetry_cfg.get("workspace_root", "/root/.openclaw/workspace/dev"))
+    workspace_days = int(telemetry_cfg.get("workspace_days", 14) or 14)
+    workspace_include_source_repo = bool(telemetry_cfg.get("workspace_include_source_repo", False))
     timeout_seconds = int(telemetry_cfg.get("upload_timeout_seconds", 10) or 10)
 
     if not enabled and not args.force:
@@ -127,7 +149,11 @@ def main() -> int:
         return 0
 
     measured = measure("global", str(root))
-    workspace = workspace_payload(Path(workspace_root).resolve())
+    workspace = workspace_payload(
+        Path(workspace_root).resolve(),
+        workspace_days,
+        workspace_include_source_repo,
+    )
     commit_sha = git_head(root)
     remote_payload = build_remote_payload(measured, workspace, commit_sha)
 
@@ -139,12 +165,20 @@ def main() -> int:
             "api_key_configured": bool(api_key),
             "signing_secret_configured": bool(signing_secret),
             "workspace_root": workspace_root,
+            "workspace_days": workspace_days,
+            "workspace_include_source_repo": workspace_include_source_repo,
         },
         "remote_payload": remote_payload,
         "global_measure_summary": {
             "session_count": measured.get("session_count", 0),
             "helper_sessions_pct": measured.get("adoption", {}).get("helper_sessions_pct", 0.0),
+            "helper_sessions_pct_observed_discovery": measured.get("adoption", {}).get(
+                "helper_sessions_pct_observed_discovery", 0.0
+            ),
             "discovery_compliance_pct": measured.get("compliance", {}).get("discovery_compliance_pct", 0.0),
+            "discovery_compliance_pct_observed": measured.get("compliance", {}).get(
+                "discovery_compliance_pct_observed", 0.0
+            ),
         },
     }
 

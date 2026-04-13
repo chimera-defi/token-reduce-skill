@@ -39,6 +39,7 @@ def block(reason: str, data: dict[str, object] | None = None) -> int:
                 value = str(tool_input.get(key, "") or "")[:240]
                 if value:
                     meta[key] = value
+        meta["session_key"] = session_key(data)
         record_event(
             repo,
             event="hook_block",
@@ -107,59 +108,80 @@ def helper_required_reason() -> str:
 def main() -> int:
     try:
         data = json.load(sys.stdin)
-    except Exception:
+    except Exception as exc:
+        repo = repo_root()
+        record_event(
+            repo,
+            event="hook_error",
+            source="hook",
+            tool="enforce-token-reduce-first",
+            status="error",
+            meta={"stage": "stdin_json", "error": str(exc)[:240]},
+        )
         return 0
 
-    tool_name = data.get("tool_name")
-    tool_input = data.get("tool_input", {}) or {}
-    repo = repo_root()
-    pending = is_pending(repo, session_key(data))
+    try:
+        tool_name = data.get("tool_name")
+        tool_input = data.get("tool_input", {}) or {}
+        repo = repo_root()
+        pending = is_pending(repo, session_key(data))
 
-    if pending:
+        if pending:
+            if tool_name == "Bash":
+                command = tool_input.get("command", "") or ""
+                if HELPER_COMMAND_RE.search(command.split("\n")[0]):
+                    return 0
+                return block(helper_required_reason(), data)
+            if tool_name in {"Glob", "Grep", "Read"}:
+                return block(helper_required_reason(), data)
+            return 0
+
         if tool_name == "Bash":
             command = tool_input.get("command", "") or ""
-            if HELPER_COMMAND_RE.search(command.split("\n")[0]):
+            first_line = command.split("\n")[0]
+            # Safe orchestrators: may carry broad-looking strings as arguments
+            if _SAFE_TOOL_RE.match(first_line):
                 return 0
-            return block(helper_required_reason(), data)
-        if tool_name in {"Glob", "Grep", "Read"}:
-            return block(helper_required_reason(), data)
-        return 0
-
-    if tool_name == "Bash":
-        command = tool_input.get("command", "") or ""
-        first_line = command.split("\n")[0]
-        # Safe orchestrators: may carry broad-looking strings as arguments
-        if _SAFE_TOOL_RE.match(first_line):
+            # Check all lines — broad scans may be on continuation lines
+            lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
+            if any(
+                re.search(pattern, line)
+                for line in lines
+                for pattern in BROAD_BASH_PATTERNS
+            ):
+                return block(
+                    f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
+                    data,
+                )
             return 0
-        # Check all lines — broad scans may be on continuation lines
-        lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
-        if any(
-            re.search(pattern, line)
-            for line in lines
-            for pattern in BROAD_BASH_PATTERNS
-        ):
+
+        if tool_name == "Glob":
+            pattern = tool_input.get("pattern", "") or ""
+            if is_broad_glob(pattern) or is_exploratory_glob(pattern):
+                return block(
+                    f"Blocked exploratory Glob pattern. Use {discovery_hint()} for path-only kickoff, then switch to Read on an exact file path.",
+                    data,
+                )
+            return 0
+
+        if tool_name == "Grep" and is_exploratory_grep(tool_input, repo):
             return block(
-                f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
+                f"Blocked exploratory Grep before helper kickoff. Run {discovery_hint()} first, then use Grep on an exact file path or a much narrower scope.",
                 data,
             )
-        return 0
 
-    if tool_name == "Glob":
-        pattern = tool_input.get("pattern", "") or ""
-        if is_broad_glob(pattern) or is_exploratory_glob(pattern):
-            return block(
-                f"Blocked exploratory Glob pattern. Use {discovery_hint()} for path-only kickoff, then switch to Read on an exact file path.",
-                data,
-            )
         return 0
-
-    if tool_name == "Grep" and is_exploratory_grep(tool_input, repo):
-        return block(
-            f"Blocked exploratory Grep before helper kickoff. Run {discovery_hint()} first, then use Grep on an exact file path or a much narrower scope.",
-            data,
+    except Exception as exc:
+        repo = repo_root()
+        record_event(
+            repo,
+            event="hook_error",
+            source="hook",
+            tool="enforce-token-reduce-first",
+            status="error",
+            meta={"stage": "runtime", "error": str(exc)[:240], "session_key": session_key(data)},
         )
-
-    return 0
+        return 0
 
 
 if __name__ == "__main__":

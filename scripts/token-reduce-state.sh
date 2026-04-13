@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+repo_root="${TOKEN_REDUCE_REPO_ROOT:-${CLAUDE_PROJECT_DIR:-$(pwd)}}"
+if git -C "$repo_root" rev-parse --show-toplevel >/dev/null 2>&1; then
+  repo_root="$(git -C "$repo_root" rev-parse --show-toplevel)"
+fi
 state_dir="$repo_root/.claude/token-reduce-state"
 
 if [[ "${1:-}" != "clear" ]]; then
