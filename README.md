@@ -156,6 +156,7 @@ Useful commands:
 ./scripts/token-reduce-manage.sh rolling-baseline
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh workspace-auto-update
 ./scripts/token-reduce-manage.sh self-improve
 ./scripts/token-reduce-manage.sh workspace-audit
 ./scripts/token-reduce-manage.sh workspace-install
@@ -217,13 +218,15 @@ token-reduce can check for new commits and optionally fast-forward itself when s
 ```bash
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh settings set updates.auto_update true
+./scripts/token-reduce-manage.sh settings set updates.workspace_auto_update true
 ./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh workspace-auto-update
 ./scripts/token-reduce-manage.sh deps-check
 ./scripts/token-reduce-manage.sh deps-update
 ./scripts/token-reduce-manage.sh doctor
 ```
 
-`auto-update` only runs when the worktree is clean and can fast-forward.
+`auto-update` only runs when the worktree is clean and can fast-forward. When `updates.workspace_auto_update=true`, it also force-relinks sibling repos to the canonical skill root and emits workspace version/commit drift.
 
 ## Optional Structural Accelerator
 

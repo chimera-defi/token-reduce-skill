@@ -4,13 +4,27 @@ from __future__ import annotations
 
 import argparse
 import json
+from copy import deepcopy
 from typing import Any
 
 from token_reduce_config import DEFAULT_CONFIG, load_config, parse_value, save_config, set_nested
 
 
-def cmd_show() -> int:
+def redact_config(config: dict[str, Any]) -> dict[str, Any]:
+    redacted = deepcopy(config)
+    telemetry = redacted.get("telemetry")
+    if isinstance(telemetry, dict):
+        for key in ("api_key", "signing_secret"):
+            value = telemetry.get(key)
+            if isinstance(value, str) and value:
+                telemetry[key] = "***redacted***"
+    return redacted
+
+
+def cmd_show(*, raw: bool) -> int:
     config = load_config()
+    if not raw:
+        config = redact_config(config)
     print(json.dumps(config, indent=2))
     return 0
 
@@ -87,7 +101,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("show")
+    show_parser = sub.add_parser("show")
+    show_parser.add_argument("--raw", action="store_true", help="Show secrets without redaction")
     set_parser = sub.add_parser("set")
     set_parser.add_argument("key")
     set_parser.add_argument("value")
@@ -101,7 +116,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.command == "show":
-        return cmd_show()
+        return cmd_show(raw=args.raw)
     if args.command == "set":
         return cmd_set(args.key, args.value)
     if args.command == "reset":

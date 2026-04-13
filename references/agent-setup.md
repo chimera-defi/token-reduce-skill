@@ -78,6 +78,7 @@ token-reduce-manage settings set telemetry.endpoint https://your-endpoint.exampl
 token-reduce-manage telemetry-sync
 token-reduce-manage updates
 token-reduce-manage auto-update
+token-reduce-manage workspace-auto-update
 token-reduce-manage deps-check
 token-reduce-manage deps-update
 ```

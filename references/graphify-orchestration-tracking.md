@@ -102,3 +102,24 @@ Current keep/remove gate for this layer:
   - `repos_symlinked_to_expected_skill_root: 14/14`
 
 Result: all local sibling repos are now aligned to the same token-reduce skill root/version/commit. Remaining gap is usage signal depth in low-activity repos, not install/version drift.
+
+## 2026-04-13 Workspace Auto-Update Policy Update
+
+- Added workspace-aware update flow to `scripts/token-reduce-update-check.py`.
+- `auto-update` can now also run sibling-repo sync/audit when workspace auto-update policy is enabled.
+- New manage command: `./scripts/token-reduce-manage.sh workspace-auto-update`
+  - safe ff-only repo update
+  - workspace force-relink propagation
+  - workspace audit output including version/commit drift
+- Added explicit config keys:
+  - `updates.workspace_auto_update` (default `true`)
+  - `updates.workspace_force_relink` (default `true`)
+
+Latest run result:
+
+- `repos_changed`: `0`
+- `repos_with_skill_version_drift`: `0`
+- `repos_with_skill_commit_drift`: `0`
+- `repos_symlinked_to_expected_skill_root`: `14/14`
+
+This keeps “all local repos on current token-reduce” as an operational default, not an ad-hoc manual check.
