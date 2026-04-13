@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 from pathlib import Path
 
 try:
@@ -36,11 +38,28 @@ def emit(data) -> None:
         print(json.dumps(data, indent=2))
 
 
-def telemetry_root() -> Path:
-    return Path(__file__).resolve().parents[1]
+def telemetry_root(project_root: str) -> Path:
+    base = Path(project_root).resolve()
+    proc = subprocess.run(
+        ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    candidate = (proc.stdout or "").strip()
+    if candidate:
+        return Path(candidate).resolve()
+    return base
 
 
-def log_helper_event(*, status: str, command: str, query: str, output: object | None = None) -> None:
+def log_helper_event(
+    *,
+    project_root: str,
+    status: str,
+    command: str,
+    query: str,
+    output: object | None = None,
+) -> None:
     if record_event is None:
         return
     if output is None:
@@ -54,13 +73,18 @@ def log_helper_event(*, status: str, command: str, query: str, output: object | 
         chars = len(text)
         lines = len([line for line in text.splitlines() if line.strip()])
     record_event(
-        telemetry_root(),
+        telemetry_root(project_root),
         event="helper_invocation",
         source="helper",
         tool="token_reduce_structural",
         status=status,
         query=f"{command}:{query}",
-        meta={"backend": "token-savior", "chars": chars, "lines": lines},
+        meta={
+            "backend": "token-savior",
+            "context": os.environ.get("TOKEN_REDUCE_TELEMETRY_CONTEXT", "runtime"),
+            "chars": chars,
+            "lines": lines,
+        },
     )
 
 
@@ -151,11 +175,23 @@ def main() -> int:
             return 2
 
         emit(result)
-        log_helper_event(status="ok", command=args.command, query=lookup_value, output=result)
+        log_helper_event(
+            project_root=args.project_root,
+            status="ok",
+            command=args.command,
+            query=lookup_value,
+            output=result,
+        )
         return 0
     except Exception:
         arg_value = getattr(args, "symbol", "") or getattr(args, "query", "")
-        log_helper_event(status="error", command=args.command, query=str(arg_value), output=None)
+        log_helper_event(
+            project_root=args.project_root,
+            status="error",
+            command=args.command,
+            query=str(arg_value),
+            output=None,
+        )
         raise
 
     return 2

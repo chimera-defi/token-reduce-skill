@@ -4,7 +4,14 @@ set -euo pipefail
 WORKSPACE_ROOT="${1:-/root/.openclaw/workspace/dev}"
 HELPER="${2:-token-reduce-paths}"
 QUERY="${3:-token reduce}"
-PER_REPO_TIMEOUT="${PER_REPO_TIMEOUT:-15}"
+PER_REPO_TIMEOUT="${PER_REPO_TIMEOUT:-30}"
+SKIP_SOURCE_REPO="${SKIP_SOURCE_REPO:-1}"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_REPO_ROOT="$SCRIPT_ROOT"
+if [[ "$SOURCE_REPO_ROOT" == *"/.worktrees/"* ]]; then
+  SOURCE_REPO_ROOT="${SOURCE_REPO_ROOT%%/.worktrees/*}"
+fi
+SOURCE_REPO_NAME="$(basename "$SOURCE_REPO_ROOT")"
 
 if ! command -v "$HELPER" >/dev/null 2>&1; then
   echo "missing helper on PATH: $HELPER" >&2
@@ -18,6 +25,12 @@ skip_count=0
 
 while read -r repo; do
   [[ -n "$repo" ]] || continue
+
+  repo_name="$(basename "$repo")"
+  if [[ "$SKIP_SOURCE_REPO" == "1" && "$repo_name" == "$SOURCE_REPO_NAME" ]]; then
+    skip_count=$((skip_count + 1))
+    continue
+  fi
 
   # Only treat direct git roots/worktrees as projects. Do not inherit a parent git repo.
   if [[ ! -e "$repo/.git" ]]; then
