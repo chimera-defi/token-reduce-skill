@@ -83,3 +83,22 @@ Current keep/remove gate for this layer:
 1. Keep only if graphify-hit quality is stable on exact-symbol tasks.
 2. Keep only if runtime telemetry shows net latency/token wins vs helper fallback.
 3. Remove immediately if fallback rate or quality misses rise without measurable runtime benefit.
+
+## 2026-04-13 Workspace Version Alignment Update
+
+- Added `--force-relink` to `scripts/install_workspace_skill.py` so sibling repos with embedded `skills/token-reduce` directories can be safely backed up and relinked to the canonical workspace skill root.
+- Updated `scripts/audit_workspace_skills.py` to emit explicit install mode and drift fields:
+  - `skill_install_mode`, `skill_source_path`, `skill_version`, `skill_commit`
+  - `skill_version_match`, `skill_commit_match`
+  - aggregate summary metrics for version/commit drift and symlink alignment
+- Ran forced relink across workspace; two repos converted from embedded copies to canonical symlink installs:
+  - `etc-orbit-pilot-apps`
+  - `ethglobal-cannes-2026-intelligence-exchange`
+- Re-ran workspace audit and confirmed no drift against expected skill metadata:
+  - `expected_skill.version: 0.1.0`
+  - `expected_skill.commit: 113b509`
+  - `repos_with_skill_version_drift: 0`
+  - `repos_with_skill_commit_drift: 0`
+  - `repos_symlinked_to_expected_skill_root: 14/14`
+
+Result: all local sibling repos are now aligned to the same token-reduce skill root/version/commit. Remaining gap is usage signal depth in low-activity repos, not install/version drift.

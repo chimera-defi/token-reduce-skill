@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, timezone
@@ -29,6 +30,12 @@ SKILL_NAMES = ("token-reduce", "axi", "caveman", "caveman-cn", "caveman-es", "co
 class RepoSignals:
     repo: str
     local_skill_installed: bool
+    skill_install_mode: str
+    skill_source_path: str
+    skill_version: str
+    skill_commit: str
+    skill_version_match: bool
+    skill_commit_match: bool
     token_reduce_docs: bool
     docs_with_token_reduce: list[str]
     session_count: int
@@ -110,6 +117,67 @@ def doc_signals(repo: Path) -> tuple[list[str], bool, bool]:
 def local_skill_state(repo: Path) -> bool:
     skill_dir = repo / "skills" / "token-reduce"
     return (skill_dir / "SKILL.md").exists() and (skill_dir / "scripts" / "token-reduce-paths.sh").exists()
+
+
+def package_version(path: Path) -> str:
+    package_json = path / "package.json"
+    if not package_json.exists():
+        return ""
+    try:
+        payload = json.loads(package_json.read_text(encoding="utf-8", errors="ignore"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    value = payload.get("version")
+    return value.strip() if isinstance(value, str) else ""
+
+
+def git_head(path: Path) -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "--short", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return (proc.stdout or "").strip() if proc.returncode == 0 else ""
+
+
+def skill_install_details(
+    repo: Path,
+    *,
+    expected_root: Path,
+    expected_version: str,
+    expected_commit: str,
+) -> dict[str, object]:
+    skill = repo / "skills" / "token-reduce"
+    if not skill.exists() and not skill.is_symlink():
+        return {
+            "installed": False,
+            "install_mode": "missing",
+            "source_path": "",
+            "skill_version": "",
+            "skill_commit": "",
+            "version_match": False,
+            "commit_match": False,
+        }
+
+    install_mode = "symlink" if skill.is_symlink() else "directory"
+    try:
+        resolved = skill.resolve(strict=True)
+    except OSError:
+        resolved = skill.resolve()
+    skill_version = package_version(resolved)
+    skill_commit = git_head(resolved)
+    version_match = bool(expected_version) and skill_version == expected_version
+    commit_match = bool(expected_commit) and skill_commit == expected_commit
+    return {
+        "installed": local_skill_state(repo),
+        "install_mode": install_mode,
+        "source_path": str(resolved),
+        "skill_version": skill_version,
+        "skill_commit": skill_commit,
+        "version_match": version_match,
+        "commit_match": commit_match,
+    }
 
 
 def skill_state(home: Path) -> dict[str, dict[str, bool]]:
@@ -286,7 +354,9 @@ def telemetry_helper_calls(repo: Path, cutoff: datetime) -> int:
     return count
 
 
-def build_rows(workspace_root: Path, days: int, include_source_repo: bool) -> tuple[list[RepoSignals], dict[str, int]]:
+def build_rows(
+    workspace_root: Path, days: int, include_source_repo: bool
+) -> tuple[list[RepoSignals], dict[str, object]]:
     excluded: set[str] = set()
     if not include_source_repo:
         source_repo = default_excluded_repo(workspace_root)
@@ -294,6 +364,9 @@ def build_rows(workspace_root: Path, days: int, include_source_repo: bool) -> tu
             excluded.add(source_repo)
     repos = workspace_repos(workspace_root, excluded=excluded)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    expected_root = Path(__file__).resolve().parents[1].resolve()
+    expected_version = package_version(expected_root)
+    expected_commit = git_head(expected_root)
     claude_usage = claude_usage_by_repo(workspace_root, repos, cutoff)
     codex_usage = codex_usage_by_repo(workspace_root, cutoff)
     usage = merge_usage_stats(claude_usage, codex_usage)
@@ -318,14 +391,28 @@ def build_rows(workspace_root: Path, days: int, include_source_repo: bool) -> tu
             usage_status = "telemetry_only"
         else:
             usage_status = "no_recent_sessions" if session_count == 0 else "no_helper_usage"
-        installed = local_skill_state(repo)
+        skill_meta = skill_install_details(
+            repo,
+            expected_root=expected_root,
+            expected_version=expected_version,
+            expected_commit=expected_commit,
+        )
+        installed = bool(skill_meta["installed"])
         docs_ok = bool(refs)
         install_and_docs = installed and docs_ok
-        fully_compliant = install_and_docs and helper_used_recently
+        version_match = bool(skill_meta["version_match"])
+        commit_match = bool(skill_meta["commit_match"])
+        fully_compliant = install_and_docs and helper_used_recently and version_match and commit_match
         rows.append(
             RepoSignals(
                 repo=repo.name,
                 local_skill_installed=installed,
+                skill_install_mode=str(skill_meta["install_mode"]),
+                skill_source_path=str(skill_meta["source_path"]),
+                skill_version=str(skill_meta["skill_version"]),
+                skill_commit=str(skill_meta["skill_commit"]),
+                skill_version_match=version_match,
+                skill_commit_match=commit_match,
                 token_reduce_docs=docs_ok,
                 docs_with_token_reduce=refs,
                 session_count=session_count,
@@ -337,10 +424,16 @@ def build_rows(workspace_root: Path, days: int, include_source_repo: bool) -> tu
                 fully_compliant=fully_compliant,
             )
         )
-    return rows, {"caveman_docs": caveman_docs, "axi_docs": axi_docs}
+    return rows, {
+        "caveman_docs": caveman_docs,
+        "axi_docs": axi_docs,
+        "expected_skill_root": str(expected_root),
+        "expected_skill_version": expected_version,
+        "expected_skill_commit": expected_commit,
+    }
 
 
-def summarize(rows: list[RepoSignals], extra: dict[str, int]) -> dict:
+def summarize(rows: list[RepoSignals], extra: dict[str, object]) -> dict:
     total = len(rows)
     installed = sum(int(r.local_skill_installed) for r in rows)
     docs = sum(int(r.token_reduce_docs) for r in rows)
@@ -350,6 +443,12 @@ def summarize(rows: list[RepoSignals], extra: dict[str, int]) -> dict:
     helper_used_repos = sum(int(r.helper_used_recently) for r in rows)
     active_repos_with_helper = sum(int(r.helper_used_recently and r.session_count > 0) for r in rows)
     telemetry_only_repos = sum(int(r.telemetry_helper_calls > 0 and r.helper_sessions == 0) for r in rows)
+    version_drift = sum(int(r.local_skill_installed and not r.skill_version_match) for r in rows)
+    commit_drift = sum(int(r.local_skill_installed and not r.skill_commit_match) for r in rows)
+    symlink_expected = sum(
+        int(r.skill_install_mode == "symlink" and r.skill_source_path == str(extra.get("expected_skill_root", "")))
+        for r in rows
+    )
     fully_compliant = sum(int(r.fully_compliant) for r in rows)
     pct = lambda n: round((n * 100.0 / total), 1) if total else 0.0
     pct_active = lambda n: round((n * 100.0 / repos_with_sessions), 1) if repos_with_sessions else 0.0
@@ -362,6 +461,9 @@ def summarize(rows: list[RepoSignals], extra: dict[str, int]) -> dict:
         "repos_with_helper_usage": helper_used_repos,
         "active_repos_with_helper_usage": active_repos_with_helper,
         "repos_with_telemetry_only_usage": telemetry_only_repos,
+        "repos_with_skill_version_drift": version_drift,
+        "repos_with_skill_commit_drift": commit_drift,
+        "repos_symlinked_to_expected_skill_root": symlink_expected,
         "fully_compliant_repos": fully_compliant,
         "total_recent_sessions": sessions,
         "caveman_docs": int(extra.get("caveman_docs", 0)),
@@ -372,6 +474,9 @@ def summarize(rows: list[RepoSignals], extra: dict[str, int]) -> dict:
         "repos_with_helper_usage_pct": pct(helper_used_repos),
         "active_repos_with_helper_usage_pct": pct_active(active_repos_with_helper),
         "repos_with_telemetry_only_usage_pct": pct(telemetry_only_repos),
+        "repos_with_skill_version_drift_pct": pct(version_drift),
+        "repos_with_skill_commit_drift_pct": pct(commit_drift),
+        "repos_symlinked_to_expected_skill_root_pct": pct(symlink_expected),
         "fully_compliant_repos_pct": pct(fully_compliant),
     }
 
@@ -386,10 +491,17 @@ def build_payload(workspace_root: Path, days: int, include_source_repo: bool) ->
         "commands": command_state(),
         "skills": skill_state(Path.home()),
         "summary": summarize(rows, extra),
+        "expected_skill": {
+            "root": extra.get("expected_skill_root", ""),
+            "version": extra.get("expected_skill_version", ""),
+            "commit": extra.get("expected_skill_commit", ""),
+        },
         "gaps": {
             "missing_local_skill": [r.repo for r in rows if not r.local_skill_installed],
             "missing_doc_guidance": [r.repo for r in rows if not r.token_reduce_docs],
             "active_without_helper_usage": [r.repo for r in rows if r.session_count > 0 and not r.helper_used_recently],
+            "skill_version_drift": [r.repo for r in rows if r.local_skill_installed and not r.skill_version_match],
+            "skill_commit_drift": [r.repo for r in rows if r.local_skill_installed and not r.skill_commit_match],
             "fully_compliant": [r.repo for r in rows if r.fully_compliant],
         },
         "repos": [asdict(r) for r in rows],

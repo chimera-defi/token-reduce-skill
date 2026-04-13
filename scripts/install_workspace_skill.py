@@ -76,7 +76,13 @@ def is_placeholder_skill_dir(path: Path) -> bool:
     return True
 
 
-def ensure_skill_link(repo: Path, skill_source: Path, dry_run: bool) -> tuple[str, bool]:
+def backup_name() -> str:
+    return f"token-reduce.backup-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+
+
+def ensure_skill_link(
+    repo: Path, skill_source: Path, dry_run: bool, force_relink: bool
+) -> tuple[str, bool]:
     skills_dir = repo / "skills"
     target = skills_dir / "token-reduce"
     changed = False
@@ -89,8 +95,23 @@ def ensure_skill_link(repo: Path, skill_source: Path, dry_run: bool) -> tuple[st
                 resolved = None
             if resolved == skill_source.resolve():
                 return "already-linked", changed
+            if force_relink:
+                if not dry_run:
+                    target.unlink(missing_ok=True)
+                    target.symlink_to(skill_source)
+                changed = True
+                return "relinked-existing-symlink", changed
             return "conflict-existing-symlink", changed
         if (target / "SKILL.md").exists():
+            if force_relink:
+                backup = skills_dir / backup_name()
+                if backup.exists():
+                    return "conflict-backup-exists", changed
+                if not dry_run:
+                    shutil.move(str(target), str(backup))
+                    target.symlink_to(skill_source)
+                changed = True
+                return f"relinked-from-dir-backup:{backup.name}", changed
             return "already-present", changed
         if is_placeholder_skill_dir(target):
             if not dry_run:
@@ -151,7 +172,13 @@ def ensure_doc_block(path: Path, dry_run: bool) -> tuple[str, bool]:
     return action, changed
 
 
-def install_workspace(workspace_root: Path, skill_source: Path, include_self: bool, dry_run: bool) -> dict:
+def install_workspace(
+    workspace_root: Path,
+    skill_source: Path,
+    include_self: bool,
+    dry_run: bool,
+    force_relink: bool,
+) -> dict:
     repo_results: list[RepoInstallResult] = []
     total_changed = 0
     source_root = skill_source.resolve()
@@ -162,7 +189,7 @@ def install_workspace(workspace_root: Path, skill_source: Path, include_self: bo
         if not include_self and repo.resolve() in {source_root, canonical_root}:
             continue
 
-        skill_link, changed_link = ensure_skill_link(repo, source_root, dry_run)
+        skill_link, changed_link = ensure_skill_link(repo, source_root, dry_run, force_relink)
         doc_path = target_doc(repo)
         doc_action, changed_doc = ensure_doc_block(doc_path, dry_run)
         changed = changed_link or changed_doc
@@ -183,6 +210,7 @@ def install_workspace(workspace_root: Path, skill_source: Path, include_self: bo
         "workspace_root": str(workspace_root),
         "skill_source": str(source_root),
         "dry_run": dry_run,
+        "force_relink": force_relink,
         "repo_count": len(repo_results),
         "repos_changed": total_changed,
         "results": [asdict(row) for row in repo_results],
@@ -198,6 +226,7 @@ def main() -> int:
     parser.add_argument("--skill-source", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--include-self", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--force-relink", action="store_true")
     args = parser.parse_args()
 
     payload = install_workspace(
@@ -205,6 +234,7 @@ def main() -> int:
         skill_source=Path(args.skill_source).resolve(),
         include_self=args.include_self,
         dry_run=args.dry_run,
+        force_relink=args.force_relink,
     )
     print(json.dumps(payload, indent=2))
     return 0
