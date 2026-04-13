@@ -33,6 +33,8 @@ Default config:
   },
   "updates": {
     "auto_update": false,
+    "workspace_auto_update": true,
+    "workspace_force_relink": true,
     "check_on_manage": true
   }
 }
@@ -46,7 +48,10 @@ Manage config:
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
 ./scripts/token-reduce-manage.sh settings set updates.auto_update true
+./scripts/token-reduce-manage.sh settings set updates.workspace_auto_update true
 ```
+
+`settings show` redacts secrets by default; use `./scripts/token-reduce-manage.sh settings show --raw` only when you explicitly need full values.
 
 ## Telemetry Sync
 
@@ -87,9 +92,12 @@ Commands:
 ```bash
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh auto-update
+./scripts/token-reduce-manage.sh workspace-auto-update
 ./scripts/token-reduce-manage.sh deps-check
 ./scripts/token-reduce-manage.sh deps-update
 ```
+
+`workspace-auto-update` runs safe repo fast-forward, force-relinks sibling repos to the canonical token-reduce root, and writes a workspace audit with version/commit drift fields.
 
 ## One-Shot Maintenance
 
