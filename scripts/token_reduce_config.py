@@ -25,6 +25,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "updates": {
         "auto_update": False,
+        "workspace_auto_update": True,
+        "workspace_force_relink": True,
         "check_on_manage": True,
     },
 }

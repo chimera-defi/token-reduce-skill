@@ -24,7 +24,8 @@ commands:
   telemetry-sync  Run opt-in telemetry snapshot and optional upload
   rolling-baseline  Generate rolling pre/post trend report from telemetry snapshots
   updates     Check for updates and print status
-  auto-update Safely fast-forward update when eligible
+  auto-update Safely fast-forward update when eligible (optionally sync workspace by config)
+  workspace-auto-update  Fast-forward + force-relink workspace + version/commit drift audit
   self-improve  Run benchmark + telemetry + review + update check
   workspace-audit  Audit skill install and doc adoption across sibling repos
   workspace-install  Install skill links and token-reduce routing guidance across sibling repos
@@ -107,6 +108,9 @@ case "$cmd" in
     ;;
   auto-update)
     exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update "$@"
+    ;;
+  workspace-auto-update)
+    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update --workspace-sync "$@"
     ;;
   self-improve)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
