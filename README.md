@@ -11,6 +11,35 @@ Most context waste in a coding session happens at the front — the agent scans 
 
 > **Agents:** read [`llms.txt`](./llms.txt) for a self-contained install + usage guide.
 
+## Current Version
+
+- **Skill version:** `0.1.0` (from `package.json`)
+- **Package name:** `token-reduce-mcp`
+
+What this version does:
+
+- helper-first discovery routing (`token-reduce-paths` / `token-reduce-snippet`)
+- pre-tool enforcement hooks that block broad first-pass scans
+- managed telemetry loop (measure/review/rolling baseline + optional remote sync)
+- workspace install + workspace audit with explicit version/commit drift reporting
+- safe auto-update flow with workspace propagation (`workspace-auto-update`)
+- optional companion-tool routing policy (RTK, caveman, AXI, token-savior; graphify remains optional/experimental and disabled by default)
+
+## Included Components
+
+| Component | Included | Purpose |
+|---|---|---|
+| Skill helpers + hooks | Yes | Keep discovery and reads minimal before expanding context |
+| Manage scripts (`token-reduce-manage.sh`) | Yes | Validate, benchmark, review, update, workspace rollout/audit |
+| MCP server (`mcp/server.mjs`) | Yes | Expose token-reduce behavior through MCP integration |
+| Workspace drift checks | Yes | Track `skill_version`/`skill_commit` alignment across sibling repos |
+| Workspace auto-update | Yes | Fast-forward + force-relink + audit in one command |
+| QMD backend | Optional (recommended) | BM25 path/snippet retrieval |
+| RTK | Optional (recommended) | Command-output compression |
+| caveman | Optional | Output + memory compression workflow |
+| AXI (`gh-axi`, `chrome-devtools-axi`) | Optional | Lower-turn GitHub/browser operations |
+| token-savior | Optional | Exact-symbol structural lookup companion |
+
 ## Agent Install
 
 Paste this into your agent chat and it will install itself:
