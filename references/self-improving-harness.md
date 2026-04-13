@@ -21,8 +21,15 @@ Default config:
   "telemetry": {
     "enabled": false,
     "endpoint": "",
+    "api_key": "",
+    "signing_secret": "",
     "workspace_root": "/root/.openclaw/workspace/dev",
+    "workspace_days": 14,
+    "workspace_include_source_repo": false,
     "upload_timeout_seconds": 10
+  },
+  "benchmark": {
+    "max_age_days": 14
   },
   "updates": {
     "auto_update": false,
@@ -54,6 +61,7 @@ Command:
 
 ```bash
 ./scripts/token-reduce-manage.sh telemetry-sync
+./scripts/token-reduce-manage.sh rolling-baseline
 ```
 
 Local receiver example:
@@ -87,10 +95,12 @@ Commands:
 
 `self-improve` runs a compact maintenance pass:
 
-- composite benchmark
+- composite benchmark (tagged as `benchmark` context; excluded from runtime telemetry summaries)
 - dependency freshness check
 - global measure + review refresh
+- workspace audit snapshot (`artifacts/token-reduction/workspace-audit-YYYY-MM-DD.json`)
 - telemetry sync
+- rolling baseline trend report (`artifacts/token-reduction/rolling-baseline-YYYY-MM-DD.{json,md}`)
 - update check
 
 ```bash

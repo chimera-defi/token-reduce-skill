@@ -16,6 +16,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "api_key": "",
         "signing_secret": "",
         "workspace_root": "/root/.openclaw/workspace/dev",
+        "workspace_days": 14,
+        "workspace_include_source_repo": False,
         "upload_timeout_seconds": 10,
     },
     "benchmark": {

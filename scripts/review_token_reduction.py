@@ -10,8 +10,18 @@ from measure_token_reduction import measure
 
 
 def health_score(report: dict) -> float:
-    compliance = float(report["compliance"]["discovery_compliance_pct"])
-    helper = float(report["routing"]["helper_first_or_helper_any_pct"])
+    compliance = float(
+        report["compliance"].get(
+            "discovery_compliance_pct_observed",
+            report["compliance"]["discovery_compliance_pct"],
+        )
+    )
+    helper = float(
+        report["adoption"].get(
+            "helper_sessions_pct_observed_discovery",
+            report["routing"]["helper_first_or_helper_any_pct"],
+        )
+    )
     telemetry_events = int(report["telemetry"]["event_count"])
     telemetry_component = 100.0 if telemetry_events > 0 else 0.0
     return round((compliance * 0.45) + (helper * 0.4) + (telemetry_component * 0.15), 1)
@@ -20,8 +30,13 @@ def health_score(report: dict) -> float:
 def build_findings(report: dict) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     session_count = int(report.get("session_count", 0))
-    compliance = float(report["compliance"]["discovery_compliance_pct"])
-    helper = float(report["routing"]["helper_first_or_helper_any_pct"])
+    compliance_all = float(report["compliance"]["discovery_compliance_pct"])
+    compliance_observed = float(report["compliance"].get("discovery_compliance_pct_observed", compliance_all))
+    helper_all = float(report["routing"]["helper_first_or_helper_any_pct"])
+    helper_observed = float(report["adoption"].get("helper_sessions_pct_observed_discovery", helper_all))
+    observed_discovery_sessions = int(report["compliance"].get("sessions_with_first_discovery_observed", 0))
+    compliance = compliance_observed if observed_discovery_sessions > 0 else compliance_all
+    helper = helper_observed if observed_discovery_sessions > 0 else helper_all
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
     mentions_without_helper = int(report["adoption"].get("mention_without_helper_sessions", 0))
     caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
@@ -29,6 +44,13 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
     axi_tool_pct = float(report["adoption"].get("axi_tool_sessions_pct", 0.0))
     telemetry_events = int(report["telemetry"]["event_count"])
+    efficiency = report["telemetry"].get("efficiency", {})
+    helper_error_rate = float(efficiency.get("helper_error_rate_pct", 0.0))
+    retry_overhead_pct = float(efficiency.get("retry_overhead_pct", 0.0))
+    helper_latency_p95_ms = float(efficiency.get("helper_latency_p95_ms", 0.0))
+    helper_latency_max_ms = float(efficiency.get("helper_latency_max_ms", 0.0))
+    hook_errors = int(efficiency.get("hook_error_count", 0))
+    pending_leak_count = int(efficiency.get("pending_leak_count", 0))
 
     codex = report["by_source"].get("codex", {})
     claude = report["by_source"].get("claude", {})
@@ -64,12 +86,68 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "Confirm helper wrappers and Claude hooks are writing to artifacts/token-reduction/events.jsonl.",
             }
         )
+    if helper_error_rate > 5.0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "helper_errors",
+                "finding": f"Helper error rate is elevated at {helper_error_rate:.1f}%.",
+                "recommendation": "Inspect helper failures and root-cause command/repo resolution issues so helper calls are not retried repeatedly.",
+            }
+        )
+    if retry_overhead_pct > 10.0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "retry_overhead",
+                "finding": f"Helper retry overhead is high at {retry_overhead_pct:.1f}% of helper calls.",
+                "recommendation": "Track repeated helper queries and enforce dependency-health fixes when retries exceed the threshold.",
+            }
+        )
+    if helper_latency_p95_ms > 8000.0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "latency_overhead",
+                "finding": (
+                    f"Helper latency is elevated (p95 {helper_latency_p95_ms:.0f} ms, "
+                    f"max {helper_latency_max_ms:.0f} ms)."
+                ),
+                "recommendation": (
+                    "Inspect dependency latency (QMD collection refresh/search, filesystem scope, "
+                    "and fallback path noise) and treat high-latency calls as overhead even when status is ok."
+                ),
+            }
+        )
+    if hook_errors > 0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "hook_runtime_errors",
+                "finding": f"Hook runtime errors were recorded ({hook_errors}).",
+                "recommendation": "Stabilize hook input parsing and state-path resolution so pending state and enforcement behavior remain consistent.",
+            }
+        )
+    if pending_leak_count > 0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "hook_state_persistence",
+                "finding": f"Pending helper state appears to leak ({pending_leak_count} more marks than clears).",
+                "recommendation": "Audit session-key handling and helper clear paths so marked pending state is reliably cleared after compliant helper kickoff.",
+            }
+        )
     if compliance < 80.0:
+        scope_note = (
+            " among sessions with observed discovery actions"
+            if observed_discovery_sessions > 0
+            else ""
+        )
         findings.append(
             {
                 "priority": "high",
                 "area": "hook_coverage",
-                "finding": f"Discovery compliance is only {compliance:.1f}%.",
+                "finding": f"Discovery compliance{scope_note} is only {compliance:.1f}%.",
                 "recommendation": "Tighten routing so broad Grep, Glob, and Bash fallbacks are blocked more consistently before discovery starts.",
             }
         )
@@ -83,11 +161,16 @@ def build_findings(report: dict) -> list[dict[str, str]]:
             }
         )
     if helper < 60.0:
+        helper_scope_note = (
+            " among sessions with observed discovery actions"
+            if observed_discovery_sessions > 0
+            else ""
+        )
         findings.append(
             {
                 "priority": "medium",
                 "area": "helper_adoption",
-                "finding": f"Helper usage is still only {helper:.1f}% of measured sessions.",
+                "finding": f"Helper usage{helper_scope_note} is still only {helper:.1f}%.",
                 "recommendation": "Improve install verification and first-run prompting so the helper path gets exercised immediately after setup.",
             }
         )
@@ -154,11 +237,20 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
         "",
         f"- Health score: `{health_score(report)}`",
         f"- Session count: `{report['session_count']}`",
-        f"- Discovery compliance: `{report['compliance']['discovery_compliance_pct']}%`",
-        f"- Helper usage: `{report['routing']['helper_first_or_helper_any_pct']}%`",
+        f"- Discovery sessions observed: `{report['compliance'].get('sessions_with_first_discovery_observed', 0)}`",
+        f"- Discovery compliance (all sessions): `{report['compliance']['discovery_compliance_pct']}%`",
+        f"- Discovery compliance (observed sessions): `{report['compliance'].get('discovery_compliance_pct_observed', report['compliance']['discovery_compliance_pct'])}%`",
+        f"- Helper usage (all sessions): `{report['routing']['helper_first_or_helper_any_pct']}%`",
+        f"- Helper usage (observed sessions): `{report['adoption'].get('helper_sessions_pct_observed_discovery', report['routing']['helper_first_or_helper_any_pct'])}%`",
         f"- Caveman command usage: `{report['adoption'].get('caveman_command_pct', 0.0)}%`",
         f"- AXI tool usage: `{report['adoption'].get('axi_tool_sessions_pct', 0.0)}%`",
-        f"- Telemetry events (14d): `{report['telemetry']['event_count']}`",
+        f"- Telemetry events (14d, runtime): `{report['telemetry']['event_count']}`",
+        f"- Telemetry events excluded (benchmark/test): `{report['telemetry'].get('excluded_event_count', 0)}`",
+        f"- Helper error rate: `{report['telemetry'].get('efficiency', {}).get('helper_error_rate_pct', 0.0)}%`",
+        f"- Retry overhead: `{report['telemetry'].get('efficiency', {}).get('retry_overhead_pct', 0.0)}%`",
+        f"- Helper latency p95: `{report['telemetry'].get('efficiency', {}).get('helper_latency_p95_ms', 0.0)} ms`",
+        f"- Hook errors: `{report['telemetry'].get('efficiency', {}).get('hook_error_count', 0)}`",
+        f"- Pending state leaks: `{report['telemetry'].get('efficiency', {}).get('pending_leak_count', 0)}`",
         "",
         "## Prioritized Findings",
         "",
@@ -192,8 +284,17 @@ def main() -> int:
         "summary": {
             "session_count": report["session_count"],
             "discovery_compliance_pct": report["compliance"]["discovery_compliance_pct"],
+            "discovery_compliance_pct_observed": report["compliance"].get(
+                "discovery_compliance_pct_observed",
+                report["compliance"]["discovery_compliance_pct"],
+            ),
             "helper_first_or_helper_any_pct": report["routing"]["helper_first_or_helper_any_pct"],
+            "helper_sessions_pct_observed_discovery": report["adoption"].get(
+                "helper_sessions_pct_observed_discovery",
+                report["routing"]["helper_first_or_helper_any_pct"],
+            ),
             "telemetry_event_count": report["telemetry"]["event_count"],
+            "telemetry_excluded_event_count": report["telemetry"].get("excluded_event_count", 0),
         },
         "findings": findings,
         "report": report,

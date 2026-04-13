@@ -110,12 +110,12 @@ Composite benchmark in this repo (quality-gated mixed workload):
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1033` | baseline | `ok` |
-| `qmd_only` | `313` | `69.7%` saved | `quality-fail` |
-| `token_reduce_only` | `374` | `63.8%` saved | `quality-fail` |
-| `token_savior_only` | `621` | `39.9%` saved | `ok` |
-| `rtk_only` | `595` | `42.4%` saved | `ok` |
-| `composite_stack` | `340` | `67.1%` saved | `ok` |
+| `broad_shell` | `1146` | baseline | `ok` |
+| `qmd_only` | `312` | `72.8%` saved | `quality-fail` |
+| `token_reduce_only` | `393` | `65.7%` saved | `quality-fail` |
+| `token_savior_only` | `621` | `45.8%` saved | `ok` |
+| `rtk_only` | `627` | `45.3%` saved | `ok` |
+| `composite_stack` | `360` | `68.6%` saved | `ok` |
 
 In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
 See [references/composite-benchmark.md](references/composite-benchmark.md) for methodology and caveats.
@@ -126,6 +126,9 @@ token-reduce now supports a composite telemetry loop:
 
 - direct helper and hook events (`artifacts/token-reduction/events.jsonl`)
 - Claude/Codex session adoption + discovery-compliance measurement
+- helper error/retry overhead metrics (error rate, immediate retries, hook runtime errors, pending-state leaks)
+- helper latency overhead metrics (avg/p50/p90/p95/max and per-tool latency)
+- context-aware telemetry filtering (runtime metrics exclude `benchmark` / `test` / `synthetic` events by default)
 - RTK companion inputs (gain/discover/session/hook-audit) for downstream output-compression signal
 - install/wiring health checks (binary availability + Claude/Codex hook binding)
 
@@ -150,10 +153,12 @@ Useful commands:
 ./scripts/token-reduce-manage.sh settings set telemetry.enabled true
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://example.com/ingest
 ./scripts/token-reduce-manage.sh telemetry-sync
+./scripts/token-reduce-manage.sh rolling-baseline
 ./scripts/token-reduce-manage.sh updates
 ./scripts/token-reduce-manage.sh auto-update
 ./scripts/token-reduce-manage.sh self-improve
 ./scripts/token-reduce-manage.sh workspace-audit
+./scripts/token-reduce-manage.sh workspace-install
 ./scripts/token-reduce-manage.sh validate
 ```
 
@@ -163,9 +168,12 @@ This is the self-improvement loop:
 
 1. collect helper and hook events
 2. run composite telemetry to include RTK + wiring health input
-3. measure actual session adoption and compliance
-4. generate a review with the next routing, docs, or enforcement fixes
-5. rerun after changes
+3. run benchmarks with telemetry context `benchmark` so synthetic calls are excluded from runtime summaries
+4. measure actual session adoption and compliance (all sessions + observed-discovery sessions)
+5. generate a review with the next routing, docs, or enforcement fixes
+6. capture workspace audit gaps across sibling repos
+7. generate rolling pre/post baseline trend report
+8. rerun after changes
 
 Recent telemetry also reports optional companion adoption, including caveman command activation and AXI tool usage rates.
 
@@ -174,7 +182,9 @@ Recent telemetry also reports optional companion adoption, including caveman com
 Telemetry upload is disabled by default. When enabled, token-reduce sends anonymized summary metrics only (no file contents):
 
 - helper/adoption/compliance percentages
+- observed-discovery helper/compliance percentages
 - 14-day event counts
+- benchmark/test excluded-event counts
 - workspace-level adoption summary
 
 Enable and configure:
@@ -185,6 +195,8 @@ Enable and configure:
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
 ./scripts/token-reduce-manage.sh settings set telemetry.api_key your-shared-key
 ./scripts/token-reduce-manage.sh settings set telemetry.signing_secret your-hmac-secret
+./scripts/token-reduce-manage.sh settings set telemetry.workspace_days 14
+./scripts/token-reduce-manage.sh settings set telemetry.workspace_include_source_repo false
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
 
@@ -195,6 +207,8 @@ uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --p
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
 ./scripts/token-reduce-manage.sh telemetry-sync
 ```
+
+`token-reduce-telemetry-receiver.py` writes JSONL events directly; a database is optional, not required.
 
 ### Updates And Auto-Update
 
@@ -237,6 +251,10 @@ Do not use it as the default first move for vague repo discovery. For that, keep
 ```
 
 Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens to `56`, but broad-topic search quality was worse even when raw output was shorter. See [references/token-savior-evaluation.md](references/token-savior-evaluation.md).
+
+`graphify` was also evaluated as a companion candidate and is currently not integrated. It can help on some prebuilt exact-symbol queries, but consistency and compatibility were not strong enough for token-reduce routing defaults. See [references/graphify-evaluation.md](references/graphify-evaluation.md).
+
+For a removable opt-in orchestration trial (graphify-first only when explicitly enabled, then helper fallback), see [references/graphify-orchestration-tracking.md](references/graphify-orchestration-tracking.md).
 
 ## Optional Brevity + Memory Companion
 
@@ -307,10 +325,13 @@ The design goal is explicit:
 - [references/architecture.md](references/architecture.md) — high-level system design
 - [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
 - [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
+- [references/graphify-evaluation.md](references/graphify-evaluation.md) — measured rejection verdict for graphify companion intake
+- [references/graphify-orchestration-tracking.md](references/graphify-orchestration-tracking.md) — removable graphify orchestration trial notes
 - [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
 - [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
 - [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
 - [references/self-improving-harness.md](references/self-improving-harness.md) — opt-in telemetry, updates, and self-improve loop
+- [references/secure-telemetry-server.md](references/secure-telemetry-server.md) — hardened local telemetry receiver setup and key rotation
 - [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
 - [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
 

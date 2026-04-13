@@ -81,9 +81,17 @@ summary = f"""# Token Reduction Adoption Summary
 ## Compliance
 
 - `discovery_compliance_pct`: {comp['discovery_compliance_pct']}
+- `discovery_compliance_pct_observed`: {comp.get('discovery_compliance_pct_observed', comp['discovery_compliance_pct'])}
+- `sessions_with_first_discovery_observed`: {comp.get('sessions_with_first_discovery_observed', 0)}
+- `sessions_without_first_discovery_observed`: {comp.get('sessions_without_first_discovery_observed', 0)}
 - `broad_scan_violations`: {comp['broad_scan_violations']}
 - `sessions_with_broad_scan_violation`: {comp['sessions_with_broad_scan_violation']}
 - `sessions_with_compliant_first_discovery`: {comp['sessions_with_compliant_first_discovery']}
+
+## Routing
+
+- `helper_first_or_helper_any_pct`: {data['routing']['helper_first_or_helper_any_pct']}
+- `helper_sessions_pct_observed_discovery`: {ad.get('helper_sessions_pct_observed_discovery', data['routing']['helper_first_or_helper_any_pct'])}
 """
 dst.write_text(summary)
 print(summary)

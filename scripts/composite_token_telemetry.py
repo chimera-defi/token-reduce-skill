@@ -191,8 +191,57 @@ def rtk_status(scope: str, repo_root: Path) -> dict[str, Any]:
     }
 
 
+def dependency_overhead_summary(token_reduce: dict[str, Any], rtk: dict[str, Any]) -> dict[str, Any]:
+    efficiency = token_reduce.get("telemetry", {}).get("efficiency", {})
+    helper_calls = int(efficiency.get("helper_calls", 0) or 0)
+    helper_error_calls = int(efficiency.get("helper_error_calls", 0) or 0)
+    rapid_repeat_calls = int(efficiency.get("rapid_repeat_calls", 0) or 0)
+    error_recovery_retries = int(efficiency.get("error_recovery_retries", 0) or 0)
+    hook_error_count = int(efficiency.get("hook_error_count", 0) or 0)
+    pending_leak_count = int(efficiency.get("pending_leak_count", 0) or 0)
+
+    rtk_failed_checks = 0
+    if rtk.get("available"):
+        for key in ("gain", "discover", "session", "hook_audit"):
+            payload = rtk.get(key, {})
+            if isinstance(payload, dict) and payload and not payload.get("ok", False):
+                rtk_failed_checks += 1
+
+    failure_overhead_calls = helper_error_calls + error_recovery_retries
+    failure_overhead_pct = (
+        round((failure_overhead_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
+    )
+    error_rate_pct = (
+        round((helper_error_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
+    )
+    estimated_overhead_events = failure_overhead_calls + hook_error_count + pending_leak_count + rtk_failed_checks
+    healthy = (
+        failure_overhead_pct <= 10.0
+        and error_rate_pct <= 5.0
+        and hook_error_count == 0
+        and pending_leak_count == 0
+        and rtk_failed_checks == 0
+    )
+
+    return {
+        "helper_calls": helper_calls,
+        "helper_error_calls": helper_error_calls,
+        "helper_error_rate_pct": error_rate_pct,
+        "helper_rapid_repeat_calls": rapid_repeat_calls,
+        "helper_error_recovery_retries": error_recovery_retries,
+        "helper_failure_overhead_calls": failure_overhead_calls,
+        "helper_failure_overhead_pct": failure_overhead_pct,
+        "hook_error_count": hook_error_count,
+        "pending_leak_count": pending_leak_count,
+        "rtk_failed_checks": rtk_failed_checks,
+        "estimated_overhead_events": estimated_overhead_events,
+        "healthy": healthy,
+    }
+
+
 def composite(scope: str, repo_root: Path) -> dict[str, Any]:
     token_reduce = measure(scope, str(repo_root))
+    rtk = rtk_status(scope, repo_root)
     return {
         "measured_at": datetime.now(timezone.utc).isoformat(),
         "scope": scope,
@@ -209,7 +258,8 @@ def composite(scope: str, repo_root: Path) -> dict[str, Any]:
             "codex_skill": codex_skill_status(repo_root),
             "claude_hooks": claude_hook_status(),
         },
-        "rtk": rtk_status(scope, repo_root),
+        "rtk": rtk,
+        "dependency_overhead": dependency_overhead_summary(token_reduce, rtk),
     }
 
 
@@ -219,6 +269,7 @@ def write_markdown(report: dict[str, Any], output_path: Path) -> None:
     compliance = token_reduce["compliance"]
     telemetry = token_reduce["telemetry"]
     rtk = report["rtk"]
+    dependency_overhead = report.get("dependency_overhead", {})
     gain_summary = rtk.get("gain_summary", {})
     md = f"""# Composite Token Telemetry
 
@@ -233,6 +284,10 @@ def write_markdown(report: dict[str, Any], output_path: Path) -> None:
 - Discovery compliance pct: `{compliance['discovery_compliance_pct']}`
 - Broad scan violations: `{compliance['broad_scan_violations']}`
 - Telemetry events (14d): `{telemetry['event_count']}`
+- Helper error rate: `{telemetry.get('efficiency', {}).get('helper_error_rate_pct', 0.0)}%`
+- Helper failure overhead: `{telemetry.get('efficiency', {}).get('failure_overhead_pct', 0.0)}%`
+- Hook errors: `{telemetry.get('efficiency', {}).get('hook_error_count', 0)}`
+- Pending state leaks: `{telemetry.get('efficiency', {}).get('pending_leak_count', 0)}`
 
 ## RTK
 
@@ -244,6 +299,18 @@ def write_markdown(report: dict[str, Any], output_path: Path) -> None:
 - RTK total commands: `{gain_summary.get('total_commands')}`
 - RTK total saved: `{gain_summary.get('total_saved')}`
 - RTK avg savings pct: `{gain_summary.get('avg_savings_pct')}`
+
+## Dependency Overhead
+
+- Estimated overhead events: `{dependency_overhead.get('estimated_overhead_events', 0)}`
+- Helper rapid repeats: `{dependency_overhead.get('helper_rapid_repeat_calls', 0)}`
+- Helper error-recovery retries: `{dependency_overhead.get('helper_error_recovery_retries', 0)}`
+- Helper failure overhead calls: `{dependency_overhead.get('helper_failure_overhead_calls', 0)}`
+- Helper error calls: `{dependency_overhead.get('helper_error_calls', 0)}`
+- Hook errors: `{dependency_overhead.get('hook_error_count', 0)}`
+- Pending state leaks: `{dependency_overhead.get('pending_leak_count', 0)}`
+- RTK failed checks: `{dependency_overhead.get('rtk_failed_checks', 0)}`
+- Healthy: `{dependency_overhead.get('healthy', False)}`
 
 ## Integration Health
 
