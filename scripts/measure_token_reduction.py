@@ -278,6 +278,7 @@ def measure(scope: str, repo_root: str) -> dict:
     compliant_sessions = 0
     broad_violation_sessions = 0
     broad_violation_count = 0
+    observed_discovery_sessions = 0
     for item in parsed:
         adoption["qmd_search_sessions"] += int(item["qmd_search"])
         adoption["token_reduce_search_sessions"] += int(item["token_reduce_search"])
@@ -295,6 +296,7 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["mention_without_helper_sessions"] += int(
             item["token_reduce_mention"] and not item["token_reduce_search"]
         )
+        observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
         broad_violation_sessions += int(item["broad_scan_violation"])
         broad_violation_count += int(item["broad_scan_violation"])
@@ -309,6 +311,11 @@ def measure(scope: str, repo_root: str) -> dict:
         per_source[source]["axi_tool_sessions"] += int(item["axi_tool"])
 
     pct = lambda n: round((n * 100.0 / session_count), 1) if session_count else 0.0
+    pct_observed = (
+        lambda n: round((n * 100.0 / observed_discovery_sessions), 1)
+        if observed_discovery_sessions
+        else 0.0
+    )
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
 
     by_source_payload = {}
@@ -362,18 +369,23 @@ def measure(scope: str, repo_root: str) -> dict:
             "gh_axi_sessions_pct": pct(adoption["gh_axi_sessions"]),
             "chrome_devtools_axi_sessions_pct": pct(adoption["chrome_devtools_axi_sessions"]),
             "helper_sessions_pct": pct(adoption["helper_sessions"]),
+            "helper_sessions_pct_observed_discovery": pct_observed(adoption["helper_sessions"]),
             "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
             "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,
+            "sessions_with_first_discovery_observed": observed_discovery_sessions,
+            "sessions_without_first_discovery_observed": max(0, session_count - observed_discovery_sessions),
             "sessions_with_broad_scan_violation": broad_violation_sessions,
             "broad_scan_violations": broad_violation_count,
             "discovery_compliance_pct": pct(compliant_sessions),
+            "discovery_compliance_pct_observed": pct_observed(compliant_sessions),
         },
         "routing": {
             "first_discovery_kind_counts": dict(sorted(discovery_kinds.items())),
             "helper_first_or_helper_any_pct": pct(adoption["helper_sessions"]),
+            "observed_discovery_sessions_pct": pct(observed_discovery_sessions),
         },
         "by_source": by_source_payload,
         "telemetry": telemetry,

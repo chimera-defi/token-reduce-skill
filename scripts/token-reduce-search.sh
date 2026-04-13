@@ -32,6 +32,11 @@ NEEDS_PATH_HINT=0
 PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
 PREFER_SCRIPT_CONTENT=0
+DEFAULT_EXCLUDES=(
+  -g '!graphify-out/**'
+  -g '!artifacts/token-reduction/events.jsonl'
+  -g '!artifacts/token-reduction/snapshots/**'
+)
 
 debug() {
   if [[ "${TOKEN_REDUCE_DEBUG:-0}" == "1" ]]; then
@@ -180,9 +185,9 @@ path_hits() {
   local pattern
   pattern="$(path_pattern)"
   if [[ -n "$GLOB" ]]; then
-    rg --files -g "$GLOB" . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
+    rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
   else
-    rg --files . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
+    rg --files "${DEFAULT_EXCLUDES[@]}" . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
   fi
 }
 
@@ -192,13 +197,13 @@ content_hits() {
     pattern="$(content_pattern)"
   fi
   if [[ -n "$GLOB" ]]; then
-    rg -n -i -e "$pattern" -g "$GLOB" . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
   elif [[ "$PREFER_SKILL_SCRIPTS" -eq 1 ]]; then
-    rg -n -i -e "$pattern" scripts | filter_candidates | filter_hook_candidates | ranked_content_paths || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" scripts | filter_candidates | filter_hook_candidates | ranked_content_paths || true
   elif [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
-    rg -n -i -e "$pattern" -g '*.py' -g '*.sh' . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" -g '*.py' -g '*.sh' . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
   else
-    rg -n -i -e "$pattern" . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" . | filter_candidates | filter_hook_candidates | ranked_content_paths || true
   fi
 }
 
@@ -208,13 +213,13 @@ snippet_hits() {
     pattern="$(content_pattern)"
   fi
   if [[ -n "$GLOB" ]]; then
-    rg -n -i -e "$pattern" -g "$GLOB" . | filter_candidates | head -40 || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . | filter_candidates | head -40 || true
   elif [[ "$PREFER_SKILL_SCRIPTS" -eq 1 ]]; then
-    rg -n -i -e "$pattern" scripts | filter_candidates | head -40 || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" scripts | filter_candidates | head -40 || true
   elif [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
-    rg -n -i -e "$pattern" -g '*.py' -g '*.sh' . | filter_candidates | head -40 || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" -g '*.py' -g '*.sh' . | filter_candidates | head -40 || true
   else
-    rg -n -i -e "$pattern" . | filter_candidates | head -40 || true
+    rg -n -i -e "$pattern" "${DEFAULT_EXCLUDES[@]}" . | filter_candidates | head -40 || true
   fi
 }
 

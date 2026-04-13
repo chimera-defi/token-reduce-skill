@@ -80,7 +80,7 @@ for f in token_reduce_state.py token_reduce_telemetry.py remind-token-reduce.py 
 done
 ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
 
-python3 - <<'PYEOF'
+uv run python - <<'PYEOF'
 import json, pathlib
 
 settings_path = pathlib.Path.home() / ".claude" / "settings.json"

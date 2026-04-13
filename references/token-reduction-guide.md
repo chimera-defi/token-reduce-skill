@@ -100,12 +100,15 @@ Future agents maintaining this repo should use the evidence loop, not just edit 
 ```
 
 Use `./scripts/token-reduce-manage.sh benchmark` when helper output or search behavior changes. Review artifacts live under `artifacts/token-reduction/`.
-Use `./scripts/token-reduce-manage.sh self-improve` for a one-shot benchmark + global measure/review + telemetry sync + update check pass.
+Use `./scripts/token-reduce-manage.sh self-improve` for a one-shot benchmark + global measure/review + workspace audit + telemetry sync + update check pass.
+Benchmark calls are now tagged with telemetry context `benchmark` and excluded from runtime review metrics by default.
+Use `./scripts/token-reduce-manage.sh rolling-baseline` to generate automatic pre/post trend deltas from telemetry snapshots.
 
 ## Companion Backends
 
 Structural tools like `token-savior` can improve exact symbol lookup and dependency analysis, but they should remain optional accelerators rather than replacing the default helper-first workflow.
 Style/input tools like `caveman` can reduce response verbosity and memory-file token load, but they should remain optional companions rather than mandatory install paths.
+Graph-index companions like `graphify` should only be reconsidered if they demonstrate stable quality across exact, broad, and doc-heavy tasks without adding path-sensitive false positives; current verdict is no integration.
 
 Use:
 - `../scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`

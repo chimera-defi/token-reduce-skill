@@ -136,5 +136,7 @@ Skip `qmd embed`, `qmd vsearch`, and `qmd query` for this workflow.
 ---
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
 Read `references/companion-tools.md` for how to evaluate future companion backends.
+Read `references/graphify-evaluation.md` for the graphify companion verdict.
+Read `references/graphify-orchestration-tracking.md` for the removable graphify orchestration trial notes.
 Read `references/caveman-evaluation.md` for the caveman companion verdict.
 Read `references/axi-evaluation.md` for the AXI companion verdict.

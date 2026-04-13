@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import time
 from pathlib import Path
 
@@ -43,10 +44,18 @@ STATE_DIR = ".claude/token-reduce-state"
 
 
 def repo_root() -> Path:
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
-    if project_dir:
-        return Path(project_dir).resolve()
-    return Path.cwd().resolve()
+    base_dir = os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR")
+    base = Path(base_dir).resolve() if base_dir else Path.cwd().resolve()
+    proc = subprocess.run(
+        ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    candidate = (proc.stdout or "").strip()
+    if candidate:
+        return Path(candidate).resolve()
+    return base
 
 
 def normalize_session_key(raw: str | None) -> str:
