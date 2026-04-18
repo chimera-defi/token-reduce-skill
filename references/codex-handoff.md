@@ -20,7 +20,10 @@ else
   cd tools/token-reduce-skill
 fi
 
-TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./scripts/setup.sh
+./scripts/setup.sh
+
+# Optional (only if needed for output-heavy / large-repo structural tasks):
+# TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./scripts/setup.sh
 
 validate_status=0
 ./scripts/token-reduce-manage.sh validate || validate_status=$?

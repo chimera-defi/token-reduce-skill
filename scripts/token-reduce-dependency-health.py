@@ -21,15 +21,17 @@ class Dependency:
     source_type: str
     source_value: str
     update_hint: str
+    tier: str  # core | conditional
 
 
-DEPENDENCIES: tuple[Dependency, ...] = (
+CORE_DEPENDENCIES: tuple[Dependency, ...] = (
     Dependency(
         name="qmd",
         command=["qmd", "--version"],
         source_type="github",
         source_value="tobi/qmd",
         update_hint="bun install -g https://github.com/tobi/qmd",
+        tier="core",
     ),
     Dependency(
         name="rtk",
@@ -37,27 +39,18 @@ DEPENDENCIES: tuple[Dependency, ...] = (
         source_type="github",
         source_value="rtk-ai/rtk",
         update_hint="brew upgrade rtk  # or re-run RTK installer",
+        tier="core",
     ),
-    Dependency(
-        name="context-mode",
-        command=["context-mode", "--version"],
-        source_type="npm",
-        source_value="context-mode",
-        update_hint="npm install -g context-mode",
-    ),
-    Dependency(
-        name="code-review-graph",
-        command=["code-review-graph", "--version"],
-        source_type="github",
-        source_value="tirth8205/code-review-graph",
-        update_hint="uv tool install --upgrade code-review-graph  # or pipx upgrade code-review-graph",
-    ),
+)
+
+CONDITIONAL_DEPENDENCIES: tuple[Dependency, ...] = (
     Dependency(
         name="gh-axi",
         command=["gh-axi", "--version"],
         source_type="npm",
         source_value="gh-axi",
         update_hint="npm install -g gh-axi chrome-devtools-axi",
+        tier="conditional",
     ),
     Dependency(
         name="chrome-devtools-axi",
@@ -65,8 +58,31 @@ DEPENDENCIES: tuple[Dependency, ...] = (
         source_type="npm",
         source_value="chrome-devtools-axi",
         update_hint="npm install -g gh-axi chrome-devtools-axi",
+        tier="conditional",
+    ),
+    Dependency(
+        name="context-mode",
+        command=["context-mode", "--version"],
+        source_type="npm",
+        source_value="context-mode",
+        update_hint="npm install -g context-mode",
+        tier="conditional",
+    ),
+    Dependency(
+        name="code-review-graph",
+        command=["code-review-graph", "--version"],
+        source_type="github",
+        source_value="tirth8205/code-review-graph",
+        update_hint="uv tool install --upgrade code-review-graph  # or pipx upgrade code-review-graph",
+        tier="conditional",
     ),
 )
+
+
+def selected_dependencies(*, include_conditional: bool) -> tuple[Dependency, ...]:
+    if include_conditional:
+        return CORE_DEPENDENCIES + CONDITIONAL_DEPENDENCIES
+    return CORE_DEPENDENCIES
 
 SEMVER_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
@@ -171,6 +187,7 @@ def dependency_status(dep: Dependency) -> dict[str, Any]:
 
     return {
         "name": dep.name,
+        "tier": dep.tier,
         "installed": installed,
         "state": state,
         "local_version_raw": local_raw,
@@ -320,12 +337,20 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return actions
 
 
-def print_human(statuses: list[dict[str, Any]], actions: list[dict[str, Any]]) -> None:
-    print("dependency health:")
+def print_human(
+    statuses: list[dict[str, Any]], actions: list[dict[str, Any]], *, include_conditional: bool
+) -> None:
+    if include_conditional:
+        print("dependency health (core + conditional companions):")
+    else:
+        print("dependency health (core stack only):")
     for status in statuses:
         latest = status.get("latest_version") or "unknown"
         local = status.get("local_version") or "missing"
-        print(f"- {status['name']}: {status['state']} (local={local}, latest={latest})")
+        print(
+            f"- {status['name']} [{status.get('tier', 'unknown')}]: "
+            f"{status['state']} (local={local}, latest={latest})"
+        )
         if status["state"] in {"missing", "outdated"}:
             print(f"  update: {status['update_hint']}")
     if actions:
@@ -339,18 +364,26 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     parser.add_argument("--apply", action="store_true", help="Attempt dependency updates")
+    parser.add_argument(
+        "--include-conditional",
+        action="store_true",
+        help="Include conditional companions (AXI/context-mode/code-review-graph) in checks and updates.",
+    )
     args = parser.parse_args()
 
-    statuses = [dependency_status(dep) for dep in DEPENDENCIES]
+    deps = selected_dependencies(include_conditional=args.include_conditional)
+    statuses = [dependency_status(dep) for dep in deps]
     actions: list[dict[str, Any]] = []
     if args.apply:
         actions = apply_updates(statuses)
-        statuses = [dependency_status(dep) for dep in DEPENDENCIES]
+        statuses = [dependency_status(dep) for dep in deps]
 
     payload = {
         "dependencies": statuses,
         "actions": actions,
         "summary": {
+            "checked": len(statuses),
+            "included_tiers": ["core", "conditional"] if args.include_conditional else ["core"],
             "up_to_date": sum(1 for item in statuses if item["state"] == "up_to_date"),
             "outdated": sum(1 for item in statuses if item["state"] == "outdated"),
             "missing": sum(1 for item in statuses if item["state"] == "missing"),
@@ -361,7 +394,7 @@ def main() -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
-        print_human(statuses, actions)
+        print_human(statuses, actions, include_conditional=args.include_conditional)
         print("")
         print(json.dumps(payload["summary"], indent=2))
     return 0
