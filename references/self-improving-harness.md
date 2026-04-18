@@ -36,6 +36,15 @@ Default config:
     "workspace_auto_update": true,
     "workspace_force_relink": true,
     "check_on_manage": true
+  },
+  "routing": {
+    "profile": "balanced",
+    "adaptive_hint": true,
+    "behavior_days": 3,
+    "rapid_repeat_snippet_threshold": 0.35,
+    "enable_structural": true,
+    "enable_context_mode_recommendations": true,
+    "enable_code_review_graph_recommendations": true
   }
 }
 ```
@@ -49,6 +58,8 @@ Manage config:
 ./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
 ./scripts/token-reduce-manage.sh settings set updates.auto_update true
 ./scripts/token-reduce-manage.sh settings set updates.workspace_auto_update true
+./scripts/token-reduce-manage.sh settings profile list
+./scripts/token-reduce-manage.sh settings profile apply max-savings
 ```
 
 `settings show` redacts secrets by default; use `./scripts/token-reduce-manage.sh settings show --raw` only when you explicitly need full values.
@@ -95,9 +106,12 @@ Commands:
 ./scripts/token-reduce-manage.sh workspace-auto-update
 ./scripts/token-reduce-manage.sh deps-check
 ./scripts/token-reduce-manage.sh deps-update
+./scripts/token-reduce-manage.sh release-gate
 ```
 
 `workspace-auto-update` runs safe repo fast-forward, force-relinks sibling repos to the canonical token-reduce root, and writes a workspace audit with version/commit drift fields.
+
+`release-gate` is intended for large change sets: it refreshes composite/adaptive/profile benchmarks and emits a keep/drop verdict.
 
 ## One-Shot Maintenance
 

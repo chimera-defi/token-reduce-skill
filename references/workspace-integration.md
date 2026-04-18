@@ -11,6 +11,7 @@ For maximum savings also run `./tools/token-reduce-skill/scripts/setup.sh` to in
 If the machine already ran token-reduce global setup, you can also call:
 
 ```bash
+token-reduce-adaptive topic words
 token-reduce-paths topic words
 token-reduce-snippet topic words
 ```
@@ -88,7 +89,7 @@ The RTK hook is a no-op if RTK is not installed — safe to include unconditiona
 Add one line:
 
 ```text
-If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-paths.sh topic words before any Grep, Glob, or Read.
+If file location is unknown, start with ./tools/token-reduce-skill/scripts/token-reduce-adaptive.sh topic words before any Grep, Glob, or Read (fallback: token-reduce-paths.sh).
 ```
 
 Optional companion line for brevity-sensitive projects:
@@ -106,9 +107,17 @@ After changing token-reduce routing, hooks, or benchmarks, run ./tools/token-red
 ## Codex
 
 ```text
-Use ./tools/token-reduce-skill/scripts/token-reduce-paths.sh for ambiguous repo discovery before broader search.
+Use ./tools/token-reduce-skill/scripts/token-reduce-adaptive.sh for ambiguous repo discovery before broader search.
+Fallback to ./tools/token-reduce-skill/scripts/token-reduce-paths.sh when adaptive routing is disabled.
 Use ./tools/token-reduce-skill/scripts/token-reduce-snippet.sh only when the file list is not enough.
 Avoid find ., ls -R, grep -R, and rg --files . for first-pass discovery.
+```
+
+Optional profile policy for consumer repos:
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings profile apply balanced
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh benchmark-profiles
 ```
 
 ## Minimal Consumer Layout

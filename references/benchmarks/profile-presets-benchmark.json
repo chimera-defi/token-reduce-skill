@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-04-18T19:47:04.054321+00:00",
+  "profiles": [
+    {
+      "profile": "minimal-load",
+      "baseline_tokens": 731,
+      "adaptive_tokens": 731,
+      "adaptive_savings_vs_baseline_pct": 0.0,
+      "adaptive_quality_pass": false,
+      "promote_adaptive_default": false
+    },
+    {
+      "profile": "balanced",
+      "baseline_tokens": 731,
+      "adaptive_tokens": 566,
+      "adaptive_savings_vs_baseline_pct": 22.6,
+      "adaptive_quality_pass": true,
+      "promote_adaptive_default": true
+    },
+    {
+      "profile": "max-savings",
+      "baseline_tokens": 731,
+      "adaptive_tokens": 566,
+      "adaptive_savings_vs_baseline_pct": 22.6,
+      "adaptive_quality_pass": true,
+      "promote_adaptive_default": true
+    }
+  ],
+  "recommended_profile": "balanced",
+  "recommendation_reason": "highest adaptive savings among profiles that preserve benchmark quality"
+}

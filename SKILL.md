@@ -67,6 +67,9 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
+| Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent | Default first move when path is unknown (`token-reduce-adaptive`) |
+| Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
+| code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
 
 ## Process
 
@@ -76,11 +79,13 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
    ```
    If unavailable, use scoped `rg`.
 2. If you know the file or keyword, use a scoped grep first, then read only the needed lines.
-3. If you need a low-token kickoff, use `scripts/token-reduce-paths.sh topic words`.
-4. If you need one ranked excerpt after the kickoff, use `scripts/token-reduce-snippet.sh topic words`.
-5. If a file is large, read only the relevant section.
-6. If the search space stays broad, stop expanding and ask the user to narrow it.
-7. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
+3. If you need an auto-routed kickoff, use `scripts/token-reduce-adaptive.sh topic words`.
+4. If you need a low-token path-only kickoff, use `scripts/token-reduce-paths.sh topic words`.
+5. If you need one ranked excerpt after the kickoff, use `scripts/token-reduce-snippet.sh topic words`.
+6. If a file is large, read only the relevant section.
+7. If the search space stays broad, stop expanding and ask the user to narrow it.
+8. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
+9. When routing behavior should be formally constrained, apply a profile (`minimal-load`, `balanced`, `max-savings`) via `token-reduce-manage.sh settings profile apply <name>`.
 
 ## Output Brevity Profile (Companion)
 
@@ -140,3 +145,6 @@ Read `references/graphify-evaluation.md` for the graphify companion verdict.
 Read `references/graphify-orchestration-tracking.md` for the removable graphify orchestration trial notes.
 Read `references/caveman-evaluation.md` for the caveman companion verdict.
 Read `references/axi-evaluation.md` for the AXI companion verdict.
+Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
+Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
+Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
