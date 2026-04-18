@@ -107,6 +107,14 @@ When changing routing, hooks, telemetry, or benchmark logic, also run:
 
 Treat the review output as the current evidence source for weak adoption, weak routing, or benchmark drift.
 
+For major change sets before release/merge, also run:
+
+```bash
+./scripts/token-reduce-manage.sh release-gate
+```
+
+Only keep the change set when the gate reports `release_gate_pass: true`, or document the exception explicitly.
+
 ### Companion Tool Intake
 
 For additions like alternate search backends, structural indexers, or external MCP servers:
