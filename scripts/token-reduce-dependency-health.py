@@ -39,6 +39,20 @@ DEPENDENCIES: tuple[Dependency, ...] = (
         update_hint="brew upgrade rtk  # or re-run RTK installer",
     ),
     Dependency(
+        name="context-mode",
+        command=["context-mode", "--version"],
+        source_type="npm",
+        source_value="context-mode",
+        update_hint="npm install -g context-mode",
+    ),
+    Dependency(
+        name="code-review-graph",
+        command=["code-review-graph", "--version"],
+        source_type="github",
+        source_value="tirth8205/code-review-graph",
+        update_hint="uv tool install --upgrade code-review-graph  # or pipx upgrade code-review-graph",
+    ),
+    Dependency(
         name="gh-axi",
         command=["gh-axi", "--version"],
         source_type="npm",
@@ -244,6 +258,63 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "command": "npm install -g gh-axi chrome-devtools-axi",
                     "status": "skipped",
                     "detail": "npm not installed",
+                }
+            )
+    context_mode_status = next((item for item in statuses if item["name"] == "context-mode"), None)
+    if context_mode_status and needs_action(str(context_mode_status.get("state"))):
+        if shutil.which("npm"):
+            code, out, err = run(["npm", "install", "-g", "context-mode"])
+            actions.append(
+                {
+                    "target": "context-mode",
+                    "command": "npm install -g context-mode",
+                    "status": "updated" if code == 0 else "failed",
+                    "detail": out or err,
+                }
+            )
+        else:
+            actions.append(
+                {
+                    "target": "context-mode",
+                    "command": "npm install -g context-mode",
+                    "status": "skipped",
+                    "detail": "npm not installed",
+                }
+            )
+
+    code_review_graph_status = next(
+        (item for item in statuses if item["name"] == "code-review-graph"), None
+    )
+    if code_review_graph_status and needs_action(str(code_review_graph_status.get("state"))):
+        if shutil.which("uv"):
+            code, out, err = run(["uv", "tool", "install", "--upgrade", "code-review-graph"])
+            actions.append(
+                {
+                    "target": "code-review-graph",
+                    "command": "uv tool install --upgrade code-review-graph",
+                    "status": "updated" if code == 0 else "failed",
+                    "detail": out or err,
+                }
+            )
+        elif shutil.which("pipx"):
+            code, out, err = run(["pipx", "install", "code-review-graph"])
+            if code != 0:
+                code, out, err = run(["pipx", "upgrade", "code-review-graph"])
+            actions.append(
+                {
+                    "target": "code-review-graph",
+                    "command": "pipx install code-review-graph || pipx upgrade code-review-graph",
+                    "status": "updated" if code == 0 else "failed",
+                    "detail": out or err,
+                }
+            )
+        else:
+            actions.append(
+                {
+                    "target": "code-review-graph",
+                    "command": "uv tool install --upgrade code-review-graph",
+                    "status": "skipped",
+                    "detail": "uv/pipx not installed",
                 }
             )
     return actions

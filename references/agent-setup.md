@@ -54,10 +54,11 @@ Then run:
 
 Point repo instructions at:
 
+- `./tools/token-reduce-skill/scripts/token-reduce-adaptive.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-paths.sh`
 - `./tools/token-reduce-skill/scripts/token-reduce-snippet.sh`
 
-For Codex specifically, make the repo-local rule explicit: if the file path is unknown, the first compliant move is `token-reduce-paths.sh`. Raw `rg --files` or repo-wide `rg -n` should only happen as follow-up after the helper returns candidate paths.
+For Codex specifically, make the repo-local rule explicit: if the file path is unknown, the first compliant move is `token-reduce-adaptive.sh` (or `token-reduce-paths.sh` when adaptive is disabled). Raw `rg --files` or repo-wide `rg -n` should only happen as follow-up after the helper returns candidate paths.
 
 When updating the skill itself, also run:
 
@@ -81,6 +82,9 @@ token-reduce-manage auto-update
 token-reduce-manage workspace-auto-update
 token-reduce-manage deps-check
 token-reduce-manage deps-update
+token-reduce-manage settings profile list
+token-reduce-manage settings profile apply max-savings
+token-reduce-manage benchmark-profiles
 ```
 
 ## MCP
@@ -102,11 +106,14 @@ token-reduce-manage deps-update
 |-------|------|--------------|
 | Discovery guardrails | `enforce-token-reduce-first.py` | Blocks broad scans before they happen |
 | Prompt steering | `remind-token-reduce.py` | Routes discovery prompts to helpers |
+| Adaptive routing | `token-reduce-adaptive.sh` | Auto-promotes paths/snippet/structural tiers from query intent + behavior |
 | Path kickoff | `token-reduce-paths.sh` | QMD BM25 → candidate paths, minimal tokens |
+| Snippet follow-up | `token-reduce-snippet.sh` | Adds one ranked excerpt when path-only results are not enough |
 | Output compression | RTK (`rtk-rewrite.sh`) | Compresses output of commands that do run |
 | Search backend | QMD | BM25 index, fallback to scoped `rg` |
 | Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |
 | Optional interface companion | AXI (`gh-axi`, `chrome-devtools-axi`) | Lower-turn GitHub/browser tool interactions |
+| Routing policy presets | `token-reduce-manage settings profile` | Formal `minimal-load` / `balanced` / `max-savings` behavior profiles |
 
 ## Read Next
 

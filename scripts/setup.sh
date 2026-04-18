@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # token-reduce full setup — installs QMD, RTK, AXI companions, and wires hooks.
+# Optional extended companions can be enabled with TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1.
 # Run once per machine. Safe to re-run.
 set -euo pipefail
 
@@ -14,6 +15,7 @@ CODEX_SKILLS_DIR="${CODEX_HOME_DIR}/skills"
 CODEX_SKILL_DIR="${CODEX_SKILLS_DIR}/token-reduce"
 AGENTS_SKILLS_DIR="${HOME}/.agents/skills"
 TOKEN_SAVIOR_PY="${HOME}/.local/share/token-savior/.venv/bin/python"
+EXTENDED_STACK="${TOKEN_REDUCE_INSTALL_EXTENDED_STACK:-0}"
 
 mkdir -p "$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
@@ -68,6 +70,43 @@ else
     fi
   else
     warn "npm not found — skipping AXI companion install (needs gh-axi/chrome-devtools-axi)"
+  fi
+fi
+
+# ── Optional extended companions (context-mode + code-review-graph) ───────────
+if [[ "$EXTENDED_STACK" == "1" ]]; then
+  if command -v context-mode >/dev/null 2>&1; then
+    ok "context-mode already installed ($(context-mode --version 2>/dev/null | head -1 || echo installed))"
+  else
+    if command -v npm >/dev/null 2>&1; then
+      if npm install -g context-mode >/dev/null 2>&1; then
+        ok "context-mode installed"
+      else
+        warn "context-mode install failed — run 'npm install -g context-mode' manually"
+      fi
+    else
+      warn "npm not found — skipping context-mode install"
+    fi
+  fi
+
+  if command -v code-review-graph >/dev/null 2>&1; then
+    ok "code-review-graph already installed ($(code-review-graph --version 2>/dev/null | head -1 || echo installed))"
+  else
+    if command -v uv >/dev/null 2>&1; then
+      if uv tool install code-review-graph >/dev/null 2>&1 || uv tool install --upgrade code-review-graph >/dev/null 2>&1; then
+        ok "code-review-graph installed"
+      else
+        warn "code-review-graph install failed — run 'uv tool install code-review-graph' manually"
+      fi
+    elif command -v pipx >/dev/null 2>&1; then
+      if pipx install code-review-graph >/dev/null 2>&1 || pipx upgrade code-review-graph >/dev/null 2>&1; then
+        ok "code-review-graph installed"
+      else
+        warn "code-review-graph install failed — run 'pipx install code-review-graph' manually"
+      fi
+    else
+      warn "uv/pipx not found — skipping code-review-graph install"
+    fi
   fi
 fi
 
@@ -126,6 +165,7 @@ EOF
 
 write_wrapper "token-reduce-paths" "$REPO_ROOT/scripts/token-reduce-paths.sh"
 write_wrapper "token-reduce-snippet" "$REPO_ROOT/scripts/token-reduce-snippet.sh"
+write_wrapper "token-reduce-adaptive" "$REPO_ROOT/scripts/token-reduce-adaptive.sh"
 write_wrapper "token-reduce-manage" "$REPO_ROOT/scripts/token-reduce-manage.sh"
 write_wrapper "token-reduce-setup" "$REPO_ROOT/scripts/setup.sh"
 write_wrapper "token-reduce-settings" "$REPO_ROOT/scripts/token-reduce-settings.py"
@@ -236,7 +276,10 @@ echo "  token-reduce hooks  →  block wasteful discovery before it happens"
 echo "  RTK hook            →  compress output of commands that do run"
 echo "  QMD                 →  BM25 search backend for path helpers"
 echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn tool usage"
-echo "  global wrappers     →  token-reduce-paths / token-reduce-snippet from any repo"
+if [[ "$EXTENDED_STACK" == "1" ]]; then
+  echo "  extended companions →  context-mode + code-review-graph install attempt enabled"
+fi
+echo "  global wrappers     →  token-reduce-adaptive / token-reduce-paths / token-reduce-snippet from any repo"
 echo "  Codex skill link    →  $CODEX_SKILL_DIR"
 echo "  companion links     →  axi / caveman / compress under $CODEX_SKILLS_DIR"
 echo "  opt-in telemetry    →  prompted now or run token-reduce-settings onboard"

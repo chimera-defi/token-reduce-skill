@@ -25,7 +25,9 @@ BROAD_BASH_PATTERNS = [
 _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
 )
-HELPER_COMMAND_RE = re.compile(r"token-reduce-(?:paths|snippet)\.sh\b|qmd\s+search\b")
+HELPER_COMMAND_RE = re.compile(
+    r"token-reduce-(?:adaptive|paths|snippet|orchestrate)(?:\.sh)?\b|qmd\s+search\b"
+)
 
 
 def block(reason: str, data: dict[str, object] | None = None) -> int:

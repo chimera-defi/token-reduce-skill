@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-04-18T17:23:42.677611+00:00",
+  "repo_root": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main",
+  "token_optimizer_repo": "/tmp/token-reduce-intake/token-optimizer-mcp",
+  "cases": [
+    {
+      "name": "raw_files_inventory",
+      "command": "rg --files . | head -200",
+      "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main",
+      "exit_code": 0,
+      "duration_ms": 9,
+      "bytes": 2656,
+      "lines": 75,
+      "tokens": 660,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./README.md\n./package.json\n./scripts/enforce-token-reduce-first.py\n./scripts/token-reduce-manage.sh\n./scripts/token-reduce-doctor.py\n./scripts/token_reduce_config.py\n./scripts/benchmark-companion-tools.py\n./scripts/setup.sh"
+    },
+    {
+      "name": "smart_glob_inventory",
+      "command": "node cli-wrapper.mjs smart_glob --stdin <<<'{\"pattern\": \"**/*\", \"cwd\": \"/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main\", \"limit\": 200}'",
+      "cwd": "/tmp/token-reduce-intake/token-optimizer-mcp",
+      "exit_code": 0,
+      "duration_ms": 342,
+      "bytes": 424,
+      "lines": 1,
+      "tokens": 142,
+      "quality_pass": false,
+      "quality_note": "missing: token-reduce-manage.sh",
+      "stdout_preview": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"success\\\": true,\\n  \\\"pattern\\\": \\\"**/*\\\",\\n  \\\"metadata\\\": {\\n    \\\"totalMatches\\\": 2,\\n    \\\"returnedCount\\\": 2,\\n    \\\"truncated\\\": false,\\n    \\\"tokensSaved\\\": 343,\\n    \\\"tokenCount\\\": 7,\\n    \\\"originalTokenCount\\\": 350,\\n    \\\"compressionRatio\\\": 0.02,\\n    \\\"duration\\\": 0,\\n    \\\"cacheHit\\\": true\\n  },\\n  \\\"files\\\": [\\n    \\\"package.json\\\",\\n    \\\"README.md\\\"\\n  ]\\n}\"}]}"
+    },
+    {
+      "name": "raw_scoped_grep",
+      "command": "rg -n -i -g '*.md' 'token reduction' . | head -40",
+      "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main",
+      "exit_code": 0,
+      "duration_ms": 8,
+      "bytes": 879,
+      "lines": 6,
+      "tokens": 197,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./SKILL.md:21:# Token Reduction Skill\n./SKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\n./references/token-reduction-guide.md:1:# Token Reduction Guide\n./references/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\n./references/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\n./references/agent-setup.md:108:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |"
+    },
+    {
+      "name": "smart_grep_matches",
+      "command": "node cli-wrapper.mjs smart_grep --stdin <<<'{\"pattern\": \"token reduction\", \"cwd\": \"/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main\", \"files\": [\"**/*.md\"], \"caseSensitive\": false, \"regex\": false, \"limit\": 40}'",
+      "cwd": "/tmp/token-reduce-intake/token-optimizer-mcp",
+      "exit_code": 0,
+      "duration_ms": 335,
+      "bytes": 4396,
+      "lines": 1,
+      "tokens": 1230,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"success\\\": true,\\n  \\\"pattern\\\": \\\"token reduction\\\",\\n  \\\"metadata\\\": {\\n    \\\"totalMatches\\\": 17,\\n    \\\"filesSearched\\\": 44,\\n    \\\"filesWithMatches\\\": 15,\\n    \\\"returnedMatches\\\": 17,\\n    \\\"truncated\\\": false,\\n    \\\"tokensSaved\\\": 13053,\\n    \\\"tokenCount\\\": 687,\\n    \\\"originalTokenCount\\\": 13740,\\n    \\\"compressionRatio\\\": 0.05,\\n    \\\"duration\\\": 0,\\n    \\\"cacheHit\\\": true\\n  },\\n  \\\"matches\\\": [\\n    {\\n      \\\"file\\\": \\\"SKILL.md\\\",\\n      \\\"lineNumber\\\": 21,\\n      \\\"line\\\": \\\"# Token Reduction Skill\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"SKILL.md\\\",\\n      \\\"lineNumber\\\": 68,\\n      \\\"line\\\": \\\"| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\\\",\\n      \\\"match\\\": \\\"token reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"references/token-reduction-guide.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Guide\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"references/token-reduction-guide.md\\\",\\n      \\\"lineNumber\\\": 62,\\n      \\\"line\\\": \\\"The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes.\\\",\\n      \\\"match\\\": \\\"token reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"references/composite-benchmark.md\\\",\\n      \\\"lineNumber\\\": 21,\\n      \\\"line\\\": \\\"3. output-heavy scan (`token reduction`)\\\",\\n      \\\"match\\\": \\\"token reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"references/agent-setup.md\\\",\\n      \\\"lineNumber\\\": 108,\\n      \\\"line\\\": \\\"| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\\\",\\n      \\\"match\\\": \\\"token reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-13.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-12.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-11.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-10.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-09.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-08.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-repo-2026-04-01.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-global-2026-04-12.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-global-2026-04-10.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-global-2026-04-09.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    },\\n    {\\n      \\\"file\\\": \\\"artifacts/token-reduction/adoption-global-2026-04-08.md\\\",\\n      \\\"lineNumber\\\": 1,\\n      \\\"line\\\": \\\"# Token Reduction Adoption Summary\\\",\\n      \\\"match\\\": \\\"Token Reduction\\\"\\n    }\\n  ]\\n}\"}]}"
+    },
+    {
+      "name": "smart_grep_files_only",
+      "command": "node cli-wrapper.mjs smart_grep --stdin <<<'{\"pattern\": \"token reduction\", \"cwd\": \"/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main\", \"files\": [\"**/*.md\"], \"filesWithMatches\": true, \"limit\": 40}'",
+      "cwd": "/tmp/token-reduce-intake/token-optimizer-mcp",
+      "exit_code": 0,
+      "duration_ms": 332,
+      "bytes": 1317,
+      "lines": 1,
+      "tokens": 416,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"success\\\": true,\\n  \\\"pattern\\\": \\\"token reduction\\\",\\n  \\\"metadata\\\": {\\n    \\\"totalMatches\\\": 17,\\n    \\\"filesSearched\\\": 44,\\n    \\\"filesWithMatches\\\": 15,\\n    \\\"returnedMatches\\\": 0,\\n    \\\"truncated\\\": false,\\n    \\\"tokensSaved\\\": 21879,\\n    \\\"tokenCount\\\": 221,\\n    \\\"originalTokenCount\\\": 22100,\\n    \\\"compressionRatio\\\": 0.01,\\n    \\\"duration\\\": 0,\\n    \\\"cacheHit\\\": true\\n  },\\n  \\\"files\\\": [\\n    \\\"SKILL.md\\\",\\n    \\\"references/token-reduction-guide.md\\\",\\n    \\\"references/composite-benchmark.md\\\",\\n    \\\"references/agent-setup.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-13.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-12.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-11.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-10.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-09.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-08.md\\\",\\n    \\\"artifacts/token-reduction/adoption-repo-2026-04-01.md\\\",\\n    \\\"artifacts/token-reduction/adoption-global-2026-04-12.md\\\",\\n    \\\"artifacts/token-reduction/adoption-global-2026-04-10.md\\\",\\n    \\\"artifacts/token-reduction/adoption-global-2026-04-09.md\\\",\\n    \\\"artifacts/token-reduction/adoption-global-2026-04-08.md\\\"\\n  ]\\n}\"}]}"
+    }
+  ],
+  "comparison": {
+    "inventory_baseline_tokens": 660,
+    "smart_glob_tokens": 142,
+    "smart_glob_savings_vs_raw_inventory_pct": 78.5,
+    "grep_baseline_tokens": 197,
+    "smart_grep_matches_tokens": 1230,
+    "smart_grep_matches_savings_vs_raw_grep_pct": -524.4,
+    "smart_grep_files_only_tokens": 416,
+    "smart_grep_files_only_savings_vs_raw_grep_pct": -111.2
+  },
+  "verdict": {
+    "default_for_token_reduce_discovery": false,
+    "reason": "smart_glob quality failed on representative inventory task and smart_grep variants produced higher token output than scoped rg for this repo workload."
+  }
+}

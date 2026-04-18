@@ -1,6 +1,6 @@
 # token-reduce
 
-> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional AXI/caveman companions.
+> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional companions (AXI, caveman, context-mode, code-review-graph).
 
 ## Install (run this once, then restart Claude Code)
 
@@ -11,6 +11,21 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 
 `setup.sh` installs QMD and RTK, installs AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`) when `npm` is available, wires hook layers into Claude Code globally, and indexes your repo. Safe to re-run.
 
+One-command activation for the measured stack:
+
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
+```
+
+Optional extended companion install:
+
+```bash
+TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.sh
+```
+
+This also attempts to install `context-mode` and `code-review-graph`.
+
 Claude Code plugin alternative:
 
 ```
@@ -18,20 +33,43 @@ claude plugin marketplace add chimera-defi/token-reduce-skill
 claude plugin install token-reduce@chimera-defi
 ```
 
+## Codex new-context handoff
+
+Print a ready-to-paste handoff block for a fresh Codex context:
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh handoff-codex
+```
+
+Static reference template: `references/codex-handoff.md`
+
 ## How to use (for agents)
 
 Before reading any file whose path you don't already know, run one of:
 
 ```bash
+./tools/token-reduce-skill/scripts/token-reduce-adaptive.sh <topic words>
 ./tools/token-reduce-skill/scripts/token-reduce-paths.sh <topic words>
 ./tools/token-reduce-skill/scripts/token-reduce-snippet.sh <topic words>
 ```
+
+`token-reduce-adaptive.sh` auto-promotes/demotes tiers based on query intent and recent helper behavior.
 
 `token-reduce-paths.sh` returns candidate file paths via BM25. Use those paths for targeted `Read` or `Grep` calls — never broad glob or `find .` scans.
 
 `token-reduce-snippet.sh` returns paths plus one ranked excerpt when you need more context to pick the right file.
 
 Do **not** replace the first helper call with raw `rg --files`, raw repo-wide `rg -n`, `find .`, or `grep -R` just because they feel narrow enough. The helper is the first compliant move whenever the path is not already known.
+
+## Routing profiles
+
+```bash
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings profile list
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings profile apply minimal-load
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings profile apply balanced
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh settings profile apply max-savings
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh benchmark-profiles
+```
 
 ## Decision flow
 
@@ -87,6 +125,7 @@ Enable opt-in telemetry summaries and update checks:
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh telemetry-sync
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh updates
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh auto-update
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh release-gate
 ```
 
 ## MCP tools (if using MCP)
@@ -119,5 +158,8 @@ MCP config:
 - Setup details: `references/agent-setup.md`
 - Companion verdicts: `references/token-savior-evaluation.md`, `references/caveman-evaluation.md`
 - AXI verdict: `references/axi-evaluation.md`
+- Prompt stack intake verdict: `references/prompt-stack-intake-2026-04-18.md`
+- Feature matrix: `references/feature-matrix.md`
+- Meta learnings: `references/meta-learnings-2026-04-18.md`
 - Manager CLI: `scripts/token-reduce-manage.sh`
 - Repo: https://github.com/chimera-defi/token-reduce-skill

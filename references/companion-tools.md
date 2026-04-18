@@ -9,27 +9,31 @@ Do not replace the core token-reduce workflow just because a tool claims better 
 
 ## Intake Checklist
 
+0. Verify the exact user-provided source URL/repo is reachable.
+   - If it is not reachable (`404`/permission denied), mark the candidate as failed at source level.
+   - Do not silently substitute a different owner/repo without recording that mapping explicitly.
 1. Verify the external project directly.
 2. Run its own tests or validation surface first.
-3. Benchmark it on representative token-reduce tasks:
+3. Check license compatibility before default integration (MIT-core skills should not silently depend on restrictive/noncommercial companions).
+4. Benchmark it on representative token-reduce tasks:
    - exact symbol lookup
    - constant lookup
    - broad topic discovery
    - impact analysis
-4. Measure both output size and latency.
-5. For style/memory companions, also measure:
+5. Measure both output size and latency.
+6. For style/memory companions, also measure:
    - output-token effect (response verbosity)
    - session-input effect (always-loaded memory files like `CLAUDE.md`)
    - fidelity checks (code/URLs/headings/commands preserved)
-6. For CLI-interface companions (for example AXI-style tools), also measure:
+7. For CLI-interface companions (for example AXI-style tools), also measure:
    - turn count on real execution tasks
    - retry/error rate for common mutations
    - whether outputs are concise by default without lossy truncation
-7. Decide whether it is:
+8. Decide whether it is:
    - replacement
    - optional accelerator
    - not worth integrating
-8. Propagate the verdict into:
+9. Propagate the verdict into:
    - `README.md`
    - `SKILL.md`
    - a dedicated evaluation note under `references/`

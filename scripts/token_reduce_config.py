@@ -29,6 +29,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "workspace_force_relink": True,
         "check_on_manage": True,
     },
+    "routing": {
+        "profile": "balanced",
+        "adaptive_hint": True,
+        "behavior_days": 3,
+        "rapid_repeat_snippet_threshold": 0.35,
+        "enable_structural": True,
+        "enable_context_mode_recommendations": True,
+        "enable_code_review_graph_recommendations": True,
+    },
 }
 
 

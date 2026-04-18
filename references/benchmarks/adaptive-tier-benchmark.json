@@ -1,0 +1,119 @@
+{
+  "generated_at": "2026-04-18T19:46:39.641729+00:00",
+  "active_profile": "unknown",
+  "tasks": [
+    {
+      "name": "exact_symbol",
+      "query": "prompt_requires_helper",
+      "expected": [
+        "token_reduce_state.py",
+        "prompt_requires_helper"
+      ]
+    },
+    {
+      "name": "hook_discovery",
+      "query": "hook enforcement system",
+      "expected": [
+        "enforce-token-reduce-first.py"
+      ]
+    },
+    {
+      "name": "token_reduction_docs",
+      "query": "token reduction guide",
+      "expected": [
+        "token-reduction-guide.md"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "task": "exact_symbol",
+      "strategy": "baseline_paths",
+      "command": "./scripts/token-reduce-paths.sh \"prompt_requires_helper\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 750,
+      "bytes": 917,
+      "lines": 20,
+      "tokens": 220,
+      "quality_pass": false,
+      "quality_note": "missing: prompt_requires_helper",
+      "stdout_preview": "No results found.\n./tools/token-reduce-skill/scripts/benchmark-composite-stack.py\n./tools/token-reduce-skill/references/benchmarks/composite-benchmark.json\n./scripts/benchmark-composite-stack.py\n./references/benchmarks/composite-benchmark.json\n./references/benchmarks/adaptive-tier-benchmark.json\n./scripts/tests/test_token_reduce_adaptive.py\n./tools/token-reduce-skill/scripts/remind-token-reduce.py"
+    },
+    {
+      "task": "exact_symbol",
+      "strategy": "adaptive_tier",
+      "command": "./scripts/token-reduce-adaptive.sh \"prompt_requires_helper\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 629,
+      "bytes": 191,
+      "lines": 8,
+      "tokens": 55,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "{\n  \"name\": \"prompt_requires_helper\",\n  \"file\": \"scripts/token_reduce_state.py\",\n  \"line\": 108,\n  \"end_line\": 109,\n  \"type\": \"function\",\n  \"signature\": \"def prompt_requires_helper(prompt)\"\n}"
+    },
+    {
+      "task": "hook_discovery",
+      "strategy": "baseline_paths",
+      "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 155,
+      "bytes": 959,
+      "lines": 20,
+      "tokens": 230,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./tools/token-reduce-skill/scripts/composite_token_telemetry.py\n./scripts/composite_token_telemetry.py\n./tools/token-reduce-skill/scripts/setup.sh\n./scripts/setup.sh\n./tools/token-reduce-skill/scripts/review_token_reduction.py\n./scripts/review_token_reduction.py\n./tools/token-reduce-skill/scripts/enforce-token-reduce-first.py\n./scripts/enforce-token-reduce-first.py"
+    },
+    {
+      "task": "hook_discovery",
+      "strategy": "adaptive_tier",
+      "command": "./scripts/token-reduce-adaptive.sh \"hook enforcement system\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 218,
+      "bytes": 959,
+      "lines": 20,
+      "tokens": 230,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./tools/token-reduce-skill/scripts/composite_token_telemetry.py\n./scripts/composite_token_telemetry.py\n./tools/token-reduce-skill/scripts/setup.sh\n./scripts/setup.sh\n./tools/token-reduce-skill/scripts/review_token_reduction.py\n./scripts/review_token_reduction.py\n./tools/token-reduce-skill/scripts/enforce-token-reduce-first.py\n./scripts/enforce-token-reduce-first.py"
+    },
+    {
+      "task": "token_reduction_docs",
+      "strategy": "baseline_paths",
+      "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 2879,
+      "bytes": 694,
+      "lines": 8,
+      "tokens": 281,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "#49f3d9,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
+    },
+    {
+      "task": "token_reduction_docs",
+      "strategy": "adaptive_tier",
+      "command": "./scripts/token-reduce-adaptive.sh \"token reduction guide\" | head -80",
+      "exit_code": 0,
+      "duration_ms": 2885,
+      "bytes": 694,
+      "lines": 8,
+      "tokens": 281,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "#49f3d9,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
+    }
+  ],
+  "summary": {
+    "baseline_tokens": 731,
+    "adaptive_tokens": 566,
+    "adaptive_savings_vs_baseline_pct": 22.6,
+    "baseline_quality_pass": false,
+    "adaptive_quality_pass": true
+  },
+  "verdict": {
+    "promote_adaptive_default": true,
+    "reason": "Adaptive default is safe when quality is preserved and token usage is not worse than baseline path-only discovery on representative tasks."
+  }
+}

@@ -10,6 +10,43 @@ from typing import Any
 from token_reduce_config import DEFAULT_CONFIG, load_config, parse_value, save_config, set_nested
 
 
+PROFILE_PRESETS: dict[str, dict[str, Any]] = {
+    "minimal-load": {
+        "routing": {
+            "profile": "minimal-load",
+            "adaptive_hint": True,
+            "behavior_days": 1,
+            "rapid_repeat_snippet_threshold": 0.65,
+            "enable_structural": False,
+            "enable_context_mode_recommendations": False,
+            "enable_code_review_graph_recommendations": False,
+        }
+    },
+    "balanced": {
+        "routing": {
+            "profile": "balanced",
+            "adaptive_hint": True,
+            "behavior_days": 3,
+            "rapid_repeat_snippet_threshold": 0.35,
+            "enable_structural": True,
+            "enable_context_mode_recommendations": True,
+            "enable_code_review_graph_recommendations": True,
+        }
+    },
+    "max-savings": {
+        "routing": {
+            "profile": "max-savings",
+            "adaptive_hint": True,
+            "behavior_days": 7,
+            "rapid_repeat_snippet_threshold": 0.2,
+            "enable_structural": True,
+            "enable_context_mode_recommendations": True,
+            "enable_code_review_graph_recommendations": True,
+        }
+    },
+}
+
+
 def redact_config(config: dict[str, Any]) -> dict[str, Any]:
     redacted = deepcopy(config)
     telemetry = redacted.get("telemetry")
@@ -40,6 +77,43 @@ def cmd_set(key: str, raw_value: str) -> int:
 def cmd_reset() -> int:
     path = save_config(dict(DEFAULT_CONFIG))
     print(f"reset {path} to defaults")
+    return 0
+
+
+def cmd_profile_list() -> int:
+    print(json.dumps({"profiles": sorted(PROFILE_PRESETS.keys())}, indent=2))
+    return 0
+
+
+def cmd_profile_show(name: str | None) -> int:
+    if not name:
+        config = load_config()
+        active = str(config.get("routing", {}).get("profile", "balanced"))
+        print(json.dumps({"active_profile": active}, indent=2))
+        return 0
+    preset = PROFILE_PRESETS.get(name)
+    if preset is None:
+        raise SystemExit(f"unknown profile: {name}")
+    print(json.dumps({"name": name, "preset": preset}, indent=2))
+    return 0
+
+
+def cmd_profile_apply(name: str) -> int:
+    preset = PROFILE_PRESETS.get(name)
+    if preset is None:
+        raise SystemExit(f"unknown profile: {name}")
+    config = load_config()
+    for section, value in preset.items():
+        if isinstance(value, dict):
+            base = config.get(section)
+            if not isinstance(base, dict):
+                base = {}
+                config[section] = base
+            base.update(value)
+        else:
+            config[section] = value
+    path = save_config(config)
+    print(json.dumps({"applied_profile": name, "config_path": str(path)}, indent=2))
     return 0
 
 
@@ -107,6 +181,13 @@ def main() -> int:
     set_parser.add_argument("key")
     set_parser.add_argument("value")
     sub.add_parser("reset")
+    profile_parser = sub.add_parser("profile")
+    profile_sub = profile_parser.add_subparsers(dest="profile_command", required=True)
+    profile_sub.add_parser("list")
+    profile_show = profile_sub.add_parser("show")
+    profile_show.add_argument("name", nargs="?")
+    profile_apply = profile_sub.add_parser("apply")
+    profile_apply.add_argument("name")
     onboard_parser = sub.add_parser("onboard")
     onboard_parser.add_argument("--yes", action="store_true")
     onboard_parser.add_argument("--no", action="store_true")
@@ -121,6 +202,14 @@ def main() -> int:
         return cmd_set(args.key, args.value)
     if args.command == "reset":
         return cmd_reset()
+    if args.command == "profile":
+        if args.profile_command == "list":
+            return cmd_profile_list()
+        if args.profile_command == "show":
+            return cmd_profile_show(args.name)
+        if args.profile_command == "apply":
+            return cmd_profile_apply(args.name)
+        return 2
     if args.command == "onboard":
         if args.yes and args.no:
             raise SystemExit("--yes and --no are mutually exclusive")

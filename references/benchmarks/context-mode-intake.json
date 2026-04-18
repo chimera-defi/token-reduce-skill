@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-04-18T17:19:32.139294+00:00",
+  "source_repo": "https://github.com/mksglu/context-mode",
+  "commit": "e43c78849957fbe1c79cf1874aa54bbcc02c5b63",
+  "validation": {
+    "install": {
+      "command": "pnpm install --no-frozen-lockfile",
+      "exit_code": 0,
+      "duration_ms": 504.09,
+      "status": "ok"
+    },
+    "build": {
+      "command": "pnpm build",
+      "exit_code": 0,
+      "duration_ms": 2412.68
+    },
+    "test": {
+      "command": "pnpm test",
+      "exit_code": 0,
+      "duration_ms": 17140.85,
+      "test_result": {
+        "test_files_passed": 46,
+        "tests_passed": 1532,
+        "tests_skipped": 23
+      }
+    }
+  },
+  "comparison_benchmark": {
+    "runner": "pnpm test:compare",
+    "duration_ms": 966.07,
+    "total_without_raw": "195.0KB",
+    "total_with_context_mode": "4339B",
+    "savings_percent": 98,
+    "estimated_tokens_without": 49911,
+    "estimated_tokens_with": 1085,
+    "estimated_tokens_saved": 48826,
+    "estimated_context_multiplier": "46x more files per session"
+  }
+}

@@ -11,6 +11,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from token_reduce_config import load_config
+
 
 TRIGGERS = (
     r"\bexplor(e|ing|ation)\b.{0,60}\b(repo|codebase|files?|code)\b",
@@ -31,6 +33,18 @@ TRIGGERS = (
 
 def discovery_hint() -> str:
     """Return the appropriate first-move discovery command for the current repo."""
+    env_override = os.environ.get("TOKEN_REDUCE_ADAPTIVE_HINT")
+    if env_override is not None:
+        adaptive_enabled = env_override != "0"
+    else:
+        config = load_config()
+        routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+        adaptive_enabled = bool(routing.get("adaptive_hint", True))
+    if adaptive_enabled and shutil.which("token-reduce-adaptive"):
+        return "token-reduce-adaptive <topic words>"
+    adaptive_helper = Path.cwd() / "scripts" / "token-reduce-adaptive.sh"
+    if adaptive_enabled and adaptive_helper.exists():
+        return "./scripts/token-reduce-adaptive.sh <topic words>"
     if shutil.which("token-reduce-paths"):
         return "token-reduce-paths <topic words>"
     helper = Path.cwd() / "scripts" / "token-reduce-paths.sh"

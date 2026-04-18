@@ -8,7 +8,16 @@ usage() {
 usage: ./scripts/token-reduce-manage.sh <command>
 
 commands:
+  activate-stack  One-command activation (setup + extended companions + validate)
+  handoff-codex  Print a ready-to-paste Codex fresh-context handoff block
   benchmark   Run the local output-size benchmark
+  benchmark-adaptive  Benchmark adaptive tier routing vs baseline paths helper
+  benchmark-profiles  Benchmark minimal-load/balanced/max-savings routing presets
+  benchmark-context-mode-intake  Validate and benchmark context-mode companion intake
+  benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
+  benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
+  release-gate  Run benchmark suite + keep/drop verdict for major change sets
+  test-adaptive  Run unit tests for adaptive tier routing decisions
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
   benchmark-composite  Run the composite stack benchmark
   deps-check  Check underlying companion/dependency freshness
@@ -37,8 +46,47 @@ if [[ $# -gt 0 ]]; then
   shift
 fi
 case "$cmd" in
+  activate-stack)
+    exec "$SCRIPT_DIR/activate-token-reduce-stack.sh"
+    ;;
+  handoff-codex)
+    exec "$SCRIPT_DIR/codex-handoff.sh"
+    ;;
   benchmark)
     exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
+    ;;
+  benchmark-adaptive)
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-adaptive-tiering.py"
+    ;;
+  benchmark-profiles)
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-profile-presets.py"
+    ;;
+  benchmark-context-mode-intake)
+    if [[ -z "${CONTEXT_MODE_REPO:-}" ]]; then
+      echo "set CONTEXT_MODE_REPO to a local context-mode clone path" >&2
+      exit 2
+    fi
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run "$SCRIPT_DIR/benchmark-context-mode-intake.py" --context-mode-repo "$CONTEXT_MODE_REPO"
+    ;;
+  benchmark-code-review-graph-intake)
+    if [[ -z "${CODE_REVIEW_GRAPH_REPO:-}" ]]; then
+      echo "set CODE_REVIEW_GRAPH_REPO to a local code-review-graph clone path" >&2
+      exit 2
+    fi
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run "$SCRIPT_DIR/benchmark-code-review-graph-intake.py" --code-review-graph-repo "$CODE_REVIEW_GRAPH_REPO"
+    ;;
+  benchmark-token-optimizer-intake)
+    if [[ -z "${TOKEN_OPTIMIZER_REPO:-}" ]]; then
+      echo "set TOKEN_OPTIMIZER_REPO to a local token-optimizer-mcp clone path" >&2
+      exit 2
+    fi
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
+    ;;
+  release-gate)
+    exec "$SCRIPT_DIR/release-gate.sh" "$@"
+    ;;
+  test-adaptive)
+    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests/test_token_reduce_adaptive.py"
     ;;
   composite)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"

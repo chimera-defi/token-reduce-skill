@@ -28,12 +28,12 @@ Artifact: `references/benchmarks/composite-benchmark.json`
 
 | Strategy | Tokens | Savings vs broad | Status |
 |----------|--------|------------------|--------|
-| `broad_shell` | `1033` | `0.0%` | `ok` |
-| `qmd_only` | `313` | `69.7%` | `quality-fail` |
-| `token_reduce_only` | `374` | `63.8%` | `quality-fail` |
-| `token_savior_only` | `621` | `39.9%` | `ok` |
-| `rtk_only` | `595` | `42.4%` | `ok` |
-| `composite_stack` | `340` | `67.1%` | `ok` |
+| `broad_shell` | `1154` | `0.0%` | `ok` |
+| `qmd_only` | `312` | `73.0%` | `quality-fail` |
+| `token_reduce_only` | `401` | `65.3%` | `quality-fail` |
+| `token_savior_only` | `621` | `46.2%` | `ok` |
+| `rtk_only` | `627` | `45.7%` | `ok` |
+| `composite_stack` | `367` | `68.2%` | `ok` |
 
 Composite stack wins on tokens against every single-tool strategy that passed quality checks in this run:
 

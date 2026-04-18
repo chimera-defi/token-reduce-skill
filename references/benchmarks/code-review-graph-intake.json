@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-04-18T17:23:36.624425+00:00",
+  "source_repo": "https://github.com/tirth8205/code-review-graph",
+  "commit": "db2d2df789c25a101e33477b898c1840fb4c7bc7",
+  "validation": {
+    "test_command": "uv run --with pytest --with pytest-asyncio pytest -q",
+    "duration_ms": 214854.05,
+    "test_result": {
+      "passed": 788,
+      "skipped": 1,
+      "xpassed": 2
+    }
+  },
+  "token_efficiency_eval": {
+    "runner": "uv run code-review-graph eval --benchmark token_efficiency --repo <repo>",
+    "repos": [
+      {
+        "repo": "express",
+        "duration_ms": 4274.49,
+        "rows": [
+          {
+            "commit": "925a1dff1e42f1b393c977b8b77757fcf633e09f",
+            "naive_tokens": 682,
+            "graph_tokens": 995,
+            "naive_to_graph_ratio": 0.7
+          },
+          {
+            "commit": "b4ab7d65d7724d9309b6faaaf82ad492da2a6d35",
+            "naive_tokens": 703,
+            "graph_tokens": 970,
+            "naive_to_graph_ratio": 0.7
+          }
+        ]
+      },
+      {
+        "repo": "fastapi",
+        "duration_ms": 20513.46,
+        "rows": [
+          {
+            "commit": "fa3588c38c7473aca7536b12d686102de4b0f407",
+            "naive_tokens": 6044,
+            "graph_tokens": 612,
+            "naive_to_graph_ratio": 9.9
+          },
+          {
+            "commit": "0227991a01e61bf5cdd93cc00e9e243f52b47a4a",
+            "naive_tokens": 3844,
+            "graph_tokens": 616,
+            "naive_to_graph_ratio": 6.2
+          }
+        ]
+      }
+    ]
+  },
+  "verdict": {
+    "default_for_token_reduce_first_move": false,
+    "recommended_usage": "optional structural review companion for larger dependency-rich repos",
+    "caveat": "can lose on tiny single-file diffs due graph metadata overhead"
+  }
+}
