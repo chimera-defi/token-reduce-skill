@@ -10,11 +10,7 @@ QUERY="$*"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
-
-GRAPHIFY_ENABLED="${TOKEN_REDUCE_ENABLE_GRAPHIFY:-0}"
-GRAPH_PATH="${TOKEN_REDUCE_GRAPH_PATH:-$REPO_ROOT/graphify-out/graph.json}"
-GRAPH_BUDGET="${TOKEN_REDUCE_GRAPHIFY_BUDGET:-1200}"
-GRAPHIFY_UV_DIR="${TOKEN_REDUCE_GRAPHIFY_UV_DIR:-}"
+ORCH_MODE="${TOKEN_REDUCE_ORCH_MODE:-auto}"      # auto|adaptive|paths|snippet|structural
 FALLBACK_MODE="${TOKEN_REDUCE_ORCH_FALLBACK:-paths}" # paths|snippet
 
 now_ms() {
@@ -44,7 +40,7 @@ log_event() {
     --tool token_reduce_orchestrate \
     --status "$status" \
     --query "$QUERY" \
-    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$backend\",\"fallback_used\":$fallback_used,\"mode\":\"$FALLBACK_MODE\",\"latency_ms\":$latency_ms,\"lines\":$lines,\"chars\":$chars}" >/dev/null 2>&1 || true
+    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$backend\",\"fallback_used\":$fallback_used,\"mode\":\"$ORCH_MODE\",\"latency_ms\":$latency_ms,\"lines\":$lines,\"chars\":$chars}" >/dev/null 2>&1 || true
 }
 
 is_symbol_like_query() {
@@ -56,60 +52,91 @@ is_symbol_like_query() {
   return 1
 }
 
-graphify_available() {
-  if command -v graphify >/dev/null 2>&1; then
-    return 0
-  fi
-  if [[ -n "$GRAPHIFY_UV_DIR" ]] && [[ -d "$GRAPHIFY_UV_DIR" ]]; then
-    return 0
-  fi
-  return 1
+query_has_impact_terms() {
+  local lowered
+  lowered="${QUERY,,}"
+  [[ "$lowered" =~ impact|blast|dependency|dependencies|affected|caller|callee|upstream|downstream ]]
 }
 
-run_graphify_query() {
-  if command -v graphify >/dev/null 2>&1; then
-    graphify query "$QUERY" --graph "$GRAPH_PATH" --budget "$GRAPH_BUDGET"
-    return
-  fi
-  uv run --directory "$GRAPHIFY_UV_DIR" graphify query "$QUERY" --graph "$GRAPH_PATH" --budget "$GRAPH_BUDGET"
-}
-
-fallback_helper() {
+resolve_fallback_cmd() {
   if [[ "$FALLBACK_MODE" == "snippet" ]]; then
-    "$SCRIPT_DIR/token-reduce-snippet.sh" "$QUERY"
+    printf '%s\0%s' "$SCRIPT_DIR/token-reduce-snippet.sh" "$QUERY"
   else
-    "$SCRIPT_DIR/token-reduce-paths.sh" "$QUERY"
+    printf '%s\0%s' "$SCRIPT_DIR/token-reduce-paths.sh" "$QUERY"
   fi
+}
+
+pick_backend() {
+  case "$ORCH_MODE" in
+    auto)
+      if command -v token-reduce-adaptive >/dev/null 2>&1; then
+        printf '%s\0%s\0%s' "token-reduce-adaptive" "$QUERY" "adaptive"
+      else
+        printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-adaptive.sh" "$QUERY" "adaptive"
+      fi
+      ;;
+    adaptive)
+      if command -v token-reduce-adaptive >/dev/null 2>&1; then
+        printf '%s\0%s\0%s' "token-reduce-adaptive" "$QUERY" "adaptive"
+      else
+        printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-adaptive.sh" "$QUERY" "adaptive"
+      fi
+      ;;
+    paths)
+      printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-paths.sh" "$QUERY" "paths"
+      ;;
+    snippet)
+      printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-snippet.sh" "$QUERY" "snippet"
+      ;;
+    structural)
+      if command -v token-reduce-structural >/dev/null 2>&1 && is_symbol_like_query; then
+        if query_has_impact_terms; then
+          printf '%s\0%s\0%s\0%s\0%s\0%s' "token-reduce-structural" "--project-root" "$REPO_ROOT" "change-impact" "$QUERY" "structural"
+        else
+          printf '%s\0%s\0%s\0%s\0%s\0%s' "token-reduce-structural" "--project-root" "$REPO_ROOT" "find-symbol" "$QUERY" "structural"
+        fi
+      else
+        printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-adaptive.sh" "$QUERY" "adaptive"
+      fi
+      ;;
+    *)
+      printf '%s\0%s\0%s' "$SCRIPT_DIR/token-reduce-adaptive.sh" "$QUERY" "adaptive"
+      ;;
+  esac
 }
 
 START_MS="$(now_ms)"
 
-can_try_graphify=0
-if [[ "$GRAPHIFY_ENABLED" == "1" ]] && graphify_available && [[ -f "$GRAPH_PATH" ]] && is_symbol_like_query; then
-  can_try_graphify=1
-fi
+mapfile -d '' -t CMD_PARTS < <(pick_backend)
+BACKEND_LABEL="${CMD_PARTS[-1]}"
+unset 'CMD_PARTS[-1]'
 
-if [[ "$can_try_graphify" == "1" ]]; then
-  set +e
-  GRAPHIFY_OUTPUT="$(run_graphify_query 2>&1)"
-  GRAPHIFY_STATUS=$?
-  set -e
+set +e
+OUT="$("${CMD_PARTS[@]}" 2>&1)"
+STATUS=$?
+set -e
 
-  if [[ "$GRAPHIFY_STATUS" -eq 0 ]] && [[ "$GRAPHIFY_OUTPUT" != *"No matching nodes found."* ]]; then
-    printf '%s\n' "$GRAPHIFY_OUTPUT"
-    log_event "ok" "graphify" false "$START_MS" "$GRAPHIFY_OUTPUT"
-    "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
-    exit 0
-  fi
-fi
-
-if HELPER_OUTPUT="$(fallback_helper)"; then
-  printf '%s\n' "$HELPER_OUTPUT"
-  log_event "ok" "token-reduce" "$can_try_graphify" "$START_MS" "$HELPER_OUTPUT"
+if [[ "$STATUS" -eq 0 ]]; then
+  printf '%s\n' "$OUT"
+  log_event "ok" "$BACKEND_LABEL" false "$START_MS" "$OUT"
   "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
   exit 0
 fi
 
-STATUS=$?
-log_event "error" "token-reduce" "$can_try_graphify" "$START_MS" ""
-exit "$STATUS"
+mapfile -d '' -t FALLBACK_CMD < <(resolve_fallback_cmd)
+set +e
+FALLBACK_OUT="$("${FALLBACK_CMD[@]}" 2>&1)"
+FALLBACK_STATUS=$?
+set -e
+
+if [[ "$FALLBACK_STATUS" -eq 0 ]]; then
+  printf '%s\n' "$FALLBACK_OUT"
+  log_event "ok" "$BACKEND_LABEL" true "$START_MS" "$FALLBACK_OUT"
+  "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
+  exit 0
+fi
+
+printf '%s\n' "$OUT" >&2
+printf '%s\n' "$FALLBACK_OUT" >&2
+log_event "error" "$BACKEND_LABEL" true "$START_MS" ""
+exit "$FALLBACK_STATUS"

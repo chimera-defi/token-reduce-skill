@@ -23,7 +23,7 @@ What this version does:
 - managed telemetry loop (measure/review/rolling baseline + optional remote sync)
 - workspace install + workspace audit with explicit version/commit drift reporting
 - safe auto-update flow with workspace propagation (`workspace-auto-update`)
-- optional companion-tool routing policy (RTK, caveman, AXI, token-savior; graphify remains optional/experimental and disabled by default)
+- optional companion-tool routing policy (RTK, caveman, AXI, token-savior; graphify is documented as historical/rejected for default routing)
 
 ## Included Components
 
@@ -63,20 +63,26 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 
 `setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, indexes your repo, and prompts telemetry opt-in during install. Re-run any time — it's idempotent.
 
-One-command activation for the measured stack (includes extended companions + validate):
+One-command activation for the measured stack (core-only default + validate):
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
 ```
 
-Optional extended companion install (validated but task-scoped, not default routing):
+To include conditional companions during activation:
+
+```bash
+TOKEN_REDUCE_ACTIVATE_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
+```
+
+Optional extended companion install (task-scoped, not default routing):
 
 ```bash
 TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-This also attempts to install `context-mode` and `code-review-graph`.
+This attempts to install `context-mode` and `code-review-graph` only when explicitly requested.
 
 It also:
 - links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
@@ -183,11 +189,11 @@ Composite benchmark in this repo (quality-gated mixed workload):
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2389` | baseline | `ok` |
-| `qmd_only` | `408` | `82.9%` saved | `quality-fail` |
-| `token_reduce_only` | `648` | `72.9%` saved | `quality-fail` |
+| `broad_shell` | `2397` | baseline | `ok` |
+| `qmd_only` | `408` | `83.0%` saved | `quality-fail` |
+| `token_reduce_only` | `648` | `73.0%` saved | `quality-fail` |
 | `token_savior_only` | `483` | `79.8%` saved | `ok` |
-| `rtk_only` | `772` | `67.7%` saved | `ok` |
+| `rtk_only` | `776` | `67.6%` saved | `ok` |
 | `composite_stack` | `431` | `82.0%` saved | `ok` |
 
 In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
@@ -222,7 +228,9 @@ TOKEN_OPTIMIZER_REPO=/path/to/token-optimizer-mcp ./scripts/token-reduce-manage.
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh benchmark-composite
 ./scripts/token-reduce-manage.sh deps-check
+./scripts/token-reduce-manage.sh deps-check-conditional
 ./scripts/token-reduce-manage.sh deps-update
+./scripts/token-reduce-manage.sh deps-update-conditional
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh measure-global
 ./scripts/token-reduce-manage.sh review
@@ -248,6 +256,16 @@ TOKEN_OPTIMIZER_REPO=/path/to/token-optimizer-mcp ./scripts/token-reduce-manage.
 ```
 
 Future agents should treat `measure` and `review` as part of the normal maintenance loop, not optional cleanup after the fact.
+
+### Tier Value Profile
+
+The active orchestration stack is intentionally narrowed to high-signal dependencies:
+
+- core orchestrated: `qmd`, `token-reduce` helpers/hooks, `token-reduce-adaptive`, `rtk`
+- conditional companions: `token-savior`, `context-mode`, `code-review-graph`, AXI, caveman
+- excluded from default routing: `token-optimizer-mcp`, `token-optimizer`, infra-coupled `claude-context`, and legacy graphify-first orchestration
+
+See [references/tier-value-profile.md](references/tier-value-profile.md) for keep/conditional/excluded details and rationale.
 
 This is the self-improvement loop:
 
@@ -307,10 +325,17 @@ token-reduce can check for new commits and optionally fast-forward itself when s
 ./scripts/token-reduce-manage.sh workspace-auto-update
 ./scripts/token-reduce-manage.sh deps-check
 ./scripts/token-reduce-manage.sh deps-update
+./scripts/token-reduce-manage.sh deps-check-conditional
+./scripts/token-reduce-manage.sh deps-update-conditional
 ./scripts/token-reduce-manage.sh doctor
 ```
 
 `auto-update` only runs when the worktree is clean and can fast-forward. When `updates.workspace_auto_update=true`, it also force-relinks sibling repos to the canonical skill root and emits workspace version/commit drift.
+
+Dependency policy:
+
+- `deps-check` / `deps-update` target core stack dependencies only (`qmd`, `rtk`)
+- `deps-check-conditional` / `deps-update-conditional` target optional companions (AXI, `context-mode`, `code-review-graph`)
 
 ## Optional Structural Accelerator
 
@@ -453,6 +478,7 @@ The design goal is explicit:
 - [references/profile-presets.md](references/profile-presets.md) — formal minimal-load / balanced / max-savings routing profiles
 - [references/feature-matrix.md](references/feature-matrix.md) — complete feature-to-command/config/telemetry/evidence map
 - [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md) — meta learnings captured from the tiered-stack validation pass
+- [references/tier-value-profile.md](references/tier-value-profile.md) — load/savings tier-value decisions (keep vs conditional vs excluded)
 - [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
 - [references/self-improving-harness.md](references/self-improving-harness.md) — opt-in telemetry, updates, and self-improve loop
 - [references/secure-telemetry-server.md](references/secure-telemetry-server.md) — hardened local telemetry receiver setup and key rotation

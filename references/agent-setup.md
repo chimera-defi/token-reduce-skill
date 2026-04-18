@@ -82,6 +82,8 @@ token-reduce-manage auto-update
 token-reduce-manage workspace-auto-update
 token-reduce-manage deps-check
 token-reduce-manage deps-update
+token-reduce-manage deps-check-conditional
+token-reduce-manage deps-update-conditional
 token-reduce-manage settings profile list
 token-reduce-manage settings profile apply max-savings
 token-reduce-manage benchmark-profiles

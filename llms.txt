@@ -11,11 +11,17 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 
 `setup.sh` installs QMD and RTK, installs AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`) when `npm` is available, wires hook layers into Claude Code globally, and indexes your repo. Safe to re-run.
 
-One-command activation for the measured stack:
+One-command activation for the measured stack (core-only default):
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
+```
+
+To include conditional companions during activation:
+
+```bash
+TOKEN_REDUCE_ACTIVATE_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
 ```
 
 Optional extended companion install:
@@ -24,7 +30,7 @@ Optional extended companion install:
 TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-This also attempts to install `context-mode` and `code-review-graph`.
+This attempts to install `context-mode` and `code-review-graph` only when explicitly requested.
 
 Claude Code plugin alternative:
 
@@ -126,6 +132,8 @@ Enable opt-in telemetry summaries and update checks:
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh updates
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh auto-update
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh release-gate
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh deps-check
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh deps-check-conditional
 ```
 
 ## MCP tools (if using MCP)
@@ -161,5 +169,6 @@ MCP config:
 - Prompt stack intake verdict: `references/prompt-stack-intake-2026-04-18.md`
 - Feature matrix: `references/feature-matrix.md`
 - Meta learnings: `references/meta-learnings-2026-04-18.md`
+- Tier value profile: `references/tier-value-profile.md`
 - Manager CLI: `scripts/token-reduce-manage.sh`
 - Repo: https://github.com/chimera-defi/token-reduce-skill

@@ -54,7 +54,9 @@ Profile benchmark artifact:
 | `./scripts/token-reduce-manage.sh benchmark-adaptive` | adaptive vs baseline-tier comparison | `references/benchmarks/adaptive-tier-benchmark.json` |
 | `./scripts/token-reduce-manage.sh benchmark-composite` | quality-gated composite stack benchmark | `references/benchmarks/composite-benchmark.json` |
 | `./scripts/token-reduce-manage.sh benchmark-profiles` | profile-level savings/quality benchmark | `references/benchmarks/profile-presets-benchmark.json` |
-| `./scripts/token-reduce-manage.sh release-gate` | one-shot benchmark + keep/drop verdict for major change sets | terminal JSON verdict (`release_gate_pass`) |
+| `./scripts/token-reduce-manage.sh deps-check` | core dependency health (qmd + rtk) | terminal summary + JSON |
+| `./scripts/token-reduce-manage.sh deps-check-conditional` | conditional companion health (AXI/context-mode/code-review-graph) | terminal summary + JSON |
+| `./scripts/token-reduce-manage.sh release-gate` | benchmark + runtime-reliability keep/drop verdict for major change sets | terminal JSON verdict (`release_gate_pass`) |
 | `./scripts/token-reduce-manage.sh measure` | local adoption/compliance metrics | `artifacts/token-reduction/adoption-repo-*.{json,md}` |
 | `./scripts/token-reduce-manage.sh review` | telemetry-driven recommendation report | `artifacts/token-reduction/adoption-repo-*-review.md` |
 

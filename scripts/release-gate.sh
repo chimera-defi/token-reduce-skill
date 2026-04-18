@@ -12,5 +12,9 @@ env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken \
 env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken \
   "$SCRIPT_DIR/benchmark-profile-presets.py"
 
+echo "[token-reduce] running runtime reliability checks (measure/review)..."
+"$SCRIPT_DIR/baseline-measurement.sh" --scope repo >/dev/null
+uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo >/dev/null
+
 echo "[token-reduce] evaluating keep/drop gate..."
-uv run "$SCRIPT_DIR/release-change-gate.py" "$@"
+uv run "$SCRIPT_DIR/release-change-gate.py" --repo-root "$SCRIPT_DIR/.." "$@"

@@ -20,8 +20,10 @@ commands:
   test-adaptive  Run unit tests for adaptive tier routing decisions
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
   benchmark-composite  Run the composite stack benchmark
-  deps-check  Check underlying companion/dependency freshness
-  deps-update  Apply companion/dependency updates when possible
+  deps-check  Check core dependency freshness (qmd + rtk)
+  deps-check-conditional  Check conditional companion freshness (AXI/context-mode/code-review-graph)
+  deps-update  Update core dependencies when possible
+  deps-update-conditional  Update conditional companions when possible
   measure     Measure repo-local adoption and write artifacts
   measure-global  Measure global adoption across local session logs
   review      Generate the telemetry-driven self-review
@@ -107,8 +109,14 @@ case "$cmd" in
   deps-check)
     exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py"
     ;;
+  deps-check-conditional)
+    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional
+    ;;
   deps-update)
     exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --apply
+    ;;
+  deps-update-conditional)
+    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional --apply
     ;;
   measure)
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope repo

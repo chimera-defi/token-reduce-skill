@@ -148,3 +148,4 @@ Read `references/axi-evaluation.md` for the AXI companion verdict.
 Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
 Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
 Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
+Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.
