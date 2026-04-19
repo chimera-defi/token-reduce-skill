@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18T20:09:53.853120+00:00",
+  "generated_at": "2026-04-19T05:28:32.408579+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -31,10 +31,10 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 724,
-      "bytes": 917,
-      "lines": 20,
-      "tokens": 220,
+      "duration_ms": 735,
+      "bytes": 905,
+      "lines": 19,
+      "tokens": 216,
       "quality_pass": false,
       "quality_note": "missing: prompt_requires_helper",
       "stdout_preview": "No results found.\n./tools/token-reduce-skill/scripts/benchmark-composite-stack.py\n./tools/token-reduce-skill/references/benchmarks/composite-benchmark.json\n./scripts/benchmark-composite-stack.py\n./references/benchmarks/composite-benchmark.json\n./references/benchmarks/adaptive-tier-benchmark.json\n./scripts/tests/test_token_reduce_adaptive.py\n./tools/token-reduce-skill/scripts/remind-token-reduce.py"
@@ -44,7 +44,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh \"prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 734,
+      "duration_ms": 487,
       "bytes": 191,
       "lines": 8,
       "tokens": 55,
@@ -57,7 +57,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 136,
+      "duration_ms": 130,
       "bytes": 959,
       "lines": 20,
       "tokens": 230,
@@ -70,7 +70,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 220,
+      "duration_ms": 224,
       "bytes": 959,
       "lines": 20,
       "tokens": 230,
@@ -83,32 +83,32 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 2857,
+      "duration_ms": 2977,
       "bytes": 694,
       "lines": 8,
-      "tokens": 279,
+      "tokens": 278,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#ad44c1,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
+      "stdout_preview": "#700227,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
     },
     {
       "task": "token_reduction_docs",
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 2932,
+      "duration_ms": 3205,
       "bytes": 694,
       "lines": 8,
-      "tokens": 279,
+      "tokens": 278,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#ad44c1,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
+      "stdout_preview": "#700227,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#09665d,0.89,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/token-reduction-guide.md\n#1015ea,0.88,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/architecture.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/self-enhancing-harness-log-2026-04-12.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/references/graphify-evaluation.md\n#3676fa,0.86,qmd://repo-92c7c9c293c8/references/graphify-evaluation.md"
     }
   ],
   "summary": {
-    "baseline_tokens": 729,
-    "adaptive_tokens": 564,
-    "adaptive_savings_vs_baseline_pct": 22.6,
+    "baseline_tokens": 724,
+    "adaptive_tokens": 563,
+    "adaptive_savings_vs_baseline_pct": 22.2,
     "baseline_quality_pass": false,
     "adaptive_quality_pass": true
   },

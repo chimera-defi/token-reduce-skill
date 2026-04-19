@@ -53,20 +53,20 @@ From `references/benchmarks/composite-benchmark.json`:
 
 | Strategy | Tokens | Savings vs broad | Status |
 |---|---|---|---|
-| `broad_shell` | `2397` | `0.0%` | `ok` |
+| `broad_shell` | `2407` | `0.0%` | `ok` |
 | `qmd_only` | `408` | `83.0%` | `quality-fail` |
-| `token_reduce_only` | `648` | `73.0%` | `quality-fail` |
-| `token_savior_only` | `483` | `79.8%` | `ok` |
-| `rtk_only` | `776` | `67.6%` | `ok` |
-| `composite_stack` | `431` | `82.0%` | `ok` |
+| `token_reduce_only` | `623` | `74.1%` | `quality-fail` |
+| `token_savior_only` | `483` | `79.9%` | `ok` |
+| `rtk_only` | `782` | `67.5%` | `ok` |
+| `composite_stack` | `431` | `82.1%` | `ok` |
 
 ### Adaptive tier benchmark
 
 From `references/benchmarks/adaptive-tier-benchmark.json`:
 
-- baseline paths tokens: `729`
-- adaptive tokens: `564`
-- adaptive savings: `22.6%`
+- baseline paths tokens: `724`
+- adaptive tokens: `563`
+- adaptive savings: `22.2%`
 - baseline quality: fail
 - adaptive quality: pass
 
@@ -75,8 +75,8 @@ From `references/benchmarks/adaptive-tier-benchmark.json`:
 From `references/benchmarks/profile-presets-benchmark.json`:
 
 - `minimal-load`: lower overhead, no adaptive gain in current set, quality fail
-- `balanced`: quality pass with `22.6%` adaptive savings
-- `max-savings`: quality pass with `22.6%` adaptive savings
+- `balanced`: quality pass with `22.2%` adaptive savings
+- `max-savings`: quality pass with `22.2%` adaptive savings
 
 ## Routing Profiles
 
