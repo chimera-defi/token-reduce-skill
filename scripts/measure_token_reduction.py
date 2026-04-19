@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,29 @@ CAVEMAN_COMMAND_RE = re.compile(
     r"(?:(?:/|\$)caveman(?:-cn|-es)?(?:\s+\w+|:compress)?|caveman:compress)",
     re.IGNORECASE,
 )
+RG_OPTIONS_WITH_VALUE = {
+    "-e",
+    "--regexp",
+    "-f",
+    "--file",
+    "-g",
+    "--glob",
+    "-t",
+    "--type",
+    "-T",
+    "--type-not",
+    "-m",
+    "--max-count",
+    "-A",
+    "-B",
+    "-C",
+    "--max-filesize",
+    "--max-columns",
+    "--max-depth",
+    "--threads",
+    "--sort",
+    "--sortr",
+}
 
 
 def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
@@ -163,13 +187,85 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "scoped_rg")
     if TARGETED_BASH_RE.search(command):
         metrics["targeted_reads"] = True
-    if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command):
+    if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command) or is_exploratory_rg(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
 
 
 def helper_used(metrics: dict) -> bool:
     return bool(metrics.get("token_reduce_search") or metrics.get("structural_helper"))
+
+
+def rg_paths(command: str) -> list[str]:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return []
+    if not tokens or tokens[0] != "rg":
+        return []
+
+    paths: list[str] = []
+    saw_pattern = False
+    i = 1
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "--":
+            tail = tokens[i + 1 :]
+            if not saw_pattern and tail:
+                saw_pattern = True
+                tail = tail[1:]
+            paths.extend(tail)
+            break
+
+        if token.startswith("-"):
+            if token in RG_OPTIONS_WITH_VALUE:
+                i += 2
+                continue
+            if (
+                token.startswith("--glob=")
+                or token.startswith("--regexp=")
+                or token.startswith("--type=")
+                or token.startswith("--type-not=")
+                or token.startswith("--file=")
+                or token.startswith("-g")
+                or token.startswith("-e")
+            ):
+                i += 1
+                continue
+            i += 1
+            continue
+
+        if not saw_pattern:
+            saw_pattern = True
+        else:
+            paths.append(token)
+        i += 1
+
+    return paths
+
+
+def is_exploratory_rg(command: str) -> bool:
+    text = command.strip()
+    if not text.startswith("rg "):
+        return False
+    if re.search(r"(?:^|\s)(?:-g|--glob)(?:\s|=)", text):
+        return False
+    if re.search(r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", text):
+        return True
+
+    paths = rg_paths(text)
+    if not paths:
+        return True
+
+    for raw_path in paths:
+        if raw_path in {".", "./"}:
+            return True
+        if any(ch in raw_path for ch in "*?["):
+            return True
+        if "." not in Path(raw_path).name:
+            return True
+
+    return False
 
 
 def parse_claude_session(session_file: Path) -> dict:
@@ -276,6 +372,7 @@ def measure(scope: str, repo_root: str) -> dict:
         "helper_sessions",
         "structural_helper_sessions",
         "mention_without_helper_sessions",
+        "mention_without_helper_sessions_observed",
     ):
         adoption[key] = 0
     per_source = defaultdict(lambda: defaultdict(int))
@@ -301,6 +398,9 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["structural_helper_sessions"] += int(item["structural_helper"])
         adoption["mention_without_helper_sessions"] += int(
             item["token_reduce_mention"] and not helper_session
+        )
+        adoption["mention_without_helper_sessions_observed"] += int(
+            item["token_reduce_mention"] and item["first_discovery_seen"] and not helper_session
         )
         observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
@@ -378,6 +478,9 @@ def measure(scope: str, repo_root: str) -> dict:
             "helper_sessions_pct_observed_discovery": pct_observed(adoption["helper_sessions"]),
             "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
             "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
+            "mention_without_helper_pct_observed_discovery": pct_observed(
+                adoption["mention_without_helper_sessions_observed"]
+            ),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,

@@ -36,6 +36,7 @@ IFS=',' read -r -a QMD_EXTENSION_LIST <<<"$QMD_EXTENSIONS"
 QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
 QMD_STAMP_DIR="${REPO_ROOT}/artifacts"
 QMD_STAMP_PATH="${QMD_STAMP_DIR}/qmd-${COLLECTION_NAME}.stamp"
+QMD_REFRESH_TTL_SECONDS="${TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS:-180}"
 NEEDS_PATH_HINT=0
 PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
@@ -206,6 +207,23 @@ collection_fingerprint() {
   done <<<"$listed" | sort | sha1sum | cut -d' ' -f1
 }
 
+stamp_is_fresh() {
+  local stamp_path="$1"
+  local ttl_seconds="$2"
+  local now_s mtime_s
+
+  if [[ "${ttl_seconds:-0}" -le 0 ]]; then
+    return 1
+  fi
+  if [[ ! -f "$stamp_path" ]]; then
+    return 1
+  fi
+  now_s="$(date +%s)"
+  mtime_s="$(stat -c '%Y' "$stamp_path" 2>/dev/null || printf '0')"
+  [[ "$mtime_s" =~ ^[0-9]+$ ]] || return 1
+  (( now_s - mtime_s <= ttl_seconds ))
+}
+
 sanitize_qmd_files_output() {
   local raw_output="$1"
   local filtered_output
@@ -232,10 +250,17 @@ sanitize_qmd_files_output() {
 
 ensure_qmd_collection() {
   local current_fingerprint existing_fingerprint
+  mkdir -p "$QMD_STAMP_DIR"
+
+  if qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"; then
+    if stamp_is_fresh "$QMD_STAMP_PATH" "$QMD_REFRESH_TTL_SECONDS"; then
+      debug "[token-reduce-search] using fresh qmd stamp (ttl=${QMD_REFRESH_TTL_SECONDS}s)"
+      return 0
+    fi
+  fi
+
   current_fingerprint="$(collection_fingerprint)"
   existing_fingerprint=""
-
-  mkdir -p "$QMD_STAMP_DIR"
   if [[ -f "$QMD_STAMP_PATH" ]]; then
     existing_fingerprint="$(<"$QMD_STAMP_PATH")"
   fi

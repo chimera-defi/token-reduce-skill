@@ -38,7 +38,13 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     compliance = compliance_observed if observed_discovery_sessions > 0 else compliance_all
     helper = helper_observed if observed_discovery_sessions > 0 else helper_all
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
-    mentions_without_helper = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    mentions_without_helper_all = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    mentions_without_helper_observed = int(
+        report["adoption"].get("mention_without_helper_sessions_observed", mentions_without_helper_all)
+    )
+    mentions_without_helper = (
+        mentions_without_helper_observed if observed_discovery_sessions > 0 else mentions_without_helper_all
+    )
     caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
     caveman_command_sessions = int(report["adoption"].get("caveman_command_sessions", 0))
     caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
@@ -184,11 +190,16 @@ def build_findings(report: dict) -> list[dict[str, str]]:
             }
         )
     if mentions_without_helper > 0:
+        scope_note = (
+            " with observed discovery actions"
+            if observed_discovery_sessions > 0
+            else ""
+        )
         findings.append(
             {
                 "priority": "medium",
                 "area": "prompt_skill_gap",
-                "finding": f"{mentions_without_helper} sessions mentioned token-reduce without using the helper.",
+                "finding": f"{mentions_without_helper} sessions{scope_note} mentioned token-reduce without using the helper.",
                 "recommendation": "Tighten wording and examples so mentioning the skill correlates with helper invocation instead of vague compliance.",
             }
         )

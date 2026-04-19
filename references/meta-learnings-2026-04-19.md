@@ -49,3 +49,7 @@
    Blocking only `rg --files .` missed other `rg --files` forms and `fd` usage; broader regexes close those escapes.
 4. Sibling telemetry validated install consistency but behavior variance.
    Workspace audit shows version/commit sync is stable; remaining gaps are primarily usage patterns, not deployment drift.
+5. QMD fingerprint checks needed a freshness window.
+   Recomputing full-repo fingerprints on every helper call drives latency spikes; a short stamp TTL keeps repeated calls fast without sacrificing correctness.
+6. Broad `rg` detection needed semantic parsing.
+   Regex-only broad-scan blocking misses `rg` forms that recurse from repo root; token-aware path parsing catches these while still allowing exact-file `rg`.

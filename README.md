@@ -157,7 +157,7 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
 | `broad_shell` | `2354` | baseline | `ok` |
-| `qmd_only` | `696` | `70.4%` saved | `ok` |
+| `qmd_only` | `698` | `70.3%` saved | `ok` |
 | `token_reduce_only` | `323` | `86.3%` saved | `quality-fail` |
 | `token_savior_only` | `483` | `79.5%` saved | `ok` |
 | `rtk_only` | `738` | `68.6%` saved | `ok` |
