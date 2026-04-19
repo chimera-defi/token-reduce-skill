@@ -14,7 +14,7 @@ from token_reduce_telemetry import load_events, summarize_events
 
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
-    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet)\.sh\b|\btoken-reduce-(?:search|paths|snippet)\.sh\b"
+    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive|orchestrate)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive|orchestrate)(?:\.sh)?\b"
 )
 TOKEN_REDUCE_STRUCTURAL_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-structural(?:\.py)?\b|\btoken-reduce-structural(?:\.py)?\b"
@@ -149,6 +149,7 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "token_reduce_search")
     if TOKEN_REDUCE_STRUCTURAL_RE.search(command):
         metrics["structural_helper"] = True
+        note_first_discovery(metrics, True, "structural_helper")
     if GH_AXI_RE.search(command):
         metrics["axi_tool"] = True
         metrics["gh_axi_tool"] = True
@@ -165,6 +166,10 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
     if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
+
+
+def helper_used(metrics: dict) -> bool:
+    return bool(metrics.get("token_reduce_search") or metrics.get("structural_helper"))
 
 
 def parse_claude_session(session_file: Path) -> dict:
@@ -291,10 +296,11 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["axi_tool_sessions"] += int(item["axi_tool"])
         adoption["gh_axi_sessions"] += int(item["gh_axi_tool"])
         adoption["chrome_devtools_axi_sessions"] += int(item["chrome_devtools_axi_tool"])
-        adoption["helper_sessions"] += int(item["token_reduce_search"])
+        helper_session = helper_used(item)
+        adoption["helper_sessions"] += int(helper_session)
         adoption["structural_helper_sessions"] += int(item["structural_helper"])
         adoption["mention_without_helper_sessions"] += int(
-            item["token_reduce_mention"] and not item["token_reduce_search"]
+            item["token_reduce_mention"] and not helper_session
         )
         observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
@@ -304,7 +310,7 @@ def measure(scope: str, repo_root: str) -> dict:
 
         source = str(item["source"])
         per_source[source]["sessions"] += 1
-        per_source[source]["helper_sessions"] += int(item["token_reduce_search"])
+        per_source[source]["helper_sessions"] += int(helper_session)
         per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
         per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
         per_source[source]["caveman_command_sessions"] += int(item["caveman_command"])

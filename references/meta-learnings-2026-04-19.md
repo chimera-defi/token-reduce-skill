@@ -38,3 +38,14 @@
 1. Improve global helper adoption (`helper_sessions_pct_observed_discovery` still below desired level).
 2. Tighten hook coverage where broad scans still appear in global history.
 3. Keep watching helper latency tails (QMD refresh/search dominates p95).
+
+## Addendum (2026-04-19, gap-closure pass)
+
+1. Telemetry attribution mattered as much as routing.
+   Sessions using structural/adaptive/orchestrate helpers were undercounted as "no helper", masking real adoption.
+2. Reminder quality affects compliance.
+   A generic hint is weaker than a prompt-specific kickoff command; injecting concrete query words improves first-action helper behavior.
+3. Broad-scan patterns needed stricter coverage.
+   Blocking only `rg --files .` missed other `rg --files` forms and `fd` usage; broader regexes close those escapes.
+4. Sibling telemetry validated install consistency but behavior variance.
+   Workspace audit shows version/commit sync is stable; remaining gaps are primarily usage patterns, not deployment drift.

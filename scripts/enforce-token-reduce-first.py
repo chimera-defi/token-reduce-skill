@@ -17,7 +17,8 @@ BROAD_BASH_PATTERNS = [
     r"\bgrep\s+-R\b",
     r"\bgrep\s+--recursive\b",
     r"\bdu\s+-a\b",
-    r"\brg\b.*\s--files(?:\s+\.|\s*$)",
+    r"\brg\b.*\s--files\b",
+    r"\bfd\b(?:\s|$)",
     r"\btree\b(?:\s+\.|\s*$)",
 ]
 # Commands that are safe orchestrators — they may have broad-looking args in --body/--message,
