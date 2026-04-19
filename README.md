@@ -56,9 +56,15 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 What `setup.sh` does automatically:
 
 - installs/configures core tools (`qmd`, `rtk`) when possible
+- runs initial QMD indexing for docs+code (`**/*.{md,txt,rst,py,sh,...}`), which can take longer on first run
 - wires Claude hooks for prompt steering + pre-tool enforcement
 - links global wrappers (`token-reduce-adaptive`, `token-reduce-paths`, `token-reduce-snippet`, `token-reduce-manage`)
 - links the Codex skill and companion skills when present
+
+Optional QMD scope overrides:
+
+- `TOKEN_REDUCE_QMD_MASK`: explicit glob mask passed to `qmd collection add`
+- `TOKEN_REDUCE_QMD_EXTENSIONS`: comma-separated extension list used to build the default mask
 
 One-command measured activation (core-only default + validate):
 
@@ -140,22 +146,22 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `565` | baseline |
-| `guidance_scoped_rg` | `197` | `65.1%` saved |
-| `qmd_files` | `328` | `41.9%` saved |
-| `token_reduce_paths_warm` | `328` | `41.9%` saved |
-| `token_reduce_snippet_warm` | `406` | `28.1%` saved |
+| `broad_inventory` | `1826` | baseline |
+| `guidance_scoped_rg` | `391` | `78.6%` saved |
+| `qmd_files` | `309` | `83.1%` saved |
+| `token_reduce_paths_warm` | `31` | `98.3%` saved |
+| `token_reduce_snippet_warm` | `195` | `89.3%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2407` | baseline | `ok` |
-| `qmd_only` | `408` | `83.0%` saved | `quality-fail` |
-| `token_reduce_only` | `623` | `74.1%` saved | `quality-fail` |
-| `token_savior_only` | `483` | `79.9%` saved | `ok` |
-| `rtk_only` | `782` | `67.5%` saved | `ok` |
-| `composite_stack` | `431` | `82.1%` saved | `ok` |
+| `broad_shell` | `2354` | baseline | `ok` |
+| `qmd_only` | `695` | `70.5%` saved | `ok` |
+| `token_reduce_only` | `323` | `86.3%` saved | `quality-fail` |
+| `token_savior_only` | `483` | `79.5%` saved | `ok` |
+| `rtk_only` | `738` | `68.6%` saved | `ok` |
+| `composite_stack` | `322` | `86.3%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
 
@@ -211,6 +217,8 @@ Default token-reduce routing/enforcement works with or without caveman.
 - [references/composite-benchmark.md](references/composite-benchmark.md)
 - [references/profile-presets.md](references/profile-presets.md)
 - [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md)
+- [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
+- [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
 - [references/agent-setup.md](references/agent-setup.md)
 - [references/workspace-integration.md](references/workspace-integration.md)
 - [references/codex-handoff.md](references/codex-handoff.md)

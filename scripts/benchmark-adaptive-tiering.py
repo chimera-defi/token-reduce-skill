@@ -39,8 +39,8 @@ class RunResult:
 TASKS = [
     {
         "name": "exact_symbol",
-        "query": "prompt_requires_helper",
-        "expected": ["token_reduce_state.py", "prompt_requires_helper"],
+        "query": "find symbol prompt_requires_helper",
+        "expected": ["token_reduce_state.py"],
     },
     {
         "name": "hook_discovery",

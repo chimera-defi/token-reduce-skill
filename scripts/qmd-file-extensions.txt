@@ -1,0 +1,1 @@
+md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php

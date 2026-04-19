@@ -9,7 +9,7 @@ description: |
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.1.0"
+  version: "5.2.0"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -113,6 +113,8 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 command -v qmd >/dev/null 2>&1 || bun install -g https://github.com/tobi/qmd
 
 qmd collection add /path/to/repo --name my-repo
+# default token-reduce scope mirrors docs+code extensions:
+# qmd collection add /path/to/repo --name my-repo --mask '**/*.{md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php}'
 
 qmd search "topic" -n 5 --files
 qmd search "topic" -n 5
@@ -148,4 +150,5 @@ Read `references/axi-evaluation.md` for the AXI companion verdict.
 Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
 Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
 Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
+Read `references/meta-learnings-2026-04-19.md` for QMD indexing/routing synchronization lessons and latency/adoption follow-ups.
 Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.

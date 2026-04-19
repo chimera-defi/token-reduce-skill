@@ -24,7 +24,15 @@ QUERY="$1"
 GLOB="${2:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-QMD_MASK="**/*.md"
+QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
+QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
+if [[ -f "$QMD_EXTENSION_FILE" ]]; then
+  QMD_EXTENSIONS_DEFAULT="$(tr -d '[:space:]' <"$QMD_EXTENSION_FILE")"
+fi
+QMD_EXTENSIONS="${TOKEN_REDUCE_QMD_EXTENSIONS:-$QMD_EXTENSIONS_DEFAULT}"
+QMD_MASK_DEFAULT="**/*.{${QMD_EXTENSIONS}}"
+QMD_MASK="${TOKEN_REDUCE_QMD_MASK:-$QMD_MASK_DEFAULT}"
+IFS=',' read -r -a QMD_EXTENSION_LIST <<<"$QMD_EXTENSIONS"
 QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
 QMD_STAMP_DIR="${REPO_ROOT}/artifacts"
 QMD_STAMP_PATH="${QMD_STAMP_DIR}/qmd-${COLLECTION_NAME}.stamp"
@@ -36,6 +44,15 @@ DEFAULT_EXCLUDES=(
   -g '!graphify-out/**'
   -g '!artifacts/token-reduction/events.jsonl'
   -g '!artifacts/token-reduction/snapshots/**'
+  -g '!tools/token-reduce-skill/**'
+)
+FINGERPRINT_EXCLUDES=(
+  -g '!.git/**'
+  -g '!node_modules/**'
+  -g '!graphify-out/**'
+  -g '!artifacts/**'
+  -g '!.worktrees/**'
+  -g '!tools/token-reduce-skill/**'
 )
 
 debug() {
@@ -48,7 +65,7 @@ warn() {
   printf '%s\n' "$*" >&2
 }
 
-if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* ]]; then
+if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* || "$QUERY" == *"_"* ]]; then
   NEEDS_PATH_HINT=1
 fi
 
@@ -64,10 +81,38 @@ if [[ "$QUERY" =~ (^|[[:space:]])(benchmark|measure|adoption)([[:space:]]|$) ]];
   PREFER_SCRIPT_CONTENT=1
 fi
 
+symbol_like_pattern() {
+  local input="$1"
+  local token
+  local tokens=()
+
+  while IFS= read -r token; do
+    [[ "$token" == *"_"* ]] || continue
+    [[ -n "$token" ]] || continue
+    tokens+=("$token")
+    [[ ${#tokens[@]} -ge 3 ]] && break
+  done < <(printf '%s' "$input" | tr -cs '[:alnum:]_.:-' '\n')
+
+  if [[ ${#tokens[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  local pattern="${tokens[0]}"
+  local i
+  for ((i = 1; i < ${#tokens[@]}; i++)); do
+    pattern="${pattern}|${tokens[i]}"
+  done
+  printf '%s' "$pattern"
+}
+
 path_pattern() {
-  local lowered token
+  local lowered token symbol_pattern
   lowered="$(printf '%s' "$QUERY" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$lowered" == *".py"* || "$lowered" == *".sh"* || "$lowered" == *"_"* || "$lowered" == *"-"* ]]; then
+  if symbol_pattern="$(symbol_like_pattern "$lowered" 2>/dev/null)"; then
+    printf '%s' "$symbol_pattern"
+    return 0
+  fi
+  if [[ "$lowered" == *".py"* || "$lowered" == *".sh"* || "$lowered" == *"-"* ]]; then
     printf '%s' "$QUERY"
     return 0
   fi
@@ -99,8 +144,12 @@ path_pattern() {
 }
 
 content_pattern() {
-  local lowered token
+  local lowered token symbol_pattern
   lowered="$(printf '%s' "$QUERY" | tr '[:upper:]' '[:lower:]')"
+  if symbol_pattern="$(symbol_like_pattern "$lowered" 2>/dev/null)"; then
+    printf '%s' "$symbol_pattern"
+    return 0
+  fi
 
   local tokens=()
   while IFS= read -r token; do
@@ -129,7 +178,56 @@ content_pattern() {
 }
 
 collection_fingerprint() {
-  find "$REPO_ROOT" -type f -name '*.md' -not -path '*/.git/*' -printf '%P\t%Ts\t%s\n' 2>/dev/null | sort | sha1sum | cut -d' ' -f1
+  local globs ext listed path stat_payload
+  globs=()
+  for ext in "${QMD_EXTENSION_LIST[@]}"; do
+    ext="${ext//[[:space:]]/}"
+    [[ -z "$ext" ]] && continue
+    globs+=(-g "*.${ext}")
+  done
+  globs+=("${FINGERPRINT_EXCLUDES[@]}")
+
+  listed="$(
+    cd "$REPO_ROOT" &&
+      rg --files "${globs[@]}" . 2>/dev/null | sort || true
+  )"
+  if [[ -z "$listed" ]]; then
+    printf '%s' "empty"
+    return 0
+  fi
+
+  while IFS= read -r path; do
+    path="${path#./}"
+    [[ -z "$path" ]] && continue
+    if [[ -f "$REPO_ROOT/$path" ]]; then
+      stat_payload="$(stat -c '%Y\t%s' "$REPO_ROOT/$path" 2>/dev/null || true)"
+      [[ -n "$stat_payload" ]] && printf '%s\t%s\n' "$path" "$stat_payload"
+    fi
+  done <<<"$listed" | sort | sha1sum | cut -d' ' -f1
+}
+
+sanitize_qmd_files_output() {
+  local raw_output="$1"
+  local filtered_output
+  local filter_pattern
+
+  if [[ -z "$raw_output" || "$raw_output" == "No results found." ]]; then
+    printf '%s\n' "$raw_output"
+    return 0
+  fi
+
+  filter_pattern='qmd://[^,]+/(tools/token-reduce-skill/|\.worktrees/|node_modules/)'
+  if [[ "$PREFER_SCRIPT_CONTENT" -eq 0 ]]; then
+    filter_pattern='qmd://[^,]+/(tools/token-reduce-skill/|\.worktrees/|node_modules/|artifacts/token-reduction/|references/benchmarks/|scripts/benchmark-)'
+  fi
+
+  filtered_output="$(printf '%s\n' "$raw_output" | rg -v "$filter_pattern" | head -8 || true)"
+  if [[ -n "$filtered_output" ]]; then
+    printf '%s\n' "$filtered_output"
+    return 0
+  fi
+
+  printf '%s\n' "$raw_output"
 }
 
 ensure_qmd_collection() {
@@ -150,7 +248,7 @@ ensure_qmd_collection() {
     debug "[token-reduce-search] refreshing qmd collection ${COLLECTION_NAME}"
     qmd collection remove "$COLLECTION_NAME" >/dev/null 2>&1 || true
   else
-    debug "[token-reduce-search] indexing repo docs for qmd collection ${COLLECTION_NAME}"
+    debug "[token-reduce-search] indexing repo docs and source files for qmd collection ${COLLECTION_NAME}"
   fi
 
   if ! qmd collection add "$REPO_ROOT" --name "$COLLECTION_NAME" --mask "$QMD_MASK" >/dev/null 2>&1; then
@@ -166,7 +264,12 @@ ensure_qmd_collection() {
 }
 
 filter_candidates() {
-  rg -v '(^|/)scripts/benchmark-token-reduce(tion-agents)?\.py(:|$)' || true
+  if [[ "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
+    cat
+    return 0
+  fi
+
+  rg -v '(^|/)(scripts/benchmark-[^/]+\.py|references/benchmarks/|artifacts/token-reduction/)(:|$)' || true
 }
 
 ranked_content_paths() {
@@ -320,10 +423,10 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 
   debug "[token-reduce-search] qmd search --files (${COLLECTION_NAME})"
-  QMD_FILES_OUTPUT="$(qmd search "$QUERY" -n 8 --files -c "$COLLECTION_NAME" || true)"
-  printf '%s\n' "$QMD_FILES_OUTPUT"
+  QMD_FILES_OUTPUT="$(sanitize_qmd_files_output "$(qmd search "$QUERY" -n 20 --files -c "$COLLECTION_NAME" || true)")"
 
   if [[ -n "$QMD_FILES_OUTPUT" && "$QMD_FILES_OUTPUT" != "No results found." ]]; then
+    printf '%s\n' "$QMD_FILES_OUTPUT"
     if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
       if [[ -n "$PATH_HINTS" ]]; then
         echo
