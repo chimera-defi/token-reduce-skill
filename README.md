@@ -5,113 +5,102 @@
 ![MCP](https://img.shields.io/badge/MCP-server-0a7f5a)
 ![MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Make Claude Code and Codex last longer by keeping discovery lean.
+`token-reduce` is an orchestration layer for agent context spending.
+It provides built-in routing/enforcement, installs and wires downstream tools, and tells Claude/Codex when to use each tool path.
 
-Most context waste in a coding session happens at the front — the agent scans the whole repo before it writes a single line. token-reduce fixes that: it guides the agent to the smallest useful context first, then expands only when needed.
+> Agents: start with [`llms.txt`](./llms.txt) for compact install/usage instructions.
 
-> **Agents:** read [`llms.txt`](./llms.txt) for a self-contained install + usage guide.
+## What It Is
 
-## Current Version
+`token-reduce` is not just a prompt style or a single helper script.
+It is a high-level token orchestration kit that:
 
-- **Skill version:** `0.1.0` (from `package.json`)
-- **Package name:** `token-reduce-mcp`
+- enforces low-cost discovery first
+- auto-routes between path/snippet/structural tiers
+- wires tool hooks so wasteful calls are blocked before execution
+- integrates a dependency suite and operational benchmarking/review gates
 
-What this version does:
+## Dependency Suite (Feature)
 
-- helper-first discovery routing (`token-reduce-paths` / `token-reduce-snippet`)
-- pre-tool enforcement hooks that block broad first-pass scans
-- managed telemetry loop (measure/review/rolling baseline + optional remote sync)
-- workspace install + workspace audit with explicit version/commit drift reporting
-- safe auto-update flow with workspace propagation (`workspace-auto-update`)
-- optional companion-tool routing policy (RTK, caveman, AXI, token-savior; graphify is documented as historical/rejected for default routing)
+`token-reduce` treats dependency integration as a first-class feature.
+Instead of manually managing tool-by-tool setup, it installs/wires defaults and exposes conditional tiers explicitly.
 
-## Included Components
+### Core orchestrated stack
 
-| Component | Included | Purpose |
-|---|---|---|
-| Skill helpers + hooks | Yes | Keep discovery and reads minimal before expanding context |
-| Manage scripts (`token-reduce-manage.sh`) | Yes | Validate, benchmark, review, update, workspace rollout/audit |
-| MCP server (`mcp/server.mjs`) | Yes | Expose token-reduce behavior through MCP integration |
-| Workspace drift checks | Yes | Track `skill_version`/`skill_commit` alignment across sibling repos |
-| Workspace auto-update | Yes | Fast-forward + force-relink + audit in one command |
-| QMD backend | Optional (recommended) | BM25 path/snippet retrieval |
-| RTK | Optional (recommended) | Command-output compression |
-| caveman | Optional | Output + memory compression workflow |
-| AXI (`gh-axi`, `chrome-devtools-axi`) | Optional | Lower-turn GitHub/browser operations |
-| token-savior | Optional | Exact-symbol structural lookup companion |
+- [QMD](https://github.com/tobi/qmd): BM25 path/snippet retrieval
+- [RTK](https://github.com/rtk-ai/rtk): output compression for executed commands
+- token-reduce helpers/hooks: path/snippet/adaptive routing + enforcement
 
-## Agent Install
+### Conditional companions
 
-Paste this into your agent chat and it will install itself:
+- [AXI](https://github.com/kunchenguid/axi) (`gh-axi`, `chrome-devtools-axi`) for GitHub/browser-heavy execution
+- [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
+- [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
+- [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
+- [`caveman`](https://github.com/JuliusBrussee/caveman) for optional terse output and memory-file compression
 
-```
-Read https://raw.githubusercontent.com/chimera-defi/token-reduce-skill/main/llms.txt and follow the install instructions.
-```
+### Not in default routing
 
-That's it. The agent reads `llms.txt`, runs `setup.sh`, and starts enforcing lean discovery automatically.
+- `token-optimizer-mcp`, `token-optimizer`, and infra-coupled `claude-context` are intentionally excluded from default routing.
+- Legacy graphify-first orchestration is not part of active routing.
 
----
+## Install And Activation
 
-## Manual Install
-
-**Quickest — full stack (QMD + RTK + hooks + AXI companions wired in one shot):**
+Quick setup (core stack + hooks + wrappers):
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-`setup.sh` installs [QMD](https://github.com/tobi/qmd) (BM25 path search), [RTK](https://github.com/rtk-ai/rtk) (output compression), and AXI companion CLIs (`gh-axi`, `chrome-devtools-axi`), wires hooks into Claude Code globally, indexes your repo, and prompts telemetry opt-in during install. Re-run any time — it's idempotent.
+What `setup.sh` does automatically:
 
-One-command activation for the measured stack (core-only default + validate):
+- installs/configures core tools (`qmd`, `rtk`) when possible
+- wires Claude hooks for prompt steering + pre-tool enforcement
+- links global wrappers (`token-reduce-adaptive`, `token-reduce-paths`, `token-reduce-snippet`, `token-reduce-manage`)
+- links the Codex skill and companion skills when present
+
+One-command measured activation (core-only default + validate):
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
 ```
 
-To include conditional companions during activation:
+Enable conditional companion install during activation:
 
 ```bash
 TOKEN_REDUCE_ACTIVATE_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh activate-stack
 ```
 
-Optional extended companion install (task-scoped, not default routing):
+Direct optional companion install surface:
 
 ```bash
 TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-This attempts to install `context-mode` and `code-review-graph` only when explicitly requested.
+## Host Support
 
-It also:
-- links `token-reduce-paths`, `token-reduce-snippet`, and related wrappers into `~/.local/bin`
-- links the Codex skill into `$CODEX_HOME/skills/token-reduce`
-
----
-
-**Claude Code plugin** (2 commands):
+### Claude Code
 
 ```text
 claude plugin marketplace add chimera-defi/token-reduce-skill
 claude plugin install token-reduce@chimera-defi
 ```
 
-**Codex** (1 command):
+### Codex
 
 ```bash
 git clone https://github.com/chimera-defi/token-reduce-skill "$CODEX_HOME/skills/token-reduce"
 ```
 
-**Codex new-context handoff** (ready-to-paste block):
+Codex fresh-context handoff generator:
 
 ```bash
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh handoff-codex
 ```
 
-See [references/codex-handoff.md](references/codex-handoff.md) for the static handoff template.
-
-**MCP** (add to your MCP config):
+### MCP
 
 ```json
 {
@@ -124,56 +113,30 @@ See [references/codex-handoff.md](references/codex-handoff.md) for the static ha
 }
 ```
 
-For hook wiring details see [references/agent-setup.md](references/agent-setup.md).
+## Routing Model
 
-## Adaptive Tiering (Auto Promote / Demote)
-
-`token-reduce` now supports an adaptive discovery controller:
-
-- base tier: `token-reduce-paths` (path-only)
-- promotion: `token-reduce-snippet` for repeated/clarification-heavy behavior
-- promotion: `token-reduce-structural` for symbol / impact queries when available
-- conditional recommendations: `context-mode` (output-heavy) and `code-review-graph` (large-repo impact tasks)
-
-Default first-move hint prefers:
+Default first move:
 
 ```bash
 token-reduce-adaptive <topic words>
 ```
 
-Disable adaptive hinting:
+Tier behavior:
+
+- base: `token-reduce-paths`
+- promote: `token-reduce-snippet` for clarification/repeat behavior
+- promote: `token-reduce-structural` for symbol/impact queries when available
+- recommendations: `context-mode` and `code-review-graph` only for matching task classes
+
+Disable adaptive hinting if needed:
 
 ```bash
 TOKEN_REDUCE_ADAPTIVE_HINT=0
 ```
 
-## How It Works
+## Benchmarks And Regression Guard
 
-```
-Without token-reduce:                 With token-reduce:
-
-Agent  --"find auth logic"-->         Agent  --"find auth logic"-->
-  broad scan: rg --files .              token-reduce-paths.sh "auth"
-  cat 8 files into context              QMD BM25 → 2 candidate paths
-  ~52,000 tokens                        targeted read of those 2 files
-                                        ~500 tokens   (99% less)
-```
-
-1. **Start narrow.** Helpers return candidate paths before any file content lands in context.
-2. **Expand only when needed.** One ranked excerpt if the path list isn't enough.
-3. **Stay disciplined.** Hooks block broad scans before they happen — not after.
-
-## Results
-
-Savings from the source repo (642 files) where this skill was developed:
-
-| Strategy | Measured Savings |
-|----------|-----------------|
-| Concise responses | ~89% fewer tokens |
-| QMD BM25 path kickoff vs naive multi-file reads | ~99% fewer tokens |
-| Targeted reads vs full-file reads | ~33% fewer tokens |
-
-Local benchmark in this repo (small — scales up on larger codebases):
+### Local benchmark (`references/benchmarks/local-benchmark.json`)
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
@@ -183,321 +146,74 @@ Local benchmark in this repo (small — scales up on larger codebases):
 | `token_reduce_paths_warm` | `328` | `41.9%` saved |
 | `token_reduce_snippet_warm` | `406` | `28.1%` saved |
 
-Reproduce: `uv run --with tiktoken scripts/benchmark-token-reduce.py`
-
-Composite benchmark in this repo (quality-gated mixed workload):
+### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2397` | baseline | `ok` |
+| `broad_shell` | `2407` | baseline | `ok` |
 | `qmd_only` | `408` | `83.0%` saved | `quality-fail` |
-| `token_reduce_only` | `648` | `73.0%` saved | `quality-fail` |
-| `token_savior_only` | `483` | `79.8%` saved | `ok` |
-| `rtk_only` | `776` | `67.6%` saved | `ok` |
-| `composite_stack` | `431` | `82.0%` saved | `ok` |
+| `token_reduce_only` | `623` | `74.1%` saved | `quality-fail` |
+| `token_savior_only` | `483` | `79.9%` saved | `ok` |
+| `rtk_only` | `782` | `67.5%` saved | `ok` |
+| `composite_stack` | `431` | `82.1%` saved | `ok` |
 
-In this run, `composite_stack` beat every single-tool strategy that also passed quality checks (`broad_shell`, `token_savior_only`, `rtk_only`).
-See [references/composite-benchmark.md](references/composite-benchmark.md) for methodology and caveats.
+This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
 
-## Telemetry
+### Release gate (anti-regression)
 
-token-reduce now supports a composite telemetry loop:
-
-- direct helper and hook events (`artifacts/token-reduction/events.jsonl`)
-- Claude/Codex session adoption + discovery-compliance measurement
-- helper error/retry overhead metrics (error rate, immediate retries, hook runtime errors, pending-state leaks)
-- helper latency overhead metrics (avg/p50/p90/p95/max and per-tool latency)
-- context-aware telemetry filtering (runtime metrics exclude `benchmark` / `test` / `synthetic` events by default)
-- RTK companion inputs (gain/discover/session/hook-audit) for downstream output-compression signal
-- install/wiring health checks (binary availability + Claude/Codex hook binding)
-
-Telemetry upload remains **opt-in** for install-level improvement tracking.
-
-Useful commands:
+Use this for major change sets:
 
 ```bash
-./scripts/token-reduce-manage.sh activate-stack
+./scripts/token-reduce-manage.sh release-gate
+```
+
+It gates on:
+
+- composite savings + quality
+- adaptive savings + quality
+- profile viability
+- runtime reliability (`helper_error_rate`, failure overhead, retry overhead)
+
+## Operational Commands
+
+```bash
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh benchmark-adaptive
+./scripts/token-reduce-manage.sh benchmark-composite
 ./scripts/token-reduce-manage.sh benchmark-profiles
-CONTEXT_MODE_REPO=/path/to/context-mode ./scripts/token-reduce-manage.sh benchmark-context-mode-intake
-CODE_REVIEW_GRAPH_REPO=/path/to/code-review-graph ./scripts/token-reduce-manage.sh benchmark-code-review-graph-intake
-TOKEN_OPTIMIZER_REPO=/path/to/token-optimizer-mcp ./scripts/token-reduce-manage.sh benchmark-token-optimizer-intake
 ./scripts/token-reduce-manage.sh release-gate
 ./scripts/token-reduce-manage.sh test-adaptive
-./scripts/token-reduce-manage.sh composite
-./scripts/token-reduce-manage.sh benchmark-composite
-./scripts/token-reduce-manage.sh deps-check
-./scripts/token-reduce-manage.sh deps-check-conditional
-./scripts/token-reduce-manage.sh deps-update
-./scripts/token-reduce-manage.sh deps-update-conditional
-./scripts/token-reduce-manage.sh measure
-./scripts/token-reduce-manage.sh measure-global
-./scripts/token-reduce-manage.sh review
-./scripts/token-reduce-manage.sh review-global
-./scripts/token-reduce-manage.sh telemetry
-./scripts/token-reduce-manage.sh doctor
-./scripts/token-reduce-manage.sh settings show
-./scripts/token-reduce-manage.sh settings onboard
-./scripts/token-reduce-manage.sh settings set telemetry.enabled true
-./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://example.com/ingest
-./scripts/token-reduce-manage.sh settings profile list
-./scripts/token-reduce-manage.sh settings profile show
-./scripts/token-reduce-manage.sh settings profile apply balanced
-./scripts/token-reduce-manage.sh telemetry-sync
-./scripts/token-reduce-manage.sh rolling-baseline
-./scripts/token-reduce-manage.sh updates
-./scripts/token-reduce-manage.sh auto-update
-./scripts/token-reduce-manage.sh workspace-auto-update
-./scripts/token-reduce-manage.sh self-improve
-./scripts/token-reduce-manage.sh workspace-audit
-./scripts/token-reduce-manage.sh workspace-install
 ./scripts/token-reduce-manage.sh validate
-```
-
-Future agents should treat `measure` and `review` as part of the normal maintenance loop, not optional cleanup after the fact.
-
-### Tier Value Profile
-
-The active orchestration stack is intentionally narrowed to high-signal dependencies:
-
-- core orchestrated: `qmd`, `token-reduce` helpers/hooks, `token-reduce-adaptive`, `rtk`
-- conditional companions: `token-savior`, `context-mode`, `code-review-graph`, AXI, caveman
-- excluded from default routing: `token-optimizer-mcp`, `token-optimizer`, infra-coupled `claude-context`, and legacy graphify-first orchestration
-
-See [references/tier-value-profile.md](references/tier-value-profile.md) for keep/conditional/excluded details and rationale.
-
-This is the self-improvement loop:
-
-1. collect helper and hook events
-2. run composite telemetry to include RTK + wiring health input
-3. run benchmarks with telemetry context `benchmark` so synthetic calls are excluded from runtime summaries
-4. measure actual session adoption and compliance (all sessions + observed-discovery sessions)
-5. generate a review with the next routing, docs, or enforcement fixes
-6. capture workspace audit gaps across sibling repos
-7. generate rolling pre/post baseline trend report
-8. rerun after changes
-
-Recent telemetry also reports optional companion adoption, including caveman command activation, AXI tool usage rates, and adaptive-tier routing metadata (`tier` + recommendation flags).
-
-### Opt-In Telemetry
-
-Telemetry upload is disabled by default. When enabled, token-reduce sends anonymized summary metrics only (no file contents):
-
-- helper/adoption/compliance percentages
-- observed-discovery helper/compliance percentages
-- 14-day event counts
-- benchmark/test excluded-event counts
-- workspace-level adoption summary
-
-Enable and configure:
-
-```bash
-./scripts/token-reduce-manage.sh settings onboard
-./scripts/token-reduce-manage.sh settings set telemetry.enabled true
-./scripts/token-reduce-manage.sh settings set telemetry.endpoint https://your-endpoint.example/ingest
-./scripts/token-reduce-manage.sh settings set telemetry.api_key your-shared-key
-./scripts/token-reduce-manage.sh settings set telemetry.signing_secret your-hmac-secret
-./scripts/token-reduce-manage.sh settings set telemetry.workspace_days 14
-./scripts/token-reduce-manage.sh settings set telemetry.workspace_include_source_repo false
-./scripts/token-reduce-manage.sh telemetry-sync
-```
-
-Receive metrics (local ingest service example):
-
-```bash
-uv run scripts/token-reduce-telemetry-receiver.py --host 0.0.0.0 --port 8787 --path /ingest --api-key your-shared-key --signing-secret your-hmac-secret
-./scripts/token-reduce-manage.sh settings set telemetry.endpoint http://127.0.0.1:8787/ingest
-./scripts/token-reduce-manage.sh telemetry-sync
-```
-
-`token-reduce-telemetry-receiver.py` writes JSONL events directly; a database is optional, not required.
-
-### Updates And Auto-Update
-
-token-reduce can check for new commits and optionally fast-forward itself when safe:
-
-```bash
-./scripts/token-reduce-manage.sh updates
-./scripts/token-reduce-manage.sh settings set updates.auto_update true
-./scripts/token-reduce-manage.sh settings set updates.workspace_auto_update true
-./scripts/token-reduce-manage.sh auto-update
-./scripts/token-reduce-manage.sh workspace-auto-update
-./scripts/token-reduce-manage.sh deps-check
-./scripts/token-reduce-manage.sh deps-update
-./scripts/token-reduce-manage.sh deps-check-conditional
-./scripts/token-reduce-manage.sh deps-update-conditional
+./scripts/token-reduce-manage.sh measure
+./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh doctor
 ```
 
-`auto-update` only runs when the worktree is clean and can fast-forward. When `updates.workspace_auto_update=true`, it also force-relinks sibling repos to the canonical skill root and emits workspace version/commit drift.
+Dependency checks:
 
-Dependency policy:
+- core only: `deps-check`, `deps-update`
+- conditional companions: `deps-check-conditional`, `deps-update-conditional`
 
-- `deps-check` / `deps-update` target core stack dependencies only (`qmd`, `rtk`)
-- `deps-check-conditional` / `deps-update-conditional` target optional companions (AXI, `context-mode`, `code-review-graph`)
+## Caveman Status
 
-## Optional Structural Accelerator
+`caveman` is integrated as an optional companion, not forced globally.
 
-`token-reduce` can also consume [`token-savior`](https://github.com/Mibayy/token-savior) as an optional companion for exact symbol lookup and change-impact questions.
+- enable terse output when requested: `/caveman lite`
+- compress memory file when requested: `/caveman:compress CLAUDE.md`
 
-Install it only if you want the structural helper:
-
-```bash
-git clone https://github.com/Mibayy/token-savior /tmp/token-savior-bench
-cd /tmp/token-savior-bench
-uv sync --extra mcp
-```
-
-Use it only when the exact symbol is already known:
-
-```bash
-uv run python scripts/token-reduce-structural.py --project-root . find-symbol discovery_hint
-uv run python scripts/token-reduce-structural.py --project-root . change-impact prompt_requires_helper
-```
-
-Do not use it as the default first move for vague repo discovery. For that, keep using adaptive (or paths-only if adaptive is disabled):
-
-```bash
-./scripts/token-reduce-adaptive.sh topic words
-./scripts/token-reduce-paths.sh topic words
-```
-
-Measured in this repo: `token-savior` cut exact symbol lookup from `234` tokens to `56`, but broad-topic search quality was worse even when raw output was shorter. See [references/token-savior-evaluation.md](references/token-savior-evaluation.md).
-
-`graphify` was also evaluated as a companion candidate and is currently not integrated. It can help on some prebuilt exact-symbol queries, but consistency and compatibility were not strong enough for token-reduce routing defaults. See [references/graphify-evaluation.md](references/graphify-evaluation.md).
-
-For a removable opt-in orchestration trial (graphify-first only when explicitly enabled, then helper fallback), see [references/graphify-orchestration-tracking.md](references/graphify-orchestration-tracking.md).
-
-## Optional Brevity + Memory Companion
-
-`token-reduce` can also pair with [`caveman`](https://github.com/JuliusBrussee/caveman) for two optional layers outside helper routing:
-
-- output-side compression (`/caveman lite|full|ultra`) when you explicitly want terse agent responses
-- input-side memory compression (`/caveman:compress CLAUDE.md`) to shrink always-loaded memory files
-
-Use this as a companion, not a replacement:
-
-- `token-reduce` still owns discovery discipline, hook enforcement, and targeted file-context routing
-- `caveman` is for response style and memory-file compression workflows
-
-See [references/caveman-evaluation.md](references/caveman-evaluation.md) for integration verdict and evidence.
-
-## Optional AXI Companion (Agent-Native Tool Interfaces)
-
-`token-reduce` can also pair with [AXI](https://github.com/kunchenguid/axi) companion CLIs to reduce turns/retries when tasks are GitHub- or browser-heavy:
-
-- `gh-axi` for GitHub operations
-- `chrome-devtools-axi` for browser automation
-
-These tools are optional and do not replace token-reduce helper-first routing.
-Use them when the task is clearly in their domain; keep discovery kickoff discipline unchanged.
-
-See [references/axi-evaluation.md](references/axi-evaluation.md) for validation notes and integration policy.
-
-## Optional Context-Mode Companion (Output-Heavy Sessions)
-
-`token-reduce` can pair with [`context-mode`](https://github.com/mksglu/context-mode) when the workload is dominated by huge tool outputs (logs, test output, API payloads, web snapshots).
-
-Use it as a companion layer:
-
-- token-reduce still owns first-move discovery discipline (`token-reduce-paths` / `token-reduce-snippet`)
-- context-mode specializes in reducing what enters context from output-heavy tool calls
-
-See [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md) for validated fixture comparisons (`195.0KB -> 4339B`, `98%` reduction in that benchmark set).
-
-## Optional code-review-graph Companion (Large Repo Structural Review)
-
-`token-reduce` can also pair with [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for blast-radius and structural review workflows in larger dependency-heavy repos.
-
-Use it as an optional accelerator:
-
-- keep token-reduce helper-first kickoff for ambiguous discovery
-- apply code-review-graph where dependency/impact graph context is the bottleneck
-- avoid forcing it as a default for tiny/single-file edits (can lose on overhead there)
-
-See [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md) for local test/eval evidence.
-
-## Dependencies And Attribution
-
-token-reduce is intentionally composite. It combines:
-
-- [QMD](https://github.com/tobi/qmd) for BM25 path and snippet retrieval
-- [RTK](https://github.com/rtk-ai/rtk) for command-output compression
-- [`token-savior`](https://github.com/Mibayy/token-savior) as an optional structural accelerator for exact symbol and dependency questions
-- [`caveman`](https://github.com/JuliusBrussee/caveman) as an optional response-style and memory-compression companion
-- [`context-mode`](https://github.com/mksglu/context-mode) as an optional output-heavy sandbox companion for large tool payloads
-- [`code-review-graph`](https://github.com/tirth8205/code-review-graph) as an optional structural review companion for larger dependency-heavy repos
-- [AXI](https://github.com/kunchenguid/axi) plus `gh-axi` and `chrome-devtools-axi` as optional agent-native tool companions for GitHub/browser workflows
-- Anthropic prompt-caching guidance as an optional API-layer companion, documented in [references/anthropic-prompt-caching.md](references/anthropic-prompt-caching.md)
-
-Direct runtime dependencies:
-- `qmd`
-- `rtk`
-- the token-reduce helper, hook, telemetry, and MCP runtime in this repo
-
-Optional companions:
-- `token-savior`
-- `caveman`
-- `gh-axi` / `chrome-devtools-axi`
-- Anthropic API prompt-caching workflows
-- `context-mode` (output-heavy sandbox companion for logs/tests/web/tool payloads)
-- `code-review-graph` (large-repo structural review companion)
-- `claude-context` (external infra-dependent; evaluated but not part of the default local stack)
-
-Evaluated but intentionally not routed as token-reduce defaults:
-- `token-optimizer-mcp` (see `references/prompt-stack-intake-2026-04-18.md` and `references/benchmarks/token-optimizer-mcp-intake.json`)
-- `token-optimizer` (see `references/prompt-stack-intake-2026-04-18.md`)
-
-The design goal is explicit:
-- token-reduce remains the reliable control plane
-- companion tools stay behind task-specific routing rules
-- no single dependency replaces the helper-first workflow by default
-
-## What Makes It Different
-
-**vs [RTK](https://github.com/rtk-ai/rtk):** RTK compresses command *output* after it runs — a great complement. token-reduce works upstream: it prevents expensive discovery commands from being issued in the first place. Use both for maximum savings.
-
-**vs raw QMD:** token-reduce wraps QMD — when it's installed the helpers call it automatically; when it isn't, they fall back to scoped `rg`. Either way you call the skill helper, not the underlying tool directly.
-
-**vs just writing better prompts:** Prompts don't block bad tool calls. Hooks do.
+Default token-reduce routing/enforcement works with or without caveman.
 
 ## Learn More
 
-- [references/agent-setup.md](references/agent-setup.md) — Claude, Codex, and MCP setup details
-- [references/workspace-integration.md](references/workspace-integration.md) — hook wiring for consumer repos
-- [references/token-reduction-guide.md](references/token-reduction-guide.md) — benchmark notes and workflow details
-- [references/architecture.md](references/architecture.md) — high-level system design
-- [references/companion-tools.md](references/companion-tools.md) — how companion tools are evaluated
-- [references/token-savior-evaluation.md](references/token-savior-evaluation.md) — measured integration verdict
-- [references/graphify-evaluation.md](references/graphify-evaluation.md) — measured rejection verdict for graphify companion intake
-- [references/graphify-orchestration-tracking.md](references/graphify-orchestration-tracking.md) — removable graphify orchestration trial notes
-- [references/caveman-evaluation.md](references/caveman-evaluation.md) — optional output + memory companion verdict
-- [references/axi-evaluation.md](references/axi-evaluation.md) — optional AXI companion verdict
-- [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md) — dependency-intake evidence for the 10-tool prompt stack request
-- [references/profile-presets.md](references/profile-presets.md) — formal minimal-load / balanced / max-savings routing profiles
-- [references/feature-matrix.md](references/feature-matrix.md) — complete feature-to-command/config/telemetry/evidence map
-- [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md) — meta learnings captured from the tiered-stack validation pass
-- [references/tier-value-profile.md](references/tier-value-profile.md) — load/savings tier-value decisions (keep vs conditional vs excluded)
-- [references/composite-benchmark.md](references/composite-benchmark.md) — quality-gated composite vs single-tool benchmark
-- [references/self-improving-harness.md](references/self-improving-harness.md) — opt-in telemetry, updates, and self-improve loop
-- [references/secure-telemetry-server.md](references/secure-telemetry-server.md) — hardened local telemetry receiver setup and key rotation
-- [scripts/smoke-test-workspace.sh](scripts/smoke-test-workspace.sh) — verify the global helper across local repos
-- [scripts/audit_workspace_skills.py](scripts/audit_workspace_skills.py) — verify install/adoption signals across sibling repos
-
-## FAQ
-
-**Is this only for repo discovery?**
-No. Discovery is where waste usually starts, but the workflow covers the full coding loop.
-
-**Does this replace QMD?**
-For day-to-day use, yes — you call the skill helpers, not `qmd` directly. QMD is an optional dependency that improves search quality; the skill falls back to `rg` if it isn't installed.
-
-**Does this replace RTK?**
-No — they're complementary. [RTK](https://github.com/rtk-ai/rtk) trims the output of commands that run. token-reduce prevents costly commands from running at all. Running both gives you savings at both ends.
-
-**Does this always save tokens?**
-No. On tiny repos a scoped `rg` can be cheaper. Value scales with session length, repo size, and prompt fuzziness.
-
-**Does this change model internals?**
-No. It improves how the host gathers and spends context.
+- [references/feature-matrix.md](references/feature-matrix.md)
+- [references/tier-value-profile.md](references/tier-value-profile.md)
+- [references/token-reduction-guide.md](references/token-reduction-guide.md)
+- [references/composite-benchmark.md](references/composite-benchmark.md)
+- [references/profile-presets.md](references/profile-presets.md)
+- [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md)
+- [references/agent-setup.md](references/agent-setup.md)
+- [references/workspace-integration.md](references/workspace-integration.md)
+- [references/codex-handoff.md](references/codex-handoff.md)
+- [references/caveman-evaluation.md](references/caveman-evaluation.md)
+- [references/axi-evaluation.md](references/axi-evaluation.md)
+- [references/token-savior-evaluation.md](references/token-savior-evaluation.md)
