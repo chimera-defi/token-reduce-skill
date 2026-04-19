@@ -8,7 +8,13 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from token_reduce_adaptive import Availability, BehaviorProfile, RoutingPolicy, decide
+from token_reduce_adaptive import (
+    Availability,
+    BehaviorProfile,
+    RoutingPolicy,
+    decide,
+    load_behavior_profile,
+)
 
 
 def _availability(**overrides: bool) -> Availability:
@@ -110,3 +116,10 @@ def test_structural_unavailable_demotes_to_paths() -> None:
     )
     assert decision.tier == "core_paths"
     assert decision.command[0].endswith("token-reduce-paths.sh")
+
+
+def test_load_behavior_profile_days_zero_returns_empty_profile() -> None:
+    profile = load_behavior_profile(Path("."), days=0)
+    assert profile.helper_calls == 0
+    assert profile.repeated_ratio == 0.0
+    assert profile.rapid_repeat_ratio == 0.0
