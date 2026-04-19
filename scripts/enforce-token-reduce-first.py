@@ -28,7 +28,7 @@ _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
 )
 HELPER_COMMAND_RE = re.compile(
-    r"token-reduce-(?:adaptive|paths|snippet|orchestrate)(?:\.sh)?\b|qmd\s+search\b"
+    r"token-reduce-(?:adaptive|paths|snippet)(?:\.sh)?\b|qmd\s+search\b"
 )
 RG_OPTIONS_WITH_VALUE = {
     "-e",

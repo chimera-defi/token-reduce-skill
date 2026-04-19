@@ -23,6 +23,7 @@ fi
 QUERY="$1"
 GLOB="${2:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
 QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
@@ -37,6 +38,14 @@ QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
 QMD_STAMP_DIR="${REPO_ROOT}/artifacts"
 QMD_STAMP_PATH="${QMD_STAMP_DIR}/qmd-${COLLECTION_NAME}.stamp"
 QMD_REFRESH_TTL_SECONDS="${TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS:-180}"
+QMD_SEARCH_TIMEOUT_SECONDS="${TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS:-}"
+if [[ -z "$QMD_SEARCH_TIMEOUT_SECONDS" ]]; then
+  if [[ "$TELEMETRY_CONTEXT" == "runtime" ]]; then
+    QMD_SEARCH_TIMEOUT_SECONDS=8
+  else
+    QMD_SEARCH_TIMEOUT_SECONDS=0
+  fi
+fi
 NEEDS_PATH_HINT=0
 PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
@@ -64,6 +73,14 @@ debug() {
 
 warn() {
   printf '%s\n' "$*" >&2
+}
+
+run_qmd_search() {
+  if [[ "${QMD_SEARCH_TIMEOUT_SECONDS:-0}" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
+    timeout "${QMD_SEARCH_TIMEOUT_SECONDS}s" qmd search "$@"
+    return $?
+  fi
+  qmd search "$@"
 }
 
 if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* || "$QUERY" == *"_"* ]]; then
@@ -448,9 +465,22 @@ if command -v qmd >/dev/null 2>&1; then
   fi
 
   debug "[token-reduce-search] qmd search --files (${COLLECTION_NAME})"
-  QMD_FILES_OUTPUT="$(sanitize_qmd_files_output "$(qmd search "$QUERY" -n 20 --files -c "$COLLECTION_NAME" || true)")"
+  QMD_FILES_RAW=""
+  QMD_FILES_STATUS=0
+  if QMD_FILES_RAW="$(run_qmd_search "$QUERY" -n 20 --files -c "$COLLECTION_NAME" 2>/dev/null)"; then
+    QMD_FILES_STATUS=0
+  else
+    QMD_FILES_STATUS=$?
+  fi
+  QMD_FILES_OUTPUT="$(sanitize_qmd_files_output "$QMD_FILES_RAW")"
 
-  if [[ -n "$QMD_FILES_OUTPUT" && "$QMD_FILES_OUTPUT" != "No results found." ]]; then
+  if [[ "$QMD_FILES_STATUS" -eq 124 || "$QMD_FILES_STATUS" -eq 137 ]]; then
+    warn "[token-reduce-search] qmd search timed out (${QMD_SEARCH_TIMEOUT_SECONDS}s); falling back to rg"
+  elif [[ "$QMD_FILES_STATUS" -ne 0 ]]; then
+    warn "[token-reduce-search] qmd search failed (status=${QMD_FILES_STATUS}); falling back to rg"
+  fi
+
+  if [[ "$QMD_FILES_STATUS" -eq 0 && -n "$QMD_FILES_OUTPUT" && "$QMD_FILES_OUTPUT" != "No results found." ]]; then
     printf '%s\n' "$QMD_FILES_OUTPUT"
     if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
       if [[ -n "$PATH_HINTS" ]]; then
@@ -463,12 +493,14 @@ if command -v qmd >/dev/null 2>&1; then
     if [[ "$MODE" == "snippets" ]]; then
       echo
       debug "[token-reduce-search] qmd search snippet (${COLLECTION_NAME})"
-      qmd search "$QUERY" -n 1 -c "$COLLECTION_NAME" || true
+      run_qmd_search "$QUERY" -n 1 -c "$COLLECTION_NAME" || true
     fi
     exit 0
   fi
 
-  warn "[token-reduce-search] qmd had no hits, falling back to rg"
+  if [[ "$QMD_FILES_STATUS" -eq 0 ]]; then
+    warn "[token-reduce-search] qmd had no hits, falling back to rg"
+  fi
   if [[ "$MODE" == "snippets" ]]; then
     echo
     fallback_snippets

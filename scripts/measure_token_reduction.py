@@ -15,7 +15,7 @@ from token_reduce_telemetry import load_events, summarize_events
 
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
-    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive|orchestrate)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive|orchestrate)(?:\.sh)?\b"
+    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b"
 )
 TOKEN_REDUCE_STRUCTURAL_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-structural(?:\.py)?\b|\btoken-reduce-structural(?:\.py)?\b"

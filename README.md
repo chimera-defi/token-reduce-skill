@@ -65,6 +65,7 @@ Optional QMD scope overrides:
 
 - `TOKEN_REDUCE_QMD_MASK`: explicit glob mask passed to `qmd collection add`
 - `TOKEN_REDUCE_QMD_EXTENSIONS`: comma-separated extension list used to build the default mask
+- `TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`: cap runtime `qmd search` latency before falling back to scoped `rg` (default: `8` in runtime, `0` in benchmark/test contexts)
 
 One-command measured activation (core-only default + validate):
 
@@ -156,11 +157,11 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2354` | baseline | `ok` |
-| `qmd_only` | `698` | `70.3%` saved | `ok` |
-| `token_reduce_only` | `323` | `86.3%` saved | `quality-fail` |
-| `token_savior_only` | `483` | `79.5%` saved | `ok` |
-| `rtk_only` | `738` | `68.6%` saved | `ok` |
+| `broad_shell` | `2355` | baseline | `ok` |
+| `qmd_only` | `698` | `70.4%` saved | `ok` |
+| `token_reduce_only` | `312` | `86.8%` saved | `quality-fail` |
+| `token_savior_only` | `488` | `79.3%` saved | `ok` |
+| `rtk_only` | `732` | `68.9%` saved | `ok` |
 | `composite_stack` | `316` | `86.6%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
@@ -176,24 +177,29 @@ Use this for major change sets:
 It gates on:
 
 - composite savings + quality
-- adaptive savings + quality
+- adaptive savings + quality (with a small default overhead tolerance of `-2.0%` for benchmark noise)
 - profile viability
 - runtime reliability (`helper_error_rate`, failure overhead, retry overhead)
 
 ## Operational Commands
 
 ```bash
+./scripts/token-reduce-manage.sh checkpoint
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh benchmark-adaptive
 ./scripts/token-reduce-manage.sh benchmark-composite
 ./scripts/token-reduce-manage.sh benchmark-profiles
 ./scripts/token-reduce-manage.sh release-gate
+./scripts/token-reduce-manage.sh sync-benchmarks
 ./scripts/token-reduce-manage.sh test-adaptive
 ./scripts/token-reduce-manage.sh validate
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh doctor
 ```
+
+`checkpoint` is the consistent maintenance harness: it runs release gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync and writes checkpoint artifacts under `artifacts/token-reduction/`.
+`release-gate` automatically refreshes README benchmark token rows from the generated artifacts; `sync-benchmarks` can be run manually when needed.
 
 Dependency checks:
 
@@ -211,6 +217,7 @@ Default token-reduce routing/enforcement works with or without caveman.
 
 ## Learn More
 
+- [references/INDEX.md](references/INDEX.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)

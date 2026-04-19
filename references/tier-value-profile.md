@@ -47,6 +47,7 @@ These are only worth enabling for narrow task classes:
 | `claude-context` | excluded from local default | infra-coupled; no local default-routing win evidence |
 | prompt-template-only repos | excluded from runtime deps | guidance overlap, no runtime backend |
 | legacy graphify-first orchestration | removed from active orchestration path | unnecessary complexity/risk for current stack |
+| legacy `token-reduce-orchestrate.sh` wrapper | removed | redundant surface once adaptive routing + strict hooks became the canonical path |
 
 ## Failure And Token-Overhead Controls
 

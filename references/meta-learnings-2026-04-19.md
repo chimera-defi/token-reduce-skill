@@ -42,7 +42,7 @@
 ## Addendum (2026-04-19, gap-closure pass)
 
 1. Telemetry attribution mattered as much as routing.
-   Sessions using structural/adaptive/orchestrate helpers were undercounted as "no helper", masking real adoption.
+   Sessions using structural/adaptive helpers were undercounted as "no helper", masking real adoption.
 2. Reminder quality affects compliance.
    A generic hint is weaker than a prompt-specific kickoff command; injecting concrete query words improves first-action helper behavior.
 3. Broad-scan patterns needed stricter coverage.
@@ -53,3 +53,14 @@
    Recomputing full-repo fingerprints on every helper call drives latency spikes; a short stamp TTL keeps repeated calls fast without sacrificing correctness.
 6. Broad `rg` detection needed semantic parsing.
    Regex-only broad-scan blocking misses `rg` forms that recurse from repo root; token-aware path parsing catches these while still allowing exact-file `rg`.
+
+## Addendum (2026-04-19, checkpoint hardening pass)
+
+1. README benchmark pinning needs deterministic sync, not manual edits.
+   Bench artifacts can move by small amounts run-to-run; `release-gate` now syncs README token rows from artifacts before validation.
+2. Runtime QMD latency needs an explicit budget.
+   `token-reduce-search.sh` now applies a runtime timeout guard (`TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`, default `8`) and falls back to scoped `rg` when QMD search is too slow.
+3. Bench vs runtime behavior should stay separated.
+   Timeout guard defaults to off in benchmark/test contexts, so release evidence remains comparable while runtime gets lower tail latency.
+4. Adaptive gate benchmarks must ignore historical repeat behavior.
+   `benchmark-adaptive-tiering.py` now runs adaptive routing with `--behavior-days 0` so pass/fail is driven by routing logic, not prior session volume.

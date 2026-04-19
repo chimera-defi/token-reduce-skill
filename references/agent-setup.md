@@ -112,7 +112,7 @@ token-reduce-manage benchmark-profiles
 | Path kickoff | `token-reduce-paths.sh` | QMD BM25 → candidate paths, minimal tokens |
 | Snippet follow-up | `token-reduce-snippet.sh` | Adds one ranked excerpt when path-only results are not enough |
 | Output compression | RTK (`rtk-rewrite.sh`) | Compresses output of commands that do run |
-| Search backend | QMD | BM25 index, fallback to scoped `rg` |
+| Search backend | QMD | BM25 index, runtime timeout guard (`TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`), fallback to scoped `rg` |
 | Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |
 | Optional interface companion | AXI (`gh-axi`, `chrome-devtools-axi`) | Lower-turn GitHub/browser tool interactions |
 | Routing policy presets | `token-reduce-manage settings profile` | Formal `minimal-load` / `balanced` / `max-savings` behavior profiles |

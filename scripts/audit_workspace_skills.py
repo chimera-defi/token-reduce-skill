@@ -16,7 +16,7 @@ from pathlib import Path
 
 TOKEN_REDUCE_DOC_RE = re.compile(r"token-reduce|token-reduce-paths", re.IGNORECASE)
 TOKEN_REDUCE_HELPER_RE = re.compile(
-    r"(?:skills/token-reduce/scripts/)?token-reduce-(?:paths|snippet|search|adaptive|orchestrate|structural)(?:\.sh|\.py)?",
+    r"(?:skills/token-reduce/scripts/)?token-reduce-(?:paths|snippet|search|adaptive|structural)(?:\.sh|\.py)?",
     re.IGNORECASE,
 )
 CAVEMAN_RE = re.compile(r"(?:^|[^a-z])caveman(?:[^a-z]|$)|/caveman", re.IGNORECASE)

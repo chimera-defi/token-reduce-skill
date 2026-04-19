@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-19T08:49:12.302641+00:00",
+  "generated_at": "2026-04-19T09:50:17.095165+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -30,20 +30,20 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 173,
-      "bytes": 265,
-      "lines": 7,
-      "tokens": 62,
+      "duration_ms": 170,
+      "bytes": 227,
+      "lines": 6,
+      "tokens": 51,
       "quality_pass": false,
       "quality_note": "missing: token_reduce_state.py",
-      "stdout_preview": "./scripts/token-reduce-structural.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-search.sh\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/token-reduce-orchestrate.sh\n./scripts/token-reduce-update-check.py\n./scripts/install_workspace_skill.py"
+      "stdout_preview": "./scripts/token-reduce-structural.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-search.sh\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/token-reduce-update-check.py\n./scripts/install_workspace_skill.py"
     },
     {
       "task": "exact_symbol",
       "strategy": "adaptive_tier",
-      "command": "./scripts/token-reduce-adaptive.sh \"find symbol prompt_requires_helper\" | head -80",
+      "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 1168,
+      "duration_ms": 1007,
       "bytes": 191,
       "lines": 8,
       "tokens": 55,
@@ -56,7 +56,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 148,
+      "duration_ms": 147,
       "bytes": 468,
       "lines": 13,
       "tokens": 115,
@@ -67,9 +67,9 @@
     {
       "task": "hook_discovery",
       "strategy": "adaptive_tier",
-      "command": "./scripts/token-reduce-adaptive.sh \"hook enforcement system\" | head -80",
+      "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 227,
+      "duration_ms": 222,
       "bytes": 468,
       "lines": 13,
       "tokens": 115,
@@ -82,37 +82,38 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 7554,
+      "duration_ms": 7760,
       "bytes": 226,
       "lines": 3,
       "tokens": 98,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
+      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#91375b,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
     },
     {
       "task": "token_reduction_docs",
       "strategy": "adaptive_tier",
-      "command": "./scripts/token-reduce-adaptive.sh \"token reduction guide\" | head -80",
+      "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 7686,
+      "duration_ms": 7900,
       "bytes": 226,
       "lines": 3,
       "tokens": 98,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#78dad0,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
+      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#91375b,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
     }
   ],
   "summary": {
-    "baseline_tokens": 275,
+    "baseline_tokens": 264,
     "adaptive_tokens": 268,
-    "adaptive_savings_vs_baseline_pct": 2.5,
+    "adaptive_savings_vs_baseline_pct": -1.5,
     "baseline_quality_pass": false,
     "adaptive_quality_pass": true
   },
   "verdict": {
     "promote_adaptive_default": true,
-    "reason": "Adaptive default is safe when quality is preserved and token usage is not worse than baseline path-only discovery on representative tasks."
+    "reason": "Adaptive default is safe when quality is preserved and token overhead stays within 2.0% of baseline path-only discovery.",
+    "promotion_tolerance_pct": 2.0
   }
 }
