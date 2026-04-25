@@ -62,7 +62,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | Strategy | Measured Savings | When |
 |----------|-----------------|------|
 | Concise responses | 89% | Always |
-| QMD BM25 search | 99% vs naive reads | Finding which files to read |
+| QMD BM25 search | 71–83% vs broad file listing (local/composite benchmarks); much higher vs reading file contents naively | Finding which files to read |
 | Targeted reads | 33% | Large files |
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |

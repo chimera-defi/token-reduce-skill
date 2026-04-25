@@ -26,13 +26,29 @@ def sync_rows(readme_text: str, artifact_path: Path) -> tuple[str, int]:
             continue
         name = row.get("name")
         tokens = row.get("tokens")
+        savings_pct = row.get("savings_vs_broad_pct")
         if not isinstance(name, str) or not isinstance(tokens, int):
             continue
 
-        pattern = re.compile(rf"^\| `{re.escape(name)}` \| `\d+` \|", re.MULTILINE)
-        replacement = f"| `{name}` | `{tokens}` |"
-        text, count = pattern.subn(replacement, text, count=1)
+        # Sync token count column
+        token_pattern = re.compile(rf"^\| `{re.escape(name)}` \| `\d+` \|", re.MULTILINE)
+        token_replacement = f"| `{name}` | `{tokens}` |"
+        text, count = token_pattern.subn(token_replacement, text, count=1)
         updates += count
+
+        # Sync savings percentage column (e.g. "70.8% saved" or "baseline")
+        if isinstance(savings_pct, (int, float)) and savings_pct > 0.0:
+            savings_str = f"{round(float(savings_pct), 1)}%"
+            savings_pattern = re.compile(
+                rf"(^\| `{re.escape(name)}` \| `\d+` \| )`[\d.]+%` saved",
+                re.MULTILINE,
+            )
+            savings_replacement = rf"\g<1>`{savings_str}` saved"
+            new_text, scount = savings_pattern.subn(savings_replacement, text, count=1)
+            if scount:
+                text = new_text
+                updates += scount
+
     return text, updates
 
 
