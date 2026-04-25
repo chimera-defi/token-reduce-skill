@@ -423,6 +423,19 @@ def measure(scope: str, repo_root: str) -> dict:
         else 0.0
     )
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
+    telemetry_1d = summarize_events(load_events(Path(repo_root).resolve(), days=1))
+
+    def telemetry_window_snapshot(summary: dict) -> dict:
+        efficiency = summary.get("efficiency", {})
+        logging = summary.get("logging", {})
+        return {
+            "event_count": int(summary.get("event_count", 0) or 0),
+            "helper_calls": int(efficiency.get("helper_calls", 0) or 0),
+            "helper_latency_p95_ms": float(efficiency.get("helper_latency_p95_ms", 0.0) or 0.0),
+            "failure_overhead_pct": float(efficiency.get("failure_overhead_pct", 0.0) or 0.0),
+            "logging_quality_score": float(logging.get("logging_quality_score", 0.0) or 0.0),
+            "logging_quality_tier": str(logging.get("logging_quality_tier", "no_data")),
+        }
 
     by_source_payload = {}
     for source, counts in sorted(per_source.items()):
@@ -498,6 +511,10 @@ def measure(scope: str, repo_root: str) -> dict:
         },
         "by_source": by_source_payload,
         "telemetry": telemetry,
+        "telemetry_windows": {
+            "1d": telemetry_window_snapshot(telemetry_1d),
+            "14d": telemetry_window_snapshot(telemetry),
+        },
     }
 
 

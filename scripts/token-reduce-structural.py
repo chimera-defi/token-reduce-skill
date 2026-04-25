@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import subprocess
+import time
 from pathlib import Path
 
 try:
@@ -63,6 +64,8 @@ def log_helper_event(
     status: str,
     command: str,
     query: str,
+    latency_ms: int,
+    exit_code: int,
     output: object | None = None,
 ) -> None:
     if record_event is None:
@@ -89,6 +92,8 @@ def log_helper_event(
             "context": os.environ.get("TOKEN_REDUCE_TELEMETRY_CONTEXT", "runtime"),
             "chars": chars,
             "lines": lines,
+            "latency_ms": latency_ms,
+            "exit_code": exit_code,
         },
     )
 
@@ -159,6 +164,7 @@ def main() -> int:
     p_impact.add_argument("symbol")
 
     args = parser.parse_args()
+    started = time.perf_counter()
     try:
         queries = build_queries(args.project_root)
 
@@ -185,6 +191,8 @@ def main() -> int:
             status="ok",
             command=args.command,
             query=lookup_value,
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            exit_code=0,
             output=result,
         )
         if clear_pending is not None:
@@ -197,6 +205,8 @@ def main() -> int:
             status="error",
             command=args.command,
             query=str(arg_value),
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            exit_code=1,
             output=None,
         )
         raise

@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-04-25T13:27:44.209389+00:00",
+  "generated_at": "2026-04-25T14:36:19.475511+00:00",
   "profiles": [
     {
       "profile": "minimal-load",
-      "baseline_tokens": 265,
-      "adaptive_tokens": 265,
+      "baseline_tokens": 275,
+      "adaptive_tokens": 275,
       "adaptive_savings_vs_baseline_pct": 0.0,
       "adaptive_quality_pass": false,
       "promote_adaptive_default": false
     },
     {
       "profile": "balanced",
-      "baseline_tokens": 265,
-      "adaptive_tokens": 269,
+      "baseline_tokens": 275,
+      "adaptive_tokens": 279,
       "adaptive_savings_vs_baseline_pct": -1.5,
       "adaptive_quality_pass": true,
       "promote_adaptive_default": true
     },
     {
       "profile": "max-savings",
-      "baseline_tokens": 265,
-      "adaptive_tokens": 269,
+      "baseline_tokens": 275,
+      "adaptive_tokens": 279,
       "adaptive_savings_vs_baseline_pct": -1.5,
       "adaptive_quality_pass": true,
       "promote_adaptive_default": true

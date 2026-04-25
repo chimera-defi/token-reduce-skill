@@ -62,3 +62,4 @@ Use this index to keep maintenance repeatable and avoid drift.
 - Recent meta learnings:
   - `references/meta-learnings-2026-04-18.md`
   - `references/meta-learnings-2026-04-19.md`
+  - `references/meta-learnings-2026-04-25.md`

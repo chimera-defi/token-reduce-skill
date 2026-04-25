@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-25T13:26:44.293475+00:00",
+  "generated_at": "2026-04-25T14:35:18.195666+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -30,7 +30,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 194,
+      "duration_ms": 198,
       "bytes": 227,
       "lines": 6,
       "tokens": 51,
@@ -43,7 +43,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 579,
+      "duration_ms": 582,
       "bytes": 191,
       "lines": 8,
       "tokens": 55,
@@ -56,10 +56,10 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 137,
-      "bytes": 468,
-      "lines": 13,
-      "tokens": 115,
+      "duration_ms": 159,
+      "bytes": 512,
+      "lines": 14,
+      "tokens": 125,
       "quality_pass": true,
       "quality_note": "ok",
       "stdout_preview": "./scripts/composite_token_telemetry.py\n./scripts/setup.sh\n./scripts/review_token_reduction.py\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_state.py\n./scripts/token_reduce_telemetry.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh"
@@ -69,10 +69,10 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 230,
-      "bytes": 468,
-      "lines": 13,
-      "tokens": 115,
+      "duration_ms": 251,
+      "bytes": 512,
+      "lines": 14,
+      "tokens": 125,
       "quality_pass": true,
       "quality_note": "ok",
       "stdout_preview": "./scripts/composite_token_telemetry.py\n./scripts/setup.sh\n./scripts/review_token_reduction.py\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_state.py\n./scripts/token_reduce_telemetry.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh"
@@ -82,7 +82,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 15003,
+      "duration_ms": 9422,
       "bytes": 226,
       "lines": 3,
       "tokens": 99,
@@ -95,7 +95,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 9408,
+      "duration_ms": 9528,
       "bytes": 226,
       "lines": 3,
       "tokens": 99,
@@ -105,8 +105,8 @@
     }
   ],
   "summary": {
-    "baseline_tokens": 265,
-    "adaptive_tokens": 269,
+    "baseline_tokens": 275,
+    "adaptive_tokens": 279,
     "adaptive_savings_vs_baseline_pct": -1.5,
     "baseline_quality_pass": false,
     "adaptive_quality_pass": true

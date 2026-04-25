@@ -335,9 +335,11 @@ def main() -> int:
         query=query,
         meta={
             "context": os.environ.get("TOKEN_REDUCE_TELEMETRY_CONTEXT", "runtime"),
+            "backend": "adaptive",
             "tier": decision.tier,
             "command": " ".join(decision.command),
             "latency_ms": duration_ms,
+            "exit_code": exit_code,
             "lines": lines,
             "chars": chars,
             "behavior_repeated_ratio": decision.behavior.repeated_ratio,

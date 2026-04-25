@@ -96,7 +96,7 @@ case "$cmd" in
     exec uv run "$SCRIPT_DIR/checkpoint_gate.py" --repo-root "$SCRIPT_DIR/.."
     ;;
   test-adaptive)
-    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests/test_token_reduce_adaptive.py"
+    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests"
     ;;
   composite)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
