@@ -158,11 +158,11 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2365` | baseline | `ok` |
+| `broad_shell` | `2393` | baseline | `ok` |
 | `qmd_only` | `699` | `70.4%` saved | `ok` |
 | `token_reduce_only` | `322` | `86.8%` saved | `quality-fail` |
 | `token_savior_only` | `488` | `79.3%` saved | `ok` |
-| `rtk_only` | `732` | `68.9%` saved | `ok` |
+| `rtk_only` | `744` | `68.9%` saved | `ok` |
 | `composite_stack` | `326` | `86.6%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.

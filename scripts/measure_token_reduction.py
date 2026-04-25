@@ -55,6 +55,7 @@ RG_OPTIONS_WITH_VALUE = {
     "--sort",
     "--sortr",
 }
+RG_PATTERN_OPTIONS_WITH_VALUE = {"-e", "--regexp", "-f", "--file"}
 
 
 def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
@@ -219,6 +220,8 @@ def rg_paths(command: str) -> list[str]:
 
         if token.startswith("-"):
             if token in RG_OPTIONS_WITH_VALUE:
+                if token in RG_PATTERN_OPTIONS_WITH_VALUE:
+                    saw_pattern = True
                 i += 2
                 continue
             if (
@@ -230,6 +233,8 @@ def rg_paths(command: str) -> list[str]:
                 or token.startswith("-g")
                 or token.startswith("-e")
             ):
+                if token.startswith("--regexp=") or token.startswith("--file=") or token.startswith("-e") or token.startswith("-f"):
+                    saw_pattern = True
                 i += 1
                 continue
             i += 1
