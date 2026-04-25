@@ -18,6 +18,7 @@ CHECKPOINT_COMMANDS: list[tuple[str, list[str]]] = [
     ("review_repo", ["./scripts/token-reduce-manage.sh", "review"]),
     ("measure_global", ["./scripts/token-reduce-manage.sh", "measure-global"]),
     ("review_global", ["./scripts/token-reduce-manage.sh", "review-global"]),
+    ("sync_benchmarks", ["./scripts/token-reduce-manage.sh", "sync-benchmarks"]),
     ("workspace_audit", ["./scripts/token-reduce-manage.sh", "workspace-audit"]),
     ("telemetry_sync_dry_run", ["./scripts/token-reduce-manage.sh", "telemetry-sync", "--dry-run"]),
 ]
