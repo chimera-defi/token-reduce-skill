@@ -92,4 +92,5 @@ def test_realized_outcomes_discount_potential_by_runtime_factors() -> None:
     realized = realized_outcomes_summary(token_reduce, benchmark, dependency_overhead={})
     assert realized["realized_savings_estimate_pct"] < benchmark["potential_savings_pct"]
     assert realized["realized_savings_conservative_pct"] <= realized["realized_savings_estimate_pct"]
+    assert realized["realized_savings_optimistic_pct"] >= realized["realized_savings_estimate_pct"]
     assert "low_confidence_sample" in realized["honesty"]["flags"]

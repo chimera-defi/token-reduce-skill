@@ -328,8 +328,9 @@ def realized_outcomes_summary(
     )
 
     confidence_factor = _clamp(confidence_score / 100.0, 0.15, 1.0)
-    conservative_pct = round(point_estimate_pct * confidence_factor, 1)
-    optimistic_pct = round(point_estimate_pct * _clamp(0.85 + confidence_factor * 0.25, 0.85, 1.1), 1)
+    uncertainty = 1.0 - confidence_factor
+    conservative_pct = round(point_estimate_pct * _clamp(0.5 + confidence_factor * 0.5, 0.5, 1.0), 1)
+    optimistic_pct = round(point_estimate_pct * _clamp(1.0 + uncertainty * 0.2, 1.0, 1.2), 1)
     realized_pct = round(point_estimate_pct, 1)
 
     headroom_pct = round(max(0.0, potential_savings_pct - realized_pct), 1)
