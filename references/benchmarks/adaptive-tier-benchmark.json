@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-19T09:50:17.095165+00:00",
+  "generated_at": "2026-04-25T13:26:44.293475+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -30,7 +30,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 170,
+      "duration_ms": 194,
       "bytes": 227,
       "lines": 6,
       "tokens": 51,
@@ -43,7 +43,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 1007,
+      "duration_ms": 579,
       "bytes": 191,
       "lines": 8,
       "tokens": 55,
@@ -56,7 +56,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 147,
+      "duration_ms": 137,
       "bytes": 468,
       "lines": 13,
       "tokens": 115,
@@ -69,7 +69,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 222,
+      "duration_ms": 230,
       "bytes": 468,
       "lines": 13,
       "tokens": 115,
@@ -82,31 +82,31 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 7760,
+      "duration_ms": 15003,
       "bytes": 226,
       "lines": 3,
-      "tokens": 98,
+      "tokens": 99,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#91375b,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
+      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#36cb0e,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
     },
     {
       "task": "token_reduction_docs",
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 7900,
+      "duration_ms": 9408,
       "bytes": 226,
       "lines": 3,
-      "tokens": 98,
+      "tokens": 99,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#91375b,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
+      "stdout_preview": "#323e35,0.89,qmd://repo-92c7c9c293c8/references/token-reduction-guide.md\n#85d2dd,0.88,qmd://repo-92c7c9c293c8/references/architecture.md\n#36cb0e,0.87,qmd://repo-92c7c9c293c8/references/self-enhancing-harness-log-2026-04-12.md"
     }
   ],
   "summary": {
-    "baseline_tokens": 264,
-    "adaptive_tokens": 268,
+    "baseline_tokens": 265,
+    "adaptive_tokens": 269,
     "adaptive_savings_vs_baseline_pct": -1.5,
     "baseline_quality_pass": false,
     "adaptive_quality_pass": true

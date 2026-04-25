@@ -17,6 +17,11 @@ try:
 except Exception:  # pragma: no cover - host dependent
     record_event = None
 
+try:
+    from token_reduce_state import clear_pending
+except Exception:  # pragma: no cover - host dependent
+    clear_pending = None
+
 
 def build_queries(project_root: str):
     try:
@@ -182,6 +187,8 @@ def main() -> int:
             query=lookup_value,
             output=result,
         )
+        if clear_pending is not None:
+            clear_pending(telemetry_root(args.project_root))
         return 0
     except Exception:
         arg_value = getattr(args, "symbol", "") or getattr(args, "query", "")

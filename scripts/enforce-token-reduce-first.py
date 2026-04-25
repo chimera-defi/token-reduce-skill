@@ -28,7 +28,7 @@ _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
 )
 HELPER_COMMAND_RE = re.compile(
-    r"token-reduce-(?:adaptive|paths|snippet)(?:\.sh)?\b|qmd\s+search\b"
+    r"token-reduce-(?:adaptive|paths|snippet|structural)(?:\.(?:sh|py))?\b|qmd\s+search\b"
 )
 RG_OPTIONS_WITH_VALUE = {
     "-e",
@@ -259,7 +259,7 @@ def main() -> int:
                     f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
                     data,
                 )
-            if is_exploratory_rg(first_line, repo):
+            if any(is_exploratory_rg(line, repo) for line in lines):
                 return block(
                     f"Blocked exploratory rg scan. Run {discovery_hint()} first, then use rg on exact file paths or scoped globs.",
                     data,
