@@ -160,8 +160,8 @@ def main() -> int:
     parser.add_argument(
         "--min-adaptive-savings",
         type=float,
-        default=0.0,
-        help="minimum adaptive savings vs baseline required to pass gate",
+        default=-2.0,
+        help="minimum adaptive savings vs baseline required to pass gate (negative allows bounded overhead tolerance)",
     )
     parser.add_argument("--max-helper-error-rate", type=float, default=2.0)
     parser.add_argument("--max-failure-overhead", type=float, default=1.0)

@@ -128,6 +128,17 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     hook_error_count = 0
     helper_latencies_ms: list[float] = []
     helper_tool_latencies_ms: dict[str, list[float]] = defaultdict(list)
+    helper_backend_latencies_ms: dict[str, list[float]] = defaultdict(list)
+    helper_backend_counts: Counter[str] = Counter()
+    helper_meta_present_count = 0
+    helper_latency_coverage_count = 0
+    helper_size_coverage_count = 0
+    helper_exit_code_coverage_count = 0
+    helper_context_coverage_count = 0
+    helper_backend_coverage_count = 0
+    helper_status_exit_mismatch_count = 0
+    helper_non_numeric_latency_count = 0
+    helper_negative_latency_count = 0
 
     excluded_event_count = 0
     for event in events:
@@ -162,6 +173,48 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
         if event_name == "helper_invocation":
             helper_events.append(event)
             helper_query_counts[(str(event.get("tool", "unknown")), str(event.get("query", "")))] += 1
+
+            status = str(event.get("status", "unknown"))
+            if isinstance(meta, dict) and meta:
+                helper_meta_present_count += 1
+
+            if isinstance(meta, dict):
+                raw_context = meta.get("context")
+                if isinstance(raw_context, str) and raw_context.strip():
+                    helper_context_coverage_count += 1
+
+                raw_backend = meta.get("backend")
+                backend = (
+                    str(raw_backend).strip().lower()
+                    if isinstance(raw_backend, str) and raw_backend.strip()
+                    else "unknown"
+                )
+                helper_backend_counts[backend] += 1
+                if backend != "unknown":
+                    helper_backend_coverage_count += 1
+
+                chars = meta.get("chars")
+                lines = meta.get("lines")
+                if isinstance(chars, (int, float)) and isinstance(lines, (int, float)):
+                    helper_size_coverage_count += 1
+
+                exit_code = meta.get("exit_code")
+                if isinstance(exit_code, int):
+                    helper_exit_code_coverage_count += 1
+                    if (status == "ok" and exit_code != 0) or (status == "error" and exit_code == 0):
+                        helper_status_exit_mismatch_count += 1
+
+                latency_ms = meta.get("latency_ms")
+                if isinstance(latency_ms, (int, float)):
+                    if float(latency_ms) >= 0:
+                        helper_latency_coverage_count += 1
+                        helper_backend_latencies_ms[backend].append(float(latency_ms))
+                    else:
+                        helper_negative_latency_count += 1
+                elif latency_ms is not None:
+                    helper_non_numeric_latency_count += 1
+            else:
+                helper_backend_counts["unknown"] += 1
 
     helper_stats = {}
     for tool, stats in sorted(tool_stats.items()):
@@ -209,6 +262,17 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             last_call_by_key[key] = ts
 
     helper_calls = len(helper_events)
+    pct = lambda count: round((count * 100.0 / helper_calls), 1) if helper_calls else 0.0
+
+    helper_meta_present_pct = pct(helper_meta_present_count)
+    helper_latency_coverage_pct = pct(helper_latency_coverage_count)
+    helper_size_coverage_pct = pct(helper_size_coverage_count)
+    helper_exit_code_coverage_pct = pct(helper_exit_code_coverage_count)
+    helper_context_coverage_pct = pct(helper_context_coverage_count)
+    helper_backend_coverage_pct = pct(helper_backend_coverage_count)
+    helper_status_exit_mismatch_pct = pct(helper_status_exit_mismatch_count)
+    helper_missing_latency_count = max(0, helper_calls - helper_latency_coverage_count)
+
     helper_error_rate_pct = round((helper_error_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
     failure_overhead_calls = helper_error_calls + error_recovery_retries
     failure_overhead_pct = round((failure_overhead_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
@@ -225,6 +289,33 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
         for tool, values in sorted(helper_tool_latencies_ms.items())
         if values
     }
+    latency_by_backend = {
+        backend: {
+            "avg_ms": round(sum(values) / len(values), 1),
+            "p95_ms": round(percentile(values, 95), 1),
+        }
+        for backend, values in sorted(helper_backend_latencies_ms.items())
+        if values
+    }
+
+    logging_quality_score = round(
+        (
+            helper_latency_coverage_pct * 0.4
+            + helper_exit_code_coverage_pct * 0.2
+            + helper_size_coverage_pct * 0.2
+            + helper_context_coverage_pct * 0.1
+            + helper_backend_coverage_pct * 0.1
+        ),
+        1,
+    )
+    if helper_calls == 0:
+        logging_quality_tier = "no_data"
+    elif logging_quality_score >= 90.0 and helper_status_exit_mismatch_count == 0:
+        logging_quality_tier = "high"
+    elif logging_quality_score >= 75.0:
+        logging_quality_tier = "medium"
+    else:
+        logging_quality_tier = "low"
     pending_marked = int(by_event.get("pending_marked", 0))
     pending_cleared = int(by_event.get("pending_cleared", 0))
     pending_balance = pending_marked - pending_cleared
@@ -240,6 +331,23 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
         "by_tool": dict(sorted(by_tool.items())),
         "by_status": dict(sorted(by_status.items())),
         "tool_stats": helper_stats,
+        "logging": {
+            "helper_meta_present_pct": helper_meta_present_pct,
+            "helper_latency_coverage_pct": helper_latency_coverage_pct,
+            "helper_size_coverage_pct": helper_size_coverage_pct,
+            "helper_exit_code_coverage_pct": helper_exit_code_coverage_pct,
+            "helper_context_coverage_pct": helper_context_coverage_pct,
+            "helper_backend_coverage_pct": helper_backend_coverage_pct,
+            "helper_missing_latency_count": helper_missing_latency_count,
+            "helper_non_numeric_latency_count": helper_non_numeric_latency_count,
+            "helper_negative_latency_count": helper_negative_latency_count,
+            "helper_status_exit_mismatch_count": helper_status_exit_mismatch_count,
+            "helper_status_exit_mismatch_pct": helper_status_exit_mismatch_pct,
+            "helper_backend_breakdown": dict(sorted(helper_backend_counts.items())),
+            "helper_latency_by_backend": latency_by_backend,
+            "logging_quality_score": logging_quality_score,
+            "logging_quality_tier": logging_quality_tier,
+        },
         "efficiency": {
             "helper_calls": helper_calls,
             "helper_ok_calls": helper_ok_calls,
@@ -258,6 +366,14 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             "helper_latency_p95_ms": helper_latency_p95_ms,
             "helper_latency_max_ms": helper_latency_max_ms,
             "helper_latency_by_tool": latency_by_tool,
+            "helper_latency_coverage_pct": helper_latency_coverage_pct,
+            "helper_size_coverage_pct": helper_size_coverage_pct,
+            "helper_exit_code_coverage_pct": helper_exit_code_coverage_pct,
+            "helper_backend_coverage_pct": helper_backend_coverage_pct,
+            "helper_status_exit_mismatch_count": helper_status_exit_mismatch_count,
+            "helper_status_exit_mismatch_pct": helper_status_exit_mismatch_pct,
+            "logging_quality_score": logging_quality_score,
+            "logging_quality_tier": logging_quality_tier,
             "hook_error_count": hook_error_count,
             "pending_marked": pending_marked,
             "pending_cleared": pending_cleared,

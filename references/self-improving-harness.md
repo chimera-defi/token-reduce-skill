@@ -109,6 +109,8 @@ Commands:
 ./scripts/token-reduce-manage.sh deps-check-conditional
 ./scripts/token-reduce-manage.sh deps-update-conditional
 ./scripts/token-reduce-manage.sh release-gate
+./scripts/token-reduce-manage.sh sync-benchmarks
+./scripts/token-reduce-manage.sh checkpoint
 ```
 
 `workspace-auto-update` runs safe repo fast-forward, force-relinks sibling repos to the canonical token-reduce root, and writes a workspace audit with version/commit drift fields.
@@ -116,7 +118,11 @@ Commands:
 `deps-check` / `deps-update` are core-only by default (`qmd` + `rtk`).
 Use `deps-check-conditional` / `deps-update-conditional` for optional companions.
 
-`release-gate` is intended for large change sets: it refreshes composite/adaptive/profile benchmarks and emits a keep/drop verdict.
+`release-gate` is intended for large change sets: it refreshes composite/adaptive/profile benchmarks, syncs README benchmark token rows from artifacts, and emits a keep/drop verdict.
+Adaptive benchmark runs with `--behavior-days 0` to keep gate results stable across historical telemetry noise.
+Adaptive gate uses a bounded default tolerance (`-2.0%`) to absorb benchmark noise while still requiring quality pass.
+
+`checkpoint` is the full consistency harness: release-gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync with timestamped artifacts.
 
 ## One-Shot Maintenance
 

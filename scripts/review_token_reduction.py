@@ -38,19 +38,38 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     compliance = compliance_observed if observed_discovery_sessions > 0 else compliance_all
     helper = helper_observed if observed_discovery_sessions > 0 else helper_all
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
-    mentions_without_helper = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    mentions_without_helper_all = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    mentions_without_helper_observed = int(
+        report["adoption"].get("mention_without_helper_sessions_observed", mentions_without_helper_all)
+    )
+    mentions_without_helper = (
+        mentions_without_helper_observed if observed_discovery_sessions > 0 else mentions_without_helper_all
+    )
     caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
     caveman_command_sessions = int(report["adoption"].get("caveman_command_sessions", 0))
     caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
     axi_tool_pct = float(report["adoption"].get("axi_tool_sessions_pct", 0.0))
     telemetry_events = int(report["telemetry"]["event_count"])
+    telemetry_windows = report.get("telemetry_windows", {})
+    window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    window_14d = telemetry_windows.get("14d", {}) if isinstance(telemetry_windows, dict) else {}
     efficiency = report["telemetry"].get("efficiency", {})
+    logging = report["telemetry"].get("logging", {})
     helper_error_rate = float(efficiency.get("helper_error_rate_pct", 0.0))
     retry_overhead_pct = float(efficiency.get("retry_overhead_pct", 0.0))
     helper_latency_p95_ms = float(efficiency.get("helper_latency_p95_ms", 0.0))
     helper_latency_max_ms = float(efficiency.get("helper_latency_max_ms", 0.0))
     hook_errors = int(efficiency.get("hook_error_count", 0))
     pending_leak_count = int(efficiency.get("pending_leak_count", 0))
+    logging_quality_score = float(logging.get("logging_quality_score", 0.0))
+    logging_quality_tier = str(logging.get("logging_quality_tier", "no_data"))
+    latency_coverage_pct = float(logging.get("helper_latency_coverage_pct", 0.0))
+    exit_code_coverage_pct = float(logging.get("helper_exit_code_coverage_pct", 0.0))
+    backend_coverage_pct = float(logging.get("helper_backend_coverage_pct", 0.0))
+    status_exit_mismatch_count = int(logging.get("helper_status_exit_mismatch_count", 0))
+    window_1d_helper_calls = int(window_1d.get("helper_calls", 0) or 0)
+    window_1d_latency_p95 = float(window_1d.get("helper_latency_p95_ms", 0.0) or 0.0)
+    window_1d_logging_score = float(window_1d.get("logging_quality_score", 0.0) or 0.0)
 
     codex = report["by_source"].get("codex", {})
     claude = report["by_source"].get("claude", {})
@@ -119,6 +138,81 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 ),
             }
         )
+    if logging_quality_tier == "low" or logging_quality_score < 75.0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "logging_coverage",
+                "finding": (
+                    f"Helper telemetry coverage is weak (quality {logging_quality_score:.1f}, "
+                    f"tier {logging_quality_tier})."
+                ),
+                "recommendation": (
+                    "Ensure all helper tiers emit consistent latency, backend, lines/chars, and exit_code fields "
+                    "so latency and savings outcomes can be trusted."
+                ),
+            }
+        )
+    if status_exit_mismatch_count > 0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "telemetry_integrity",
+                "finding": f"Found {status_exit_mismatch_count} helper events with status/exit_code mismatch.",
+                "recommendation": "Treat these as instrumentation bugs and fix wrappers so status and exit codes align.",
+            }
+        )
+    if latency_coverage_pct < 95.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "latency_observability",
+                "finding": f"Latency coverage is incomplete at {latency_coverage_pct:.1f}% of helper events.",
+                "recommendation": "Log latency_ms for every helper invocation path, including structural and error branches.",
+            }
+        )
+    if exit_code_coverage_pct < 95.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "exitcode_observability",
+                "finding": f"Exit-code coverage is incomplete at {exit_code_coverage_pct:.1f}% of helper events.",
+                "recommendation": "Include integer exit_code in helper telemetry to separate true failures from retries.",
+            }
+        )
+    if backend_coverage_pct < 80.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "backend_attribution",
+                "finding": f"Backend attribution is low at {backend_coverage_pct:.1f}% of helper events.",
+                "recommendation": "Emit backend tags (qmd/rg/token-savior/path-hint) so latency can be traced to the right tier.",
+            }
+        )
+    if window_1d_helper_calls >= 5 and window_1d_logging_score >= 90.0 and logging_quality_score < 80.0:
+        findings.append(
+            {
+                "priority": "low",
+                "area": "telemetry_trend",
+                "finding": (
+                    f"Recent runtime logging quality looks improved ({window_1d_logging_score:.1f} over 1d) "
+                    f"vs 14d aggregate ({logging_quality_score:.1f})."
+                ),
+                "recommendation": "Keep collecting runtime sessions; treat current low 14d score as mixed legacy+current instrumentation until the window rolls forward.",
+            }
+        )
+    if window_1d_helper_calls >= 5 and 0 < window_1d_latency_p95 < helper_latency_p95_ms:
+        findings.append(
+            {
+                "priority": "low",
+                "area": "latency_trend",
+                "finding": (
+                    f"Recent runtime latency p95 ({window_1d_latency_p95:.0f} ms over 1d) "
+                    f"is below 14d aggregate ({helper_latency_p95_ms:.0f} ms)."
+                ),
+                "recommendation": "Use both 1d and 14d windows in release decisions to separate current regressions from historical tail behavior.",
+            }
+        )
     if hook_errors > 0:
         findings.append(
             {
@@ -184,11 +278,16 @@ def build_findings(report: dict) -> list[dict[str, str]]:
             }
         )
     if mentions_without_helper > 0:
+        scope_note = (
+            " with observed discovery actions"
+            if observed_discovery_sessions > 0
+            else ""
+        )
         findings.append(
             {
                 "priority": "medium",
                 "area": "prompt_skill_gap",
-                "finding": f"{mentions_without_helper} sessions mentioned token-reduce without using the helper.",
+                "finding": f"{mentions_without_helper} sessions{scope_note} mentioned token-reduce without using the helper.",
                 "recommendation": "Tighten wording and examples so mentioning the skill correlates with helper invocation instead of vague compliance.",
             }
         )
@@ -246,9 +345,16 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
         f"- AXI tool usage: `{report['adoption'].get('axi_tool_sessions_pct', 0.0)}%`",
         f"- Telemetry events (14d, runtime): `{report['telemetry']['event_count']}`",
         f"- Telemetry events excluded (benchmark/test): `{report['telemetry'].get('excluded_event_count', 0)}`",
+        f"- Telemetry window 1d (helpers / p95 / logging): `{report.get('telemetry_windows', {}).get('1d', {}).get('helper_calls', 0)} / {report.get('telemetry_windows', {}).get('1d', {}).get('helper_latency_p95_ms', 0.0)} ms / {report.get('telemetry_windows', {}).get('1d', {}).get('logging_quality_score', 0.0)}`",
+        f"- Telemetry window 14d (helpers / p95 / logging): `{report.get('telemetry_windows', {}).get('14d', {}).get('helper_calls', 0)} / {report.get('telemetry_windows', {}).get('14d', {}).get('helper_latency_p95_ms', 0.0)} ms / {report.get('telemetry_windows', {}).get('14d', {}).get('logging_quality_score', 0.0)}`",
         f"- Helper error rate: `{report['telemetry'].get('efficiency', {}).get('helper_error_rate_pct', 0.0)}%`",
         f"- Retry overhead: `{report['telemetry'].get('efficiency', {}).get('retry_overhead_pct', 0.0)}%`",
         f"- Helper latency p95: `{report['telemetry'].get('efficiency', {}).get('helper_latency_p95_ms', 0.0)} ms`",
+        f"- Logging quality: `{report['telemetry'].get('logging', {}).get('logging_quality_score', 0.0)}` (`{report['telemetry'].get('logging', {}).get('logging_quality_tier', 'no_data')}`)",
+        f"- Latency coverage: `{report['telemetry'].get('logging', {}).get('helper_latency_coverage_pct', 0.0)}%`",
+        f"- Exit-code coverage: `{report['telemetry'].get('logging', {}).get('helper_exit_code_coverage_pct', 0.0)}%`",
+        f"- Backend coverage: `{report['telemetry'].get('logging', {}).get('helper_backend_coverage_pct', 0.0)}%`",
+        f"- Status/exit mismatches: `{report['telemetry'].get('logging', {}).get('helper_status_exit_mismatch_count', 0)}`",
         f"- Hook errors: `{report['telemetry'].get('efficiency', {}).get('hook_error_count', 0)}`",
         f"- Pending state leaks: `{report['telemetry'].get('efficiency', {}).get('pending_leak_count', 0)}`",
         "",

@@ -16,7 +16,7 @@
    - discovery compliance among observed-discovery sessions
    - helper usage among observed-discovery sessions
 6. Extended telemetry sync payload with observed metrics and workspace gap counters.
-7. Updated docs and graphify tracking note with new keep/remove gate.
+7. Updated docs (including the then-active graphify tracking note) with new keep/remove gate.
 
 ## Files Touched
 
@@ -24,7 +24,7 @@
 - `scripts/token-reduce-paths.sh`
 - `scripts/token-reduce-snippet.sh`
 - `scripts/token-reduce-structural.py`
-- `scripts/token-reduce-orchestrate.sh`
+- `scripts/token-reduce-orchestrate.sh` (retired later)
 - `scripts/benchmark-composite-stack.py`
 - `scripts/token-reduce-manage.sh`
 - `scripts/measure_token_reduction.py`
@@ -34,14 +34,14 @@
 - `README.md`
 - `references/self-improving-harness.md`
 - `references/token-reduction-guide.md`
-- `references/graphify-orchestration-tracking.md`
+- `references/graphify-orchestration-tracking.md` (retired later)
 
 ## Rollback Plan (If Needed)
 
 1. Revert telemetry-context filtering changes in `scripts/token_reduce_telemetry.py`.
 2. Revert benchmark context tagging in benchmark/manage scripts.
 3. Revert observed-discovery metrics additions in measure/review.
-4. Keep graphify disabled (default) or remove `scripts/token-reduce-orchestrate.sh` entirely per `references/graphify-orchestration-tracking.md`.
+4. Keep graphify disabled (default). This surface was later removed entirely in the 2026-04-19 cleanup pass.
 
 ## Verification Checklist
 
@@ -100,3 +100,8 @@ Rolling baseline artifact (`artifacts/token-reduction/rolling-baseline-2026-04-1
 - helper usage (observed discovery): `+47.6`
 - discovery compliance (all sessions): `+0.4`
 - discovery compliance (observed discovery): `+76.2`
+
+## 2026-04-19 Cleanup Note
+
+- The experimental `graphify` orchestration tracking surface was fully retired.
+- Canonical routing is now `token-reduce-adaptive` + enforced first-move hooks only.

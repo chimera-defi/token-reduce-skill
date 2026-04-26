@@ -87,6 +87,9 @@ def build_remote_payload(
     measured: dict[str, Any], workspace: dict[str, Any], commit_sha: str
 ) -> dict[str, Any]:
     efficiency = measured.get("telemetry", {}).get("efficiency", {})
+    logging = measured.get("telemetry", {}).get("logging", {})
+    telemetry_windows = measured.get("telemetry_windows", {})
+    window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
     workspace_summary = workspace.get("summary", {})
     workspace_gaps = workspace.get("gaps", {})
     return {
@@ -113,10 +116,20 @@ def build_remote_payload(
             "telemetry_excluded_event_count_14d": measured.get("telemetry", {}).get("excluded_event_count", 0),
             "helper_error_rate_pct": efficiency.get("helper_error_rate_pct", 0.0),
             "helper_failure_overhead_pct": efficiency.get("failure_overhead_pct", 0.0),
+            "helper_latency_p95_ms": efficiency.get("helper_latency_p95_ms", 0.0),
             "helper_rapid_repeat_calls": efficiency.get("rapid_repeat_calls", 0),
             "helper_error_recovery_retries": efficiency.get("error_recovery_retries", 0),
             "hook_error_count": efficiency.get("hook_error_count", 0),
             "pending_leak_count": efficiency.get("pending_leak_count", 0),
+            "logging_quality_score": logging.get("logging_quality_score", 0.0),
+            "logging_quality_tier": logging.get("logging_quality_tier", "no_data"),
+            "helper_latency_coverage_pct": logging.get("helper_latency_coverage_pct", 0.0),
+            "helper_exit_code_coverage_pct": logging.get("helper_exit_code_coverage_pct", 0.0),
+            "helper_backend_coverage_pct": logging.get("helper_backend_coverage_pct", 0.0),
+            "helper_status_exit_mismatch_count": logging.get("helper_status_exit_mismatch_count", 0),
+            "helper_calls_1d": window_1d.get("helper_calls", 0),
+            "helper_latency_p95_ms_1d": window_1d.get("helper_latency_p95_ms", 0.0),
+            "logging_quality_score_1d": window_1d.get("logging_quality_score", 0.0),
             "workspace": workspace_summary,
             "workspace_active_without_helper_usage_count": len(
                 workspace_gaps.get("active_without_helper_usage", [])

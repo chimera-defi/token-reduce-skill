@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,7 @@ from token_reduce_telemetry import load_events, summarize_events
 
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
-    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet)\.sh\b|\btoken-reduce-(?:search|paths|snippet)\.sh\b"
+    r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b"
 )
 TOKEN_REDUCE_STRUCTURAL_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-structural(?:\.py)?\b|\btoken-reduce-structural(?:\.py)?\b"
@@ -31,6 +32,30 @@ CAVEMAN_COMMAND_RE = re.compile(
     r"(?:(?:/|\$)caveman(?:-cn|-es)?(?:\s+\w+|:compress)?|caveman:compress)",
     re.IGNORECASE,
 )
+RG_OPTIONS_WITH_VALUE = {
+    "-e",
+    "--regexp",
+    "-f",
+    "--file",
+    "-g",
+    "--glob",
+    "-t",
+    "--type",
+    "-T",
+    "--type-not",
+    "-m",
+    "--max-count",
+    "-A",
+    "-B",
+    "-C",
+    "--max-filesize",
+    "--max-columns",
+    "--max-depth",
+    "--threads",
+    "--sort",
+    "--sortr",
+}
+RG_PATTERN_OPTIONS_WITH_VALUE = {"-e", "--regexp", "-f", "--file"}
 
 
 def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
@@ -149,6 +174,7 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "token_reduce_search")
     if TOKEN_REDUCE_STRUCTURAL_RE.search(command):
         metrics["structural_helper"] = True
+        note_first_discovery(metrics, True, "structural_helper")
     if GH_AXI_RE.search(command):
         metrics["axi_tool"] = True
         metrics["gh_axi_tool"] = True
@@ -162,9 +188,89 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "scoped_rg")
     if TARGETED_BASH_RE.search(command):
         metrics["targeted_reads"] = True
-    if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command):
+    if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command) or is_exploratory_rg(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
+
+
+def helper_used(metrics: dict) -> bool:
+    return bool(metrics.get("token_reduce_search") or metrics.get("structural_helper"))
+
+
+def rg_paths(command: str) -> list[str]:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return []
+    if not tokens or tokens[0] != "rg":
+        return []
+
+    paths: list[str] = []
+    saw_pattern = False
+    i = 1
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "--":
+            tail = tokens[i + 1 :]
+            if not saw_pattern and tail:
+                saw_pattern = True
+                tail = tail[1:]
+            paths.extend(tail)
+            break
+
+        if token.startswith("-"):
+            if token in RG_OPTIONS_WITH_VALUE:
+                if token in RG_PATTERN_OPTIONS_WITH_VALUE:
+                    saw_pattern = True
+                i += 2
+                continue
+            if (
+                token.startswith("--glob=")
+                or token.startswith("--regexp=")
+                or token.startswith("--type=")
+                or token.startswith("--type-not=")
+                or token.startswith("--file=")
+                or token.startswith("-g")
+                or token.startswith("-e")
+            ):
+                if token.startswith("--regexp=") or token.startswith("--file=") or token.startswith("-e") or token.startswith("-f"):
+                    saw_pattern = True
+                i += 1
+                continue
+            i += 1
+            continue
+
+        if not saw_pattern:
+            saw_pattern = True
+        else:
+            paths.append(token)
+        i += 1
+
+    return paths
+
+
+def is_exploratory_rg(command: str) -> bool:
+    text = command.strip()
+    if not text.startswith("rg "):
+        return False
+    if re.search(r"(?:^|\s)(?:-g|--glob)(?:\s|=)", text):
+        return False
+    if re.search(r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", text):
+        return True
+
+    paths = rg_paths(text)
+    if not paths:
+        return True
+
+    for raw_path in paths:
+        if raw_path in {".", "./"}:
+            return True
+        if any(ch in raw_path for ch in "*?["):
+            return True
+        if "." not in Path(raw_path).name:
+            return True
+
+    return False
 
 
 def parse_claude_session(session_file: Path) -> dict:
@@ -271,6 +377,7 @@ def measure(scope: str, repo_root: str) -> dict:
         "helper_sessions",
         "structural_helper_sessions",
         "mention_without_helper_sessions",
+        "mention_without_helper_sessions_observed",
     ):
         adoption[key] = 0
     per_source = defaultdict(lambda: defaultdict(int))
@@ -291,10 +398,14 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["axi_tool_sessions"] += int(item["axi_tool"])
         adoption["gh_axi_sessions"] += int(item["gh_axi_tool"])
         adoption["chrome_devtools_axi_sessions"] += int(item["chrome_devtools_axi_tool"])
-        adoption["helper_sessions"] += int(item["token_reduce_search"])
+        helper_session = helper_used(item)
+        adoption["helper_sessions"] += int(helper_session)
         adoption["structural_helper_sessions"] += int(item["structural_helper"])
         adoption["mention_without_helper_sessions"] += int(
-            item["token_reduce_mention"] and not item["token_reduce_search"]
+            item["token_reduce_mention"] and not helper_session
+        )
+        adoption["mention_without_helper_sessions_observed"] += int(
+            item["token_reduce_mention"] and item["first_discovery_seen"] and not helper_session
         )
         observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
@@ -304,7 +415,7 @@ def measure(scope: str, repo_root: str) -> dict:
 
         source = str(item["source"])
         per_source[source]["sessions"] += 1
-        per_source[source]["helper_sessions"] += int(item["token_reduce_search"])
+        per_source[source]["helper_sessions"] += int(helper_session)
         per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
         per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
         per_source[source]["caveman_command_sessions"] += int(item["caveman_command"])
@@ -317,6 +428,19 @@ def measure(scope: str, repo_root: str) -> dict:
         else 0.0
     )
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
+    telemetry_1d = summarize_events(load_events(Path(repo_root).resolve(), days=1))
+
+    def telemetry_window_snapshot(summary: dict) -> dict:
+        efficiency = summary.get("efficiency", {})
+        logging = summary.get("logging", {})
+        return {
+            "event_count": int(summary.get("event_count", 0) or 0),
+            "helper_calls": int(efficiency.get("helper_calls", 0) or 0),
+            "helper_latency_p95_ms": float(efficiency.get("helper_latency_p95_ms", 0.0) or 0.0),
+            "failure_overhead_pct": float(efficiency.get("failure_overhead_pct", 0.0) or 0.0),
+            "logging_quality_score": float(logging.get("logging_quality_score", 0.0) or 0.0),
+            "logging_quality_tier": str(logging.get("logging_quality_tier", "no_data")),
+        }
 
     by_source_payload = {}
     for source, counts in sorted(per_source.items()):
@@ -372,6 +496,9 @@ def measure(scope: str, repo_root: str) -> dict:
             "helper_sessions_pct_observed_discovery": pct_observed(adoption["helper_sessions"]),
             "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
             "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
+            "mention_without_helper_pct_observed_discovery": pct_observed(
+                adoption["mention_without_helper_sessions_observed"]
+            ),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,
@@ -389,6 +516,10 @@ def measure(scope: str, repo_root: str) -> dict:
         },
         "by_source": by_source_payload,
         "telemetry": telemetry,
+        "telemetry_windows": {
+            "1d": telemetry_window_snapshot(telemetry_1d),
+            "14d": telemetry_window_snapshot(telemetry),
+        },
     }
 
 

@@ -49,6 +49,31 @@ METRICS: tuple[MetricSpec, ...] = (
         label="Workspace Active Repos With Helper Usage %",
         paths=(("remote_payload", "metrics", "workspace", "active_repos_with_helper_usage_pct"),),
     ),
+    MetricSpec(
+        key="helper_failure_overhead_pct",
+        label="Helper Failure Overhead %",
+        paths=(("remote_payload", "metrics", "helper_failure_overhead_pct"),),
+    ),
+    MetricSpec(
+        key="helper_latency_p95_ms",
+        label="Helper Latency P95 (ms)",
+        paths=(("remote_payload", "metrics", "helper_latency_p95_ms"),),
+    ),
+    MetricSpec(
+        key="logging_quality_score",
+        label="Logging Quality Score",
+        paths=(("remote_payload", "metrics", "logging_quality_score"),),
+    ),
+    MetricSpec(
+        key="helper_latency_p95_ms_1d",
+        label="Helper Latency P95 (1d window, ms)",
+        paths=(("remote_payload", "metrics", "helper_latency_p95_ms_1d"),),
+    ),
+    MetricSpec(
+        key="logging_quality_score_1d",
+        label="Logging Quality Score (1d window)",
+        paths=(("remote_payload", "metrics", "logging_quality_score_1d"),),
+    ),
 )
 
 

@@ -23,11 +23,39 @@ fi
 QUERY="$1"
 GLOB="${2:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-QMD_MASK="**/*.md"
+QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
+QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
+if [[ -f "$QMD_EXTENSION_FILE" ]]; then
+  QMD_EXTENSIONS_DEFAULT="$(tr -d '[:space:]' <"$QMD_EXTENSION_FILE")"
+fi
+QMD_EXTENSIONS="${TOKEN_REDUCE_QMD_EXTENSIONS:-$QMD_EXTENSIONS_DEFAULT}"
+QMD_MASK_DEFAULT="**/*.{${QMD_EXTENSIONS}}"
+QMD_MASK="${TOKEN_REDUCE_QMD_MASK:-$QMD_MASK_DEFAULT}"
+IFS=',' read -r -a QMD_EXTENSION_LIST <<<"$QMD_EXTENSIONS"
 QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
 QMD_STAMP_DIR="${REPO_ROOT}/artifacts"
 QMD_STAMP_PATH="${QMD_STAMP_DIR}/qmd-${COLLECTION_NAME}.stamp"
+QMD_REFRESH_TTL_SECONDS="${TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS:-900}"
+QMD_SEARCH_TIMEOUT_SECONDS="${TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS:-}"
+if [[ -z "$QMD_SEARCH_TIMEOUT_SECONDS" ]]; then
+  if [[ "$TELEMETRY_CONTEXT" == "runtime" ]]; then
+    QMD_SEARCH_TIMEOUT_SECONDS=8
+  else
+    QMD_SEARCH_TIMEOUT_SECONDS=0
+  fi
+fi
+DIAG_FILE="${TOKEN_REDUCE_DIAG_FILE:-}"
+BACKEND="unknown"
+FALLBACK_USED=0
+PATH_HINT_SHORT_CIRCUIT=0
+QMD_COLLECTION_ACTION="not_checked"
+QMD_FILES_STATUS_TAG="not_run"
+QMD_ENSURE_MS=0
+QMD_FILES_MS=0
+QMD_SNIPPET_MS=0
+FALLBACK_MS=0
 NEEDS_PATH_HINT=0
 PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
@@ -36,6 +64,15 @@ DEFAULT_EXCLUDES=(
   -g '!graphify-out/**'
   -g '!artifacts/token-reduction/events.jsonl'
   -g '!artifacts/token-reduction/snapshots/**'
+  -g '!tools/token-reduce-skill/**'
+)
+FINGERPRINT_EXCLUDES=(
+  -g '!.git/**'
+  -g '!node_modules/**'
+  -g '!graphify-out/**'
+  -g '!artifacts/**'
+  -g '!.worktrees/**'
+  -g '!tools/token-reduce-skill/**'
 )
 
 debug() {
@@ -48,7 +85,52 @@ warn() {
   printf '%s\n' "$*" >&2
 }
 
-if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* ]]; then
+now_ms() {
+  local raw
+  raw="$(date +%s%3N 2>/dev/null || true)"
+  if [[ "$raw" =~ ^[0-9]+$ ]]; then
+    printf '%s' "$raw"
+    return
+  fi
+  printf '%s' "$(( $(date +%s) * 1000 ))"
+}
+
+emit_diag() {
+  if [[ -z "$DIAG_FILE" ]]; then
+    return 0
+  fi
+  cat >"$DIAG_FILE" <<EOF
+backend=$BACKEND
+fallback_used=$FALLBACK_USED
+path_hint_short_circuit=$PATH_HINT_SHORT_CIRCUIT
+qmd_collection_action=$QMD_COLLECTION_ACTION
+qmd_files_status=$QMD_FILES_STATUS_TAG
+qmd_ensure_ms=$QMD_ENSURE_MS
+qmd_files_ms=$QMD_FILES_MS
+qmd_snippet_ms=$QMD_SNIPPET_MS
+fallback_ms=$FALLBACK_MS
+EOF
+}
+
+finish() {
+  local code="${1:-0}"
+  emit_diag
+  exit "$code"
+}
+
+run_qmd_search() {
+  if [[ "${QMD_SEARCH_TIMEOUT_SECONDS:-0}" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
+    timeout "${QMD_SEARCH_TIMEOUT_SECONDS}s" qmd search "$@"
+    return $?
+  fi
+  qmd search "$@"
+}
+
+qmd_collection_exists() {
+  qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"
+}
+
+if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* || "$QUERY" == *"_"* ]]; then
   NEEDS_PATH_HINT=1
 fi
 
@@ -64,10 +146,38 @@ if [[ "$QUERY" =~ (^|[[:space:]])(benchmark|measure|adoption)([[:space:]]|$) ]];
   PREFER_SCRIPT_CONTENT=1
 fi
 
+symbol_like_pattern() {
+  local input="$1"
+  local token
+  local tokens=()
+
+  while IFS= read -r token; do
+    [[ "$token" == *"_"* ]] || continue
+    [[ -n "$token" ]] || continue
+    tokens+=("$token")
+    [[ ${#tokens[@]} -ge 3 ]] && break
+  done < <(printf '%s' "$input" | tr -cs '[:alnum:]_.:-' '\n')
+
+  if [[ ${#tokens[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  local pattern="${tokens[0]}"
+  local i
+  for ((i = 1; i < ${#tokens[@]}; i++)); do
+    pattern="${pattern}|${tokens[i]}"
+  done
+  printf '%s' "$pattern"
+}
+
 path_pattern() {
-  local lowered token
+  local lowered token symbol_pattern
   lowered="$(printf '%s' "$QUERY" | tr '[:upper:]' '[:lower:]')"
-  if [[ "$lowered" == *".py"* || "$lowered" == *".sh"* || "$lowered" == *"_"* || "$lowered" == *"-"* ]]; then
+  if symbol_pattern="$(symbol_like_pattern "$lowered" 2>/dev/null)"; then
+    printf '%s' "$symbol_pattern"
+    return 0
+  fi
+  if [[ "$lowered" == *".py"* || "$lowered" == *".sh"* || "$lowered" == *"-"* ]]; then
     printf '%s' "$QUERY"
     return 0
   fi
@@ -99,8 +209,12 @@ path_pattern() {
 }
 
 content_pattern() {
-  local lowered token
+  local lowered token symbol_pattern
   lowered="$(printf '%s' "$QUERY" | tr '[:upper:]' '[:lower:]')"
+  if symbol_pattern="$(symbol_like_pattern "$lowered" 2>/dev/null)"; then
+    printf '%s' "$symbol_pattern"
+    return 0
+  fi
 
   local tokens=()
   while IFS= read -r token; do
@@ -129,44 +243,138 @@ content_pattern() {
 }
 
 collection_fingerprint() {
-  find "$REPO_ROOT" -type f -name '*.md' -not -path '*/.git/*' -printf '%P\t%Ts\t%s\n' 2>/dev/null | sort | sha1sum | cut -d' ' -f1
+  local globs ext listed path stat_payload
+  globs=()
+  for ext in "${QMD_EXTENSION_LIST[@]}"; do
+    ext="${ext//[[:space:]]/}"
+    [[ -z "$ext" ]] && continue
+    globs+=(-g "*.${ext}")
+  done
+  globs+=("${FINGERPRINT_EXCLUDES[@]}")
+
+  listed="$(
+    cd "$REPO_ROOT" &&
+      rg --files "${globs[@]}" . 2>/dev/null | sort || true
+  )"
+  if [[ -z "$listed" ]]; then
+    printf '%s' "empty"
+    return 0
+  fi
+
+  while IFS= read -r path; do
+    path="${path#./}"
+    [[ -z "$path" ]] && continue
+    if [[ -f "$REPO_ROOT/$path" ]]; then
+      stat_payload="$(stat -c '%Y\t%s' "$REPO_ROOT/$path" 2>/dev/null || true)"
+      [[ -n "$stat_payload" ]] && printf '%s\t%s\n' "$path" "$stat_payload"
+    fi
+  done <<<"$listed" | sort | sha1sum | cut -d' ' -f1
+}
+
+stamp_is_fresh() {
+  local stamp_path="$1"
+  local ttl_seconds="$2"
+  local now_s mtime_s
+
+  if [[ "${ttl_seconds:-0}" -le 0 ]]; then
+    return 1
+  fi
+  if [[ ! -f "$stamp_path" ]]; then
+    return 1
+  fi
+  now_s="$(date +%s)"
+  mtime_s="$(stat -c '%Y' "$stamp_path" 2>/dev/null || printf '0')"
+  [[ "$mtime_s" =~ ^[0-9]+$ ]] || return 1
+  (( now_s - mtime_s <= ttl_seconds ))
+}
+
+sanitize_qmd_files_output() {
+  local raw_output="$1"
+  local filtered_output
+  local filter_pattern
+
+  if [[ -z "$raw_output" || "$raw_output" == "No results found." ]]; then
+    printf '%s\n' "$raw_output"
+    return 0
+  fi
+
+  filter_pattern='qmd://[^,]+/(tools/token-reduce-skill/|\.worktrees/|node_modules/)'
+  if [[ "$PREFER_SCRIPT_CONTENT" -eq 0 ]]; then
+    filter_pattern='qmd://[^,]+/(tools/token-reduce-skill/|\.worktrees/|node_modules/|artifacts/token-reduction/|references/benchmarks/|scripts/benchmark-)'
+  fi
+
+  filtered_output="$(printf '%s\n' "$raw_output" | rg -v "$filter_pattern" | head -8 || true)"
+  if [[ -n "$filtered_output" ]]; then
+    printf '%s\n' "$filtered_output"
+    return 0
+  fi
+
+  printf '%s\n' "$raw_output"
 }
 
 ensure_qmd_collection() {
-  local current_fingerprint existing_fingerprint
+  local current_fingerprint existing_fingerprint collection_exists
+  mkdir -p "$QMD_STAMP_DIR"
+  collection_exists=0
+
+  if qmd_collection_exists; then
+    collection_exists=1
+    if stamp_is_fresh "$QMD_STAMP_PATH" "$QMD_REFRESH_TTL_SECONDS"; then
+      debug "[token-reduce-search] using fresh qmd stamp (ttl=${QMD_REFRESH_TTL_SECONDS}s)"
+      QMD_COLLECTION_ACTION="fresh_stamp"
+      return 0
+    fi
+  fi
+
   current_fingerprint="$(collection_fingerprint)"
   existing_fingerprint=""
-
-  mkdir -p "$QMD_STAMP_DIR"
   if [[ -f "$QMD_STAMP_PATH" ]]; then
     existing_fingerprint="$(<"$QMD_STAMP_PATH")"
   fi
 
-  if qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX" && [[ "$current_fingerprint" == "$existing_fingerprint" ]]; then
+  if [[ "$collection_exists" -eq 1 && -z "$existing_fingerprint" ]]; then
+    printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
+    QMD_COLLECTION_ACTION="stamp_bootstrap"
     return 0
   fi
 
-  if qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"; then
+  if [[ "$collection_exists" -eq 1 && "$current_fingerprint" == "$existing_fingerprint" ]]; then
+    printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
+    QMD_COLLECTION_ACTION="fingerprint_match"
+    return 0
+  fi
+
+  if [[ "$collection_exists" -eq 1 ]]; then
     debug "[token-reduce-search] refreshing qmd collection ${COLLECTION_NAME}"
     qmd collection remove "$COLLECTION_NAME" >/dev/null 2>&1 || true
+    QMD_COLLECTION_ACTION="refresh"
   else
-    debug "[token-reduce-search] indexing repo docs for qmd collection ${COLLECTION_NAME}"
+    debug "[token-reduce-search] indexing repo docs and source files for qmd collection ${COLLECTION_NAME}"
+    QMD_COLLECTION_ACTION="create"
   fi
 
   if ! qmd collection add "$REPO_ROOT" --name "$COLLECTION_NAME" --mask "$QMD_MASK" >/dev/null 2>&1; then
-    if qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"; then
+    if qmd_collection_exists; then
       printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
+      QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_add_failed_reuse"
       return 0
     fi
+    QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_add_failed"
     return 1
   fi
 
   printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
+  QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_ok"
   return 0
 }
 
 filter_candidates() {
-  rg -v '(^|/)scripts/benchmark-token-reduce(tion-agents)?\.py(:|$)' || true
+  if [[ "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
+    cat
+    return 0
+  fi
+
+  rg -v '(^|/)(scripts/benchmark-[^/]+\.py|references/benchmarks/|artifacts/token-reduction/)(:|$)' || true
 }
 
 ranked_content_paths() {
@@ -277,53 +485,96 @@ fi
 if command -v qmd >/dev/null 2>&1; then
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$PATH_HINTS" ]]; then
     debug "[token-reduce-search] rg path hits"
+    BACKEND="rg_path_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
     printf '%s\n' "$PATH_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
       echo
       fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
     fi
-    exit 0
+    finish 0
   fi
 
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
     debug "[token-reduce-search] rg content hits"
+    BACKEND="rg_content_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
     printf '%s\n' "$CONTENT_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
       echo
       fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
     fi
-    exit 0
+    finish 0
   fi
 
   if [[ "$PREFER_SKILL_SCRIPTS" -eq 1 && "$PREFER_SCRIPT_CONTENT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
     debug "[token-reduce-search] rg content hits"
+    BACKEND="rg_script_content_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
     printf '%s\n' "$CONTENT_HINTS"
 
     if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
       echo
       fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
     fi
-    exit 0
+    finish 0
   fi
 
+  ensure_start_ms="$(now_ms)"
   if ! ensure_qmd_collection; then
+    QMD_ENSURE_MS="$(( $(now_ms) - ensure_start_ms ))"
+    QMD_FILES_STATUS_TAG="collection_failed"
+    BACKEND="rg_qmd_collection_failed"
     warn "[token-reduce-search] qmd collection add failed; falling back to rg"
     cd "$REPO_ROOT"
+    fallback_start_ms="$(now_ms)"
     if [[ "$MODE" == "snippets" ]]; then
       fallback_snippets
     else
       fallback_paths
     fi
-    exit 0
+    FALLBACK_MS="$(( $(now_ms) - fallback_start_ms ))"
+    FALLBACK_USED=1
+    finish 0
   fi
+  QMD_ENSURE_MS="$(( $(now_ms) - ensure_start_ms ))"
 
   debug "[token-reduce-search] qmd search --files (${COLLECTION_NAME})"
-  QMD_FILES_OUTPUT="$(qmd search "$QUERY" -n 8 --files -c "$COLLECTION_NAME" || true)"
-  printf '%s\n' "$QMD_FILES_OUTPUT"
+  QMD_FILES_RAW=""
+  QMD_FILES_STATUS=0
+  qmd_files_start_ms="$(now_ms)"
+  if QMD_FILES_RAW="$(run_qmd_search "$QUERY" -n 20 --files -c "$COLLECTION_NAME" 2>/dev/null)"; then
+    QMD_FILES_STATUS=0
+  else
+    QMD_FILES_STATUS=$?
+  fi
+  QMD_FILES_MS="$(( $(now_ms) - qmd_files_start_ms ))"
+  QMD_FILES_OUTPUT="$(sanitize_qmd_files_output "$QMD_FILES_RAW")"
 
-  if [[ -n "$QMD_FILES_OUTPUT" && "$QMD_FILES_OUTPUT" != "No results found." ]]; then
+  if [[ "$QMD_FILES_STATUS" -eq 124 || "$QMD_FILES_STATUS" -eq 137 ]]; then
+    QMD_FILES_STATUS_TAG="timeout"
+    warn "[token-reduce-search] qmd search timed out (${QMD_SEARCH_TIMEOUT_SECONDS}s); falling back to rg"
+  elif [[ "$QMD_FILES_STATUS" -ne 0 ]]; then
+    QMD_FILES_STATUS_TAG="error"
+    warn "[token-reduce-search] qmd search failed (status=${QMD_FILES_STATUS}); falling back to rg"
+  else
+    QMD_FILES_STATUS_TAG="ok"
+  fi
+
+  if [[ "$QMD_FILES_STATUS" -eq 0 && -n "$QMD_FILES_OUTPUT" && "$QMD_FILES_OUTPUT" != "No results found." ]]; then
+    BACKEND="qmd_files"
+    printf '%s\n' "$QMD_FILES_OUTPUT"
     if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
       if [[ -n "$PATH_HINTS" ]]; then
         echo
@@ -335,12 +586,28 @@ if command -v qmd >/dev/null 2>&1; then
     if [[ "$MODE" == "snippets" ]]; then
       echo
       debug "[token-reduce-search] qmd search snippet (${COLLECTION_NAME})"
-      qmd search "$QUERY" -n 1 -c "$COLLECTION_NAME" || true
+      qmd_snippet_start_ms="$(now_ms)"
+      run_qmd_search "$QUERY" -n 1 -c "$COLLECTION_NAME" || true
+      QMD_SNIPPET_MS="$(( $(now_ms) - qmd_snippet_start_ms ))"
+      BACKEND="qmd_files_plus_snippet"
     fi
-    exit 0
+    finish 0
   fi
 
-  warn "[token-reduce-search] qmd had no hits, falling back to rg"
+  if [[ "$QMD_FILES_STATUS_TAG" == "ok" ]]; then
+    QMD_FILES_STATUS_TAG="no_hits"
+  fi
+  if [[ "$QMD_FILES_STATUS" -eq 0 ]]; then
+    warn "[token-reduce-search] qmd had no hits, falling back to rg"
+  fi
+  if [[ "$QMD_FILES_STATUS_TAG" == "timeout" ]]; then
+    BACKEND="rg_qmd_timeout_fallback"
+  elif [[ "$QMD_FILES_STATUS_TAG" == "error" ]]; then
+    BACKEND="rg_qmd_error_fallback"
+  else
+    BACKEND="rg_qmd_no_hits_fallback"
+  fi
+  fallback_start_ms="$(now_ms)"
   if [[ "$MODE" == "snippets" ]]; then
     echo
     fallback_snippets
@@ -350,13 +617,21 @@ if command -v qmd >/dev/null 2>&1; then
   else
     fallback_paths
   fi
-  exit 0
+  FALLBACK_MS="$(( $(now_ms) - fallback_start_ms ))"
+  FALLBACK_USED=1
+  finish 0
 fi
 
 warn "[token-reduce-search] qmd unavailable, falling back to scoped rg"
+BACKEND="rg_qmd_unavailable"
+QMD_FILES_STATUS_TAG="qmd_unavailable"
 cd "$REPO_ROOT"
+fallback_start_ms="$(now_ms)"
 if [[ "$MODE" == "snippets" ]]; then
   fallback_snippets
 else
   fallback_paths
 fi
+FALLBACK_MS="$(( $(now_ms) - fallback_start_ms ))"
+FALLBACK_USED=1
+finish 0

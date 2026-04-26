@@ -11,6 +11,7 @@ env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken \
   "$SCRIPT_DIR/benchmark-adaptive-tiering.py"
 env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken \
   "$SCRIPT_DIR/benchmark-profile-presets.py"
+uv run "$SCRIPT_DIR/sync-benchmark-readme.py" --repo-root "$SCRIPT_DIR/.."
 
 echo "[token-reduce] running runtime reliability checks (measure/review)..."
 "$SCRIPT_DIR/baseline-measurement.sh" --scope repo >/dev/null

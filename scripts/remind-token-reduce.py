@@ -1,10 +1,52 @@
 #!/usr/bin/env python3
 """UserPromptSubmit hook: require token-reduce for matching repo-discovery prompts."""
 import json
+import re
+import shlex
 import sys
 
 from token_reduce_state import clear_pending, discovery_hint, mark_pending, prompt_requires_helper, repo_root, session_key
 from token_reduce_telemetry import record_event
+
+STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "do",
+    "for",
+    "from",
+    "how",
+    "i",
+    "if",
+    "in",
+    "is",
+    "it",
+    "let",
+    "me",
+    "now",
+    "of",
+    "on",
+    "or",
+    "our",
+    "please",
+    "so",
+    "that",
+    "the",
+    "them",
+    "then",
+    "this",
+    "to",
+    "up",
+    "use",
+    "we",
+    "with",
+    "you",
+}
 
 
 def extract_prompt(data: dict) -> str:
@@ -21,6 +63,44 @@ def extract_prompt(data: dict) -> str:
                 return value
 
     return ""
+
+
+def topic_words(prompt: str, limit: int = 8) -> str:
+    candidates: list[str] = []
+
+    for chunk in re.findall(r"`([^`]+)`", prompt):
+        candidates.extend(re.findall(r"[A-Za-z0-9_.-]+", chunk))
+
+    candidates.extend(re.findall(r"[A-Za-z0-9_.-]+", prompt))
+
+    selected: list[str] = []
+    seen: set[str] = set()
+    for token in candidates:
+        lowered = token.lower()
+        if lowered in STOPWORDS:
+            continue
+        if len(token) < 2:
+            continue
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        selected.append(token)
+        if len(selected) >= limit:
+            break
+
+    return " ".join(selected)
+
+
+def suggested_discovery_command(prompt: str, hint: str) -> str:
+    words = topic_words(prompt) or "topic words"
+    quoted_words = shlex.quote(words)
+    if "<topic words>" in hint:
+        return hint.replace("<topic words>", quoted_words)
+    if "<query words...>" in hint:
+        return hint.replace("<query words...>", quoted_words)
+    if "qmd search" in hint:
+        return hint.replace("<topic words>", quoted_words)
+    return f"{hint} {quoted_words}"
 
 
 def main() -> int:
@@ -65,12 +145,14 @@ def main() -> int:
         )
 
         hint = discovery_hint()
+        suggested = suggested_discovery_command(prompt, hint)
         json.dump(
             {
                 "continue": True,
                 "systemMessage": (
                     "TOKEN-REDUCE ENFORCEMENT ACTIVE. "
                     f"Your FIRST tool call MUST be a Bash discovery call: {hint}. "
+                    f"Suggested kickoff for this prompt: {suggested}. "
                     "The hooks will block any Grep, Glob, Read, or broad Bash scan until discovery runs. "
                     "This applies even for skill maintenance tasks — if you do not know the exact file path already, run discovery first. "
                     "Use the user's literal filenames, identifiers, or key nouns as query words; "
