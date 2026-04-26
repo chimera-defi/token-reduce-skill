@@ -9,7 +9,7 @@ description: |
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.3.0"
+  version: "5.3.1"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read

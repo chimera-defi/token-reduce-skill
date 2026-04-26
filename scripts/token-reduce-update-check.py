@@ -117,6 +117,7 @@ def run_workspace_sync(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--notify", action="store_true", help="Print human-readable update message")
+    parser.add_argument("--quiet-if-current", action="store_true", help="With --notify, suppress 'up to date' message (used by automated preambles)")
     parser.add_argument("--auto-update", action="store_true", help="Attempt safe ff-only update now")
     parser.add_argument("--no-fetch", action="store_true", help="Skip git fetch before checking")
     parser.add_argument("--workspace-sync", action="store_true", help="Also relink and audit sibling repos")
@@ -216,11 +217,12 @@ def main() -> int:
     }
 
     if args.notify:
+        import sys as _sys
         if payload["update_available"]:
-            print(f"update available: behind by {behind} commit(s) on {current_branch}")
-            print("run: ./scripts/token-reduce-manage.sh auto-update")
-        else:
-            print("token-reduce is up to date.")
+            print(f"[token-reduce] update available: {behind} commit(s) behind on {current_branch}", file=_sys.stderr)
+            print("[token-reduce] run: ./scripts/token-reduce-manage.sh auto-update", file=_sys.stderr)
+        elif not args.quiet_if_current:
+            print("token-reduce is up to date.", file=_sys.stderr)
         if workspace_sync_requested:
             action = str(workspace_payload.get("action", "unknown"))
             if action == "completed":
@@ -230,11 +232,12 @@ def main() -> int:
                     "workspace sync completed: "
                     f"repos_changed={changed}, "
                     f"version_drift={int(summary.get('repos_with_skill_version_drift', 0) or 0)}, "
-                    f"commit_drift={int(summary.get('repos_with_skill_commit_drift', 0) or 0)}"
+                    f"commit_drift={int(summary.get('repos_with_skill_commit_drift', 0) or 0)}",
+                    file=_sys.stderr,
                 )
             else:
                 detail = workspace_payload.get("detail", "")
-                print(f"workspace sync skipped: {detail or action}")
+                print(f"workspace sync skipped: {detail or action}", file=_sys.stderr)
 
     print(json.dumps(payload, indent=2))
     return 0

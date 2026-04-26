@@ -3,6 +3,37 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── Update-check preamble (check_on_manage) ──────────────────────────────────
+# Reads check_on_manage from config (default: true). Uses --no-fetch so it's
+# instant (relies on git state from the SessionStart hook fetch). Silent when
+# up to date; prints a one-line notification when behind.
+_maybe_update_check() {
+  local cfg="$SCRIPT_DIR/../.claude/token-reduce-config.json"
+  local enabled="true"
+  if [[ -f "$cfg" ]] && command -v python3 >/dev/null 2>&1; then
+    enabled=$(python3 -c "
+import json, sys
+try:
+    c = json.load(open('$cfg'))
+    print('true' if c.get('updates', {}).get('check_on_manage', True) else 'false')
+except Exception:
+    print('true')
+" 2>/dev/null || echo "true")
+  fi
+  if [[ "$enabled" == "true" ]]; then
+    uv run "$SCRIPT_DIR/token-reduce-update-check.py" \
+      --notify --quiet-if-current --no-fetch >/dev/null || true
+  fi
+}
+# Skip preamble for meta/setup commands where it would be redundant or noisy
+case "${1:-}" in
+  updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
+    ;;
+  *)
+    _maybe_update_check
+    ;;
+esac
+
 usage() {
   cat <<'EOF'
 usage: ./scripts/token-reduce-manage.sh <command>
