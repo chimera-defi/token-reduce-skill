@@ -19,6 +19,7 @@ cd /absolute/path/to/token-reduce-skill
 ./scripts/token-reduce-manage.sh release-gate
 ./scripts/token-reduce-manage.sh validate
 ./scripts/token-reduce-manage.sh doctor
+./scripts/token-reduce-manage.sh checkpoint
 
 Then inspect:
 - README.md
@@ -27,7 +28,7 @@ Then inspect:
 - scripts/activate-token-reduce-stack.sh
 - scripts/token-reduce-manage.sh
 - scripts/token-reduce-dependency-health.py
-- scripts/token-reduce-orchestrate.sh
+- scripts/checkpoint_gate.py
 - references/tier-value-profile.md
 - references/feature-matrix.md
 

@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "composite-benchmark.json"
 QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8')).hexdigest()[:12]}"
 BENCH_ENV = {**os.environ, "TOKEN_REDUCE_TELEMETRY_CONTEXT": "benchmark"}
+QMD_EXTENSIONS_DEFAULT = "md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
 
 
 @dataclass
@@ -66,6 +67,17 @@ def token_count(text: str) -> int:
     return len(encoding.encode(text))
 
 
+def qmd_mask() -> str:
+    ext_file = ROOT / "scripts" / "qmd-file-extensions.txt"
+    extensions = QMD_EXTENSIONS_DEFAULT
+    if ext_file.exists():
+        loaded = ext_file.read_text(encoding="utf-8").strip().replace(" ", "")
+        if loaded:
+            extensions = loaded
+    mask_default = f"**/*.{{{extensions}}}"
+    return os.environ.get("TOKEN_REDUCE_QMD_MASK", mask_default)
+
+
 def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
     started = time.perf_counter()
     proc = subprocess.run(
@@ -99,11 +111,12 @@ def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
 def ensure_qmd_collection() -> None:
     if shutil.which("qmd") is None:
         return
+    mask = qmd_mask()
     subprocess.run(
         [
             "bash",
             "-lc",
-            f"qmd collection add {json.dumps(str(ROOT))} --name {QMD_COLLECTION} --mask '**/*.md' >/dev/null 2>&1 || true",
+            f"qmd collection add {json.dumps(str(ROOT))} --name {QMD_COLLECTION} --mask {json.dumps(mask)} >/dev/null 2>&1 || true",
         ],
         cwd=ROOT,
         check=False,
@@ -220,8 +233,8 @@ def main() -> int:
                 ),
                 (
                     "exact_symbol",
-                    f"qmd search \"prompt_requires_helper\" -n 8 --files -c {QMD_COLLECTION}",
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    f"qmd search \"prompt requires helper token reduce state\" -n 8 --files -c {QMD_COLLECTION}",
+                    ["scripts/token-reduce-state.py"],
                 ),
                 (
                     "output_scan",
@@ -237,8 +250,8 @@ def main() -> int:
                 ("fuzzy_discovery", "token-reduce-paths hook enforcement system | head -40", []),
                 (
                     "exact_symbol",
-                    "token-reduce-paths prompt requires helper | head -40",
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    "token-reduce-paths find symbol prompt_requires_helper | head -40",
+                    ["scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",

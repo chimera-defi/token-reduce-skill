@@ -56,9 +56,17 @@ git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-
 What `setup.sh` does automatically:
 
 - installs/configures core tools (`qmd`, `rtk`) when possible
+- runs initial QMD indexing for docs+code (`**/*.{md,txt,rst,py,sh,...}`), which can take longer on first run
 - wires Claude hooks for prompt steering + pre-tool enforcement
 - links global wrappers (`token-reduce-adaptive`, `token-reduce-paths`, `token-reduce-snippet`, `token-reduce-manage`)
 - links the Codex skill and companion skills when present
+
+Optional QMD scope overrides:
+
+- `TOKEN_REDUCE_QMD_MASK`: explicit glob mask passed to `qmd collection add`
+- `TOKEN_REDUCE_QMD_EXTENSIONS`: comma-separated extension list used to build the default mask
+- `TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS`: controls how often collection fingerprints are recomputed before refresh checks (default runtime: `900`)
+- `TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`: cap runtime `qmd search` latency before falling back to scoped `rg` (default: `8` in runtime, `0` in benchmark/test contexts)
 
 One-command measured activation (core-only default + validate):
 
@@ -140,24 +148,43 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `565` | baseline |
-| `guidance_scoped_rg` | `197` | `65.1%` saved |
-| `qmd_files` | `328` | `41.9%` saved |
-| `token_reduce_paths_warm` | `328` | `41.9%` saved |
-| `token_reduce_snippet_warm` | `406` | `28.1%` saved |
+| `broad_inventory` | `1826` | baseline |
+| `guidance_scoped_rg` | `391` | `78.6%` saved |
+| `qmd_files` | `309` | `83.1%` saved |
+| `token_reduce_paths_warm` | `31` | `98.3%` saved |
+| `token_reduce_snippet_warm` | `195` | `89.3%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2407` | baseline | `ok` |
-| `qmd_only` | `408` | `83.0%` saved | `quality-fail` |
-| `token_reduce_only` | `623` | `74.1%` saved | `quality-fail` |
-| `token_savior_only` | `483` | `79.9%` saved | `ok` |
-| `rtk_only` | `782` | `67.5%` saved | `ok` |
-| `composite_stack` | `431` | `82.1%` saved | `ok` |
+| `broad_shell` | `2393` | baseline | `ok` |
+| `qmd_only` | `699` | `70.8%` saved | `ok` |
+| `token_reduce_only` | `322` | `86.5%` saved | `quality-fail` |
+| `token_savior_only` | `488` | `79.6%` saved | `ok` |
+| `rtk_only` | `744` | `68.9%` saved | `ok` |
+| `composite_stack` | `326` | `86.4%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
+
+### Honest outcome reporting (anti-gaming)
+
+Benchmark savings above are **potential ceiling** metrics only.
+For realistic outcomes, run composite telemetry:
+
+```bash
+./scripts/token-reduce-manage.sh composite
+```
+
+The report now separates:
+
+- `potential_savings_pct` from quality-passing composite benchmark artifacts
+- `realized_savings_estimate_pct` discounted by observed helper usage + discovery compliance
+- reliability penalties (error/retry overhead + latency)
+- telemetry confidence (sample size + logging coverage quality)
+- telemetry windows (`1d` and `14d`) so current behavior is not hidden by stale history
+
+This prevents claiming benchmark-only wins when adoption/compliance or runtime stability are weak.
 
 ### Release gate (anti-regression)
 
@@ -170,24 +197,30 @@ Use this for major change sets:
 It gates on:
 
 - composite savings + quality
-- adaptive savings + quality
+- adaptive savings + quality (with a small default overhead tolerance of `-2.0%` for benchmark noise)
 - profile viability
 - runtime reliability (`helper_error_rate`, failure overhead, retry overhead)
 
 ## Operational Commands
 
 ```bash
+./scripts/token-reduce-manage.sh checkpoint
 ./scripts/token-reduce-manage.sh benchmark
 ./scripts/token-reduce-manage.sh benchmark-adaptive
 ./scripts/token-reduce-manage.sh benchmark-composite
 ./scripts/token-reduce-manage.sh benchmark-profiles
 ./scripts/token-reduce-manage.sh release-gate
+./scripts/token-reduce-manage.sh sync-benchmarks
 ./scripts/token-reduce-manage.sh test-adaptive
 ./scripts/token-reduce-manage.sh validate
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh doctor
 ```
+
+`checkpoint` is the consistent maintenance harness: it runs release gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync and writes checkpoint artifacts under `artifacts/token-reduction/`.
+`release-gate` automatically refreshes README benchmark token rows from the generated artifacts; `sync-benchmarks` can be run manually when needed.
 
 Dependency checks:
 
@@ -205,12 +238,16 @@ Default token-reduce routing/enforcement works with or without caveman.
 
 ## Learn More
 
+- [references/INDEX.md](references/INDEX.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)
 - [references/composite-benchmark.md](references/composite-benchmark.md)
 - [references/profile-presets.md](references/profile-presets.md)
 - [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md)
+- [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
+- [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
+- [references/meta-learnings-2026-04-25.md](references/meta-learnings-2026-04-25.md)
 - [references/agent-setup.md](references/agent-setup.md)
 - [references/workspace-integration.md](references/workspace-integration.md)
 - [references/codex-handoff.md](references/codex-handoff.md)

@@ -13,10 +13,12 @@ commands:
   benchmark   Run the local output-size benchmark
   benchmark-adaptive  Benchmark adaptive tier routing vs baseline paths helper
   benchmark-profiles  Benchmark minimal-load/balanced/max-savings routing presets
+  sync-benchmarks  Sync README benchmark token rows from benchmark artifacts
   benchmark-context-mode-intake  Validate and benchmark context-mode companion intake
   benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
   benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
   release-gate  Run benchmark suite + keep/drop verdict for major change sets
+  checkpoint  Run the full checkpoint suite and write audit artifacts
   test-adaptive  Run unit tests for adaptive tier routing decisions
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
   benchmark-composite  Run the composite stack benchmark
@@ -63,6 +65,9 @@ case "$cmd" in
   benchmark-profiles)
     exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-profile-presets.py"
     ;;
+  sync-benchmarks)
+    exec uv run "$SCRIPT_DIR/sync-benchmark-readme.py" --repo-root "$SCRIPT_DIR/.."
+    ;;
   benchmark-context-mode-intake)
     if [[ -z "${CONTEXT_MODE_REPO:-}" ]]; then
       echo "set CONTEXT_MODE_REPO to a local context-mode clone path" >&2
@@ -87,8 +92,11 @@ case "$cmd" in
   release-gate)
     exec "$SCRIPT_DIR/release-gate.sh" "$@"
     ;;
+  checkpoint)
+    exec uv run "$SCRIPT_DIR/checkpoint_gate.py" --repo-root "$SCRIPT_DIR/.."
+    ;;
   test-adaptive)
-    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests/test_token_reduce_adaptive.py"
+    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests"
     ;;
   composite)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"

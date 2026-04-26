@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18T16:43:42.855575+00:00",
+  "generated_at": "2026-04-19T06:24:51.888213+00:00",
   "cwd": "/root/.openclaw/workspace/dev/token-reduce-skill/.worktrees/main",
   "qmd_available": true,
   "benchmarks": [
@@ -7,59 +7,59 @@
       "name": "broad_inventory",
       "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | head -200",
       "exit_code": 0,
-      "duration_ms": 7,
-      "bytes": 2268,
-      "lines": 67,
-      "tokens": 565,
-      "stdout_preview": "./agents/openai.yaml\n./package.json\n./README.md\n./llms.txt\n./SKILL.md\n./references/anthropic-prompt-caching.md"
+      "duration_ms": 9,
+      "bytes": 7296,
+      "lines": 160,
+      "tokens": 1826,
+      "stdout_preview": "./SKILL.md\n./mcp/server.mjs\n./references/tier-value-profile.md\n./references/anthropic-prompt-caching.md\n./references/self-enhancing-harness-log-2026-04-12.md\n./references/token-savior-evaluation.md"
     },
     {
       "name": "guidance_scoped_rg",
       "command": "rg -n -i -g '*.md' \"token reduction\" . | head -40",
       "exit_code": 0,
       "duration_ms": 9,
-      "bytes": 879,
-      "lines": 6,
-      "tokens": 197,
-      "stdout_preview": "./SKILL.md:21:# Token Reduction Skill\n./SKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\n./references/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\n./references/agent-setup.md:108:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\n./references/token-reduction-guide.md:1:# Token Reduction Guide\n./references/token-reduction-guide.md:62:The cleanest recent live proof is a Codex spot check that opened with `./scripts/token-reduce-paths.sh adoption token reduction measure python script` and returned `scripts/measure_token_reduction.py` directly. Treat Claude hook coverage as improved but still worth rechecking after host changes."
+      "bytes": 1675,
+      "lines": 12,
+      "tokens": 391,
+      "stdout_preview": "./SKILL.md:21:# Token Reduction Skill\n./SKILL.md:68:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\n./references/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\n./references/token-reduction-guide.md:1:# Token Reduction Guide\n./references/token-reduction-guide.md:18:| Concise responses | large response-token reduction | always |\n./references/agent-setup.md:116:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |"
     },
     {
       "name": "qmd_files",
       "command": "qmd search \"token reduction\" -n 8 --files -c repo-92c7c9c293c8",
       "exit_code": 0,
-      "duration_ms": 2048,
-      "bytes": 761,
+      "duration_ms": 8405,
+      "bytes": 741,
       "lines": 8,
-      "tokens": 328,
-      "stdout_preview": "#2bfc70,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-01.md\n#cab3ba,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08.md\n#d96fc2,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-global-2026-04-08.md\n#04eea9,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08-review.md\n#1e03bf,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-09-review.md\n#a327d6,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-10-review.md"
+      "tokens": 309,
+      "stdout_preview": "#da3627,0.85,qmd://repo-92c7c9c293c8/tools/token-reduce-skill/scripts/install-token-reduction-cron.sh\n#da3627,0.85,qmd://repo-92c7c9c293c8/scripts/install-token-reduction-cron.sh\n#3d311c,0.85,qmd://repo-92c7c9c293c8/references/benchmarks/token-optimizer-mcp-intake.json\n#2bfc70,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-01.md\n#cab3ba,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08.md\n#d96fc2,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-global-2026-04-08.md"
     },
     {
       "name": "token_reduce_paths_warm",
       "command": "./scripts/token-reduce-paths.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 2514,
-      "bytes": 761,
-      "lines": 8,
-      "tokens": 328,
-      "stdout_preview": "#2bfc70,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-01.md\n#cab3ba,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08.md\n#d96fc2,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-global-2026-04-08.md\n#04eea9,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08-review.md\n#1e03bf,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-09-review.md\n#a327d6,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-10-review.md"
+      "duration_ms": 9485,
+      "bytes": 77,
+      "lines": 1,
+      "tokens": 31,
+      "stdout_preview": "#da3627,0.85,qmd://repo-92c7c9c293c8/scripts/install-token-reduction-cron.sh"
     },
     {
       "name": "token_reduce_snippet_warm",
       "command": "./scripts/token-reduce-snippet.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 4524,
-      "bytes": 987,
-      "lines": 17,
-      "tokens": 406,
-      "stdout_preview": "#2bfc70,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-01.md\n#cab3ba,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08.md\n#d96fc2,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-global-2026-04-08.md\n#04eea9,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-08-review.md\n#1e03bf,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-09-review.md\n#a327d6,0.85,qmd://repo-92c7c9c293c8/artifacts/token-reduction/adoption-repo-2026-04-10-review.md"
+      "duration_ms": 17421,
+      "bytes": 597,
+      "lines": 10,
+      "tokens": 195,
+      "stdout_preview": "#da3627,0.85,qmd://repo-92c7c9c293c8/scripts/install-token-reduction-cron.sh\n\nqmd://repo-92c7c9c293c8/tools/token-reduce-skill/scripts/install-token-reduction-cron.sh:6 #da3627\nTitle: install-token-reduction-cron\nScore:  85%\n"
     }
   ],
   "savings_vs_broad_inventory": {
     "broad_inventory": 0.0,
-    "guidance_scoped_rg": 65.1,
-    "qmd_files": 41.9,
-    "token_reduce_paths_warm": 41.9,
-    "token_reduce_snippet_warm": 28.1
+    "guidance_scoped_rg": 78.6,
+    "qmd_files": 83.1,
+    "token_reduce_paths_warm": 98.3,
+    "token_reduce_snippet_warm": 89.3
   },
-  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `565` | baseline | `7 ms` |\n| `guidance_scoped_rg` | `197` | 65.1% | `9 ms` |\n| `qmd_files` | `328` | 41.9% | `2048 ms` |\n| `token_reduce_paths_warm` | `328` | 41.9% | `2514 ms` |\n| `token_reduce_snippet_warm` | `406` | 28.1% | `4524 ms` |"
+  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `1826` | baseline | `9 ms` |\n| `guidance_scoped_rg` | `391` | 78.6% | `9 ms` |\n| `qmd_files` | `309` | 83.1% | `8405 ms` |\n| `token_reduce_paths_warm` | `31` | 98.3% | `9485 ms` |\n| `token_reduce_snippet_warm` | `195` | 89.3% | `17421 ms` |"
 }

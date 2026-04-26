@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Sequence
 
 from token_reduce_config import load_config
+from token_reduce_state import clear_pending
 from token_reduce_telemetry import load_events, record_event, summarize_events
 
 
@@ -145,6 +146,8 @@ def collect_availability() -> Availability:
 
 
 def load_behavior_profile(root: Path, *, days: int = 3) -> BehaviorProfile:
+    if days <= 0:
+        return BehaviorProfile(helper_calls=0, repeated_ratio=0.0, rapid_repeat_ratio=0.0)
     summary = summarize_events(load_events(root, days=days))
     efficiency = summary.get("efficiency", {})
     helper_calls = int(efficiency.get("helper_calls", 0) or 0)
@@ -269,19 +272,21 @@ def run_command(command: Sequence[str], *, cwd: Path) -> tuple[int, str, str, in
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("query", nargs="+")
     parser.add_argument("--repo-root", default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true", dest="emit_json")
     parser.add_argument("--behavior-days", type=int, default=None)
+    parser.add_argument("query", nargs="+")
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
     query = " ".join(args.query).strip()
     config = load_config()
     routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+    configured_behavior_days = int(routing.get("behavior_days", 3) or 3)
+    behavior_days = args.behavior_days if args.behavior_days is not None else configured_behavior_days
     policy = RoutingPolicy(
-        behavior_days=int(args.behavior_days or routing.get("behavior_days", 3) or 3),
+        behavior_days=int(behavior_days),
         rapid_repeat_snippet_threshold=float(
             routing.get("rapid_repeat_snippet_threshold", 0.35) or 0.35
         ),
@@ -330,9 +335,11 @@ def main() -> int:
         query=query,
         meta={
             "context": os.environ.get("TOKEN_REDUCE_TELEMETRY_CONTEXT", "runtime"),
+            "backend": "adaptive",
             "tier": decision.tier,
             "command": " ".join(decision.command),
             "latency_ms": duration_ms,
+            "exit_code": exit_code,
             "lines": lines,
             "chars": chars,
             "behavior_repeated_ratio": decision.behavior.repeated_ratio,
@@ -344,6 +351,9 @@ def main() -> int:
 
     if args.emit_json:
         print(json.dumps(payload, indent=2))
+    if exit_code == 0:
+        # Clear pending first-move state on successful adaptive helper kickoff.
+        clear_pending(root)
     return exit_code
 
 

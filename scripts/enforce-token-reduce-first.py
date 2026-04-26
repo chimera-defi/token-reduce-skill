@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -17,7 +18,8 @@ BROAD_BASH_PATTERNS = [
     r"\bgrep\s+-R\b",
     r"\bgrep\s+--recursive\b",
     r"\bdu\s+-a\b",
-    r"\brg\b.*\s--files(?:\s+\.|\s*$)",
+    r"\brg\b.*\s--files\b",
+    r"\bfd\b(?:\s|$)",
     r"\btree\b(?:\s+\.|\s*$)",
 ]
 # Commands that are safe orchestrators — they may have broad-looking args in --body/--message,
@@ -26,8 +28,32 @@ _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
 )
 HELPER_COMMAND_RE = re.compile(
-    r"token-reduce-(?:adaptive|paths|snippet|orchestrate)(?:\.sh)?\b|qmd\s+search\b"
+    r"token-reduce-(?:adaptive|paths|snippet|structural)(?:\.(?:sh|py))?\b|qmd\s+search\b"
 )
+RG_OPTIONS_WITH_VALUE = {
+    "-e",
+    "--regexp",
+    "-f",
+    "--file",
+    "-g",
+    "--glob",
+    "-t",
+    "--type",
+    "-T",
+    "--type-not",
+    "-m",
+    "--max-count",
+    "-A",
+    "-B",
+    "-C",
+    "--max-filesize",
+    "--max-columns",
+    "--max-depth",
+    "--threads",
+    "--sort",
+    "--sortr",
+}
+RG_PATTERN_OPTIONS_WITH_VALUE = {"-e", "--regexp", "-f", "--file"}
 
 
 def block(reason: str, data: dict[str, object] | None = None) -> int:
@@ -98,6 +124,89 @@ def is_exploratory_grep(tool_input: dict[str, object], repo: Path) -> bool:
     return "." not in Path(path_value).name
 
 
+def rg_paths(command: str) -> list[str]:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return []
+    if not tokens or tokens[0] != "rg":
+        return []
+
+    paths: list[str] = []
+    saw_pattern = False
+    i = 1
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "--":
+            tail = tokens[i + 1 :]
+            if not saw_pattern and tail:
+                saw_pattern = True
+                tail = tail[1:]
+            paths.extend(tail)
+            break
+
+        if token.startswith("-"):
+            if token in RG_OPTIONS_WITH_VALUE:
+                if token in RG_PATTERN_OPTIONS_WITH_VALUE:
+                    saw_pattern = True
+                i += 2
+                continue
+            if (
+                token.startswith("--glob=")
+                or token.startswith("--regexp=")
+                or token.startswith("--type=")
+                or token.startswith("--type-not=")
+                or token.startswith("--file=")
+                or token.startswith("-g")
+                or token.startswith("-e")
+            ):
+                if token.startswith("--regexp=") or token.startswith("--file=") or token.startswith("-e") or token.startswith("-f"):
+                    saw_pattern = True
+                i += 1
+                continue
+            i += 1
+            continue
+
+        if not saw_pattern:
+            saw_pattern = True
+        else:
+            paths.append(token)
+        i += 1
+
+    return paths
+
+
+def is_exploratory_rg(command: str, repo: Path) -> bool:
+    first = command.strip()
+    if not first.startswith("rg "):
+        return False
+    if re.search(r"(?:^|\s)(?:-g|--glob)(?:\s|=)", first):
+        return False
+    if re.search(r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", first):
+        return True
+
+    paths = rg_paths(first)
+    if not paths:
+        return True
+
+    for raw_path in paths:
+        if raw_path in {".", "./"}:
+            return True
+        if any(ch in raw_path for ch in "*?["):
+            return True
+
+        candidate = (repo / raw_path).resolve()
+        if candidate.exists():
+            if candidate.is_dir():
+                return True
+            continue
+
+        if "." not in Path(raw_path).name:
+            return True
+
+    return False
+
+
 def helper_required_reason() -> str:
     hint = discovery_hint()
     return (
@@ -153,6 +262,11 @@ def main() -> int:
             ):
                 return block(
                     f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
+                    data,
+                )
+            if any(is_exploratory_rg(line, repo) for line in lines):
+                return block(
+                    f"Blocked exploratory rg scan. Run {discovery_hint()} first, then use rg on exact file paths or scoped globs.",
                     data,
                 )
             return 0
