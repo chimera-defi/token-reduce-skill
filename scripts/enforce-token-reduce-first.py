@@ -8,7 +8,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from token_reduce_state import discovery_hint, is_pending, repo_root, session_key
+from token_reduce_state import consume_block, discovery_hint, is_pending, last_block_info, record_block, repo_root, session_key
 from token_reduce_telemetry import record_event
 
 
@@ -68,6 +68,7 @@ def block(reason: str, data: dict[str, object] | None = None) -> int:
                 if value:
                     meta[key] = value
         meta["session_key"] = session_key(data)
+        record_block(repo, tool_name, reason, meta.get("command"))
         record_event(
             repo,
             event="hook_block",
@@ -230,6 +231,64 @@ def main() -> int:
             meta={"stage": "stdin_json", "error": str(exc)[:240]},
         )
         return 0
+
+    # Post-block compliance tracking
+    repo = repo_root()
+    last_block = consume_block(repo)
+    if last_block is not None:
+        tool_name = data.get("tool_name", "unknown")
+        tool_input = data.get("tool_input", {}) or {}
+        command = ""
+        if tool_name == "Bash" and isinstance(tool_input, dict):
+            command = str(tool_input.get("command", "")).split("\n")[0]
+        is_helper = bool(HELPER_COMMAND_RE.search(command)) if command else False
+        if is_helper:
+            record_event(
+                repo,
+                event="post_block_compliance",
+                source="hook",
+                tool="enforce-token-reduce-first",
+                status="ok",
+                meta={
+                    "blocked_tool": last_block.get("tool"),
+                    "blocked_reason": last_block.get("reason"),
+                    "next_tool": tool_name,
+                    "session_key": session_key(data),
+                },
+            )
+        else:
+            # If the agent is attempting another broad-ish tool right after a block,
+            # classify as escape. If it's an innocent tool (Read on a known file,
+            # Edit, etc.), classify as abandon/non_discovery.
+            is_broad_attempt = False
+            if tool_name == "Bash" and isinstance(tool_input, dict):
+                cmd = str(tool_input.get("command", ""))
+                lines = [l.rstrip("\\").strip() for l in cmd.split("\n") if l.strip() and l.strip() != "\\"]
+                is_broad_attempt = any(
+                    re.search(pattern, line)
+                    for line in lines
+                    for pattern in BROAD_BASH_PATTERNS
+                ) or any(is_exploratory_rg(line, repo) for line in lines)
+            if tool_name == "Glob" and isinstance(tool_input, dict):
+                pattern = str(tool_input.get("pattern", ""))
+                is_broad_attempt = is_broad_glob(pattern) or is_exploratory_glob(pattern)
+            if tool_name == "Grep" and isinstance(tool_input, dict):
+                is_broad_attempt = is_exploratory_grep(tool_input, repo)
+
+            event_type = "post_block_escape" if is_broad_attempt else "post_block_abandon"
+            record_event(
+                repo,
+                event=event_type,
+                source="hook",
+                tool="enforce-token-reduce-first",
+                status="ok" if not is_broad_attempt else "blocked",
+                meta={
+                    "blocked_tool": last_block.get("tool"),
+                    "blocked_reason": last_block.get("reason"),
+                    "next_tool": tool_name,
+                    "session_key": session_key(data),
+                },
+            )
 
     try:
         tool_name = data.get("tool_name")

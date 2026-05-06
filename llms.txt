@@ -107,7 +107,7 @@ Numbers from `references/benchmarks/local-benchmark.json` (this repo, QMD warm):
 | `token-reduce-paths.sh` (QMD warm) | `31` | `98.3%` saved |
 | `token-reduce-snippet.sh` (QMD warm) | `195` | `89.3%` saved |
 
-Full composite-stack benchmark (vs broad shell): `86.4%` saved, quality-pass.
+Full composite-stack benchmark (vs broad shell): `86.5%` saved, quality-pass.
 See `references/benchmarks/composite-benchmark.json` for per-strategy detail.
 
 ## Optional companion (extra output/input compression)

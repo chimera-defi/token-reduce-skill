@@ -39,6 +39,10 @@
 2. Tighten hook coverage where broad scans still appear in global history.
 3. Keep watching helper latency tails (QMD refresh/search dominates p95).
 
+## Cross-Reference
+
+- See `references/meta-learnings-2026-05-06.md` for the telemetry improvement cycle, propagation process, and outcome of the post-block tracking / discovery outcome instrumentation pass.
+
 ## Addendum (2026-04-19, gap-closure pass)
 
 1. Telemetry attribution mattered as much as routing.
