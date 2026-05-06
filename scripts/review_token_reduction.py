@@ -76,6 +76,21 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     codex_helper = float(codex.get("helper_first_or_helper_any_pct", 0.0))
     claude_helper = float(claude.get("helper_first_or_helper_any_pct", 0.0))
 
+    # New telemetry signals
+    efficiency_by_context = report["telemetry"].get("efficiency_by_context", {})
+    runtime_efficiency = efficiency_by_context.get("runtime", {})
+    benchmark_efficiency = efficiency_by_context.get("benchmark", {})
+    qmd_breakdown = report["telemetry"].get("qmd_latency_breakdown", {})
+    post_block_events = report["telemetry"].get("by_event", {})
+    post_block_compliance = int(post_block_events.get("post_block_compliance", 0))
+    post_block_escape = int(post_block_events.get("post_block_escape", 0))
+    post_block_abandon = int(post_block_events.get("post_block_abandon", 0))
+    post_block_total = post_block_compliance + post_block_escape + post_block_abandon
+    discovery_outcomes = report["adoption"]
+    discovery_miss_pct = float(discovery_outcomes.get("discovery_outcome_miss_pct", 0.0))
+    discovery_standoff_pct = float(discovery_outcomes.get("discovery_outcome_standoff_pct", 0.0))
+    discovery_direct_hit_pct = float(discovery_outcomes.get("discovery_outcome_direct_hit_pct", 0.0))
+
     if session_count == 0:
         findings.append(
             {
@@ -318,6 +333,67 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "For GitHub/browser-heavy tasks, prefer gh-axi or chrome-devtools-axi where available to reduce turns and retries.",
             }
         )
+    if post_block_total >= 3 and post_block_escape > post_block_compliance:
+        escape_rate = round((post_block_escape * 100.0 / post_block_total), 1)
+        findings.append(
+            {
+                "priority": "high",
+                "area": "post_block_escape",
+                "finding": f"Agents escape hook blocks more than they comply ({post_block_escape} escapes vs {post_block_compliance} compliances, {escape_rate}% escape rate).",
+                "recommendation": "Strengthen block coverage or add an immediate helper injection after block so the agent cannot retry with alternative broad-scan patterns.",
+            }
+        )
+    if qmd_breakdown and qmd_breakdown.get("qmd_files_ms", {}).get("p95_ms", 0) > 5000:
+        qmd_p95 = qmd_breakdown["qmd_files_ms"]["p95_ms"]
+        qmd_avg = qmd_breakdown["qmd_files_ms"]["avg_ms"]
+        findings.append(
+            {
+                "priority": "high",
+                "area": "qmd_latency",
+                "finding": f"QMD search latency is high (p95 {qmd_p95:.0f} ms, avg {qmd_avg:.0f} ms).",
+                "recommendation": "Consider lowering TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS, pre-warming the QMD collection in CI, or reducing the indexed file mask to exclude generated artifacts.",
+            }
+        )
+    if runtime_efficiency and runtime_efficiency.get("helper_latency_p95_ms", 0) > 0:
+        rt_p95 = runtime_efficiency["helper_latency_p95_ms"]
+        rt_avg = runtime_efficiency["helper_latency_avg_ms"]
+        bm_p95 = benchmark_efficiency.get("helper_latency_p95_ms", 0)
+        if rt_p95 < bm_p95 * 0.5:
+            findings.append(
+                {
+                    "priority": "low",
+                    "area": "runtime_vs_benchmark_latency",
+                    "finding": f"Runtime helper latency (p95 {rt_p95:.0f} ms, avg {rt_avg:.0f} ms) is much lower than benchmark latency (p95 {bm_p95:.0f} ms).",
+                    "recommendation": "Benchmark events are dominated by collection-creation spikes; use runtime-separated metrics for operational decisions.",
+                }
+            )
+    if discovery_miss_pct > 10.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "discovery_outcome",
+                "finding": f"{discovery_miss_pct:.1f}% of sessions used the helper but still broad-scanned afterward (miss).",
+                "recommendation": "Helper results may be irrelevant or ignored; review top_returned_paths utilization and tune ranking or fallback behavior.",
+            }
+        )
+    if discovery_standoff_pct > 15.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "discovery_outcome",
+                "finding": f"{discovery_standoff_pct:.1f}% of sessions used the helper but performed no subsequent targeted reads (standoff).",
+                "recommendation": "Agent may not trust helper results; add stronger prompt steering to read returned paths before alternative discovery.",
+            }
+        )
+    if discovery_direct_hit_pct > 0 and discovery_direct_hit_pct < 30.0:
+        findings.append(
+            {
+                "priority": "low",
+                "area": "discovery_outcome",
+                "finding": f"Only {discovery_direct_hit_pct:.1f}% of helper sessions converted to direct targeted reads (direct_hit).",
+                "recommendation": "Track whether returned files are the right ones; low direct_hit may mean ranking quality or query relevance issues.",
+            }
+        )
     if not findings:
         findings.append(
             {
@@ -358,9 +434,35 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
         f"- Hook errors: `{report['telemetry'].get('efficiency', {}).get('hook_error_count', 0)}`",
         f"- Pending state leaks: `{report['telemetry'].get('efficiency', {}).get('pending_leak_count', 0)}`",
         "",
-        "## Prioritized Findings",
+        "## Context-Separated Efficiency",
         "",
     ]
+    ctx_eff = report["telemetry"].get("efficiency_by_context", {})
+    for ctx in ("runtime", "benchmark", "test"):
+        eff = ctx_eff.get(ctx)
+        if not eff:
+            continue
+        lines.append(
+            f"- **{ctx}**: calls={eff['helper_calls']} "
+            f"p95={eff['helper_latency_p95_ms']:.0f}ms "
+            f"err={eff['helper_error_rate_pct']:.1f}% "
+            f"retry={eff['failure_overhead_pct']:.1f}%"
+        )
+    lines.extend(["", "## QMD Sub-Latency Breakdown", ""])
+    qmd = report["telemetry"].get("qmd_latency_breakdown", {})
+    for phase in ("qmd_ensure_ms", "qmd_files_ms", "qmd_snippet_ms", "fallback_ms"):
+        data = qmd.get(phase)
+        if not data or data.get("count", 0) == 0:
+            continue
+        lines.append(
+            f"- **{phase}**: count={data['count']} avg={data['avg_ms']:.0f}ms p50={data['p50_ms']:.0f}ms p95={data['p95_ms']:.0f}ms"
+        )
+    lines.extend(["", "## Discovery Outcomes", ""])
+    outcomes = report["adoption"]
+    for outcome in ("direct_hit", "indirect_hit", "miss", "standoff", "bypass", "direct"):
+        pct_val = outcomes.get(f"discovery_outcome_{outcome}_pct", 0.0)
+        lines.append(f"- **{outcome}**: `{pct_val:.1f}%`")
+    lines.extend(["", "## Prioritized Findings", ""])
     for finding in findings:
         lines.extend(
             [
