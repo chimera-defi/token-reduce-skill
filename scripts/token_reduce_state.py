@@ -54,6 +54,7 @@ def discovery_hint() -> str:
 
 
 STATE_TTL_SECONDS = 20 * 60
+BLOCK_TTL_SECONDS = 5 * 60
 STATE_DIR = ".claude/token-reduce-state"
 
 
@@ -152,6 +153,60 @@ def clear_pending(repo: Path, key: str | None = None) -> None:
 def is_pending(repo: Path, key: str) -> bool:
     prune(repo)
     return state_path(repo, key).exists() or state_path(repo, "default").exists()
+
+
+def block_state_path(repo: Path) -> Path:
+    return state_dir(repo) / "last_block.json"
+
+
+def record_block(repo: Path, tool: str, reason: str, command: str | None = None) -> None:
+    root = state_dir(repo)
+    root.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "blocked_at": time.time(),
+        "tool": tool,
+        "reason": reason,
+        "command": command,
+    }
+    block_state_path(repo).write_text(json.dumps(payload) + "\n")
+
+
+def consume_block(repo: Path) -> dict | None:
+    """Read and clear the last block state, returning it if still fresh."""
+    path = block_state_path(repo)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    try:
+        path.unlink()
+    except OSError:
+        pass
+    blocked_at = data.get("blocked_at")
+    if not isinstance(blocked_at, (int, float)):
+        return None
+    if time.time() - float(blocked_at) > BLOCK_TTL_SECONDS:
+        return None
+    return data
+
+
+def last_block_info(repo: Path) -> dict | None:
+    """Peek at last block state without consuming it."""
+    path = block_state_path(repo)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    blocked_at = data.get("blocked_at")
+    if not isinstance(blocked_at, (int, float)):
+        return None
+    if time.time() - float(blocked_at) > BLOCK_TTL_SECONDS:
+        return None
+    return data
 
 
 def main() -> int:

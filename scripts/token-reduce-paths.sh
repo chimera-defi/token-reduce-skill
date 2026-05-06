@@ -26,6 +26,26 @@ diag_value() {
   awk -F= -v needle="$key" '$1 == needle {print substr($0, index($0, "=") + 1); exit}' "$DIAG_FILE"
 }
 
+extract_paths_meta() {
+  local raw="$1"
+  python3 -c '
+import sys, json
+lines = [l.strip() for l in sys.argv[1].splitlines() if l.strip()]
+paths = []
+for line in lines:
+    if line.startswith("qmd://"):
+        parts = line.split("/", 3)
+        if len(parts) >= 4:
+            paths.append(parts[3])
+    elif ":" in line and not line.startswith("/"):
+        paths.append(line.split(":", 1)[0])
+    else:
+        paths.append(line)
+paths = paths[:5]
+print(json.dumps({"files_returned_count": len(lines), "top_returned_paths": paths}))
+' "$raw"
+}
+
 sanitize_number() {
   local raw="$1"
   if [[ "$raw" =~ ^[0-9]+$ ]]; then
@@ -67,13 +87,16 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
+  PATHS_META="$(extract_paths_meta "$OUTPUT")"
+  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | python3 -c 'import sys,json; print(json.load(sys.stdin)["files_returned_count"])')"
+  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
   uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \
     --tool token_reduce_paths \
     --status ok \
     --query "$QUERY" \
-    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$BACKEND\",\"qmd_collection_action\":\"$QMD_COLLECTION_ACTION\",\"qmd_files_status\":\"$QMD_FILES_STATUS\",\"qmd_ensure_ms\":$QMD_ENSURE_MS,\"qmd_files_ms\":$QMD_FILES_MS,\"qmd_snippet_ms\":$QMD_SNIPPET_MS,\"fallback_ms\":$FALLBACK_MS,\"fallback_used\":$FALLBACK_USED,\"path_hint_short_circuit\":$PATH_HINT_SHORT_CIRCUIT,\"lines\":$LINES,\"chars\":$CHARS,\"latency_ms\":$LATENCY_MS,\"exit_code\":0}" >/dev/null 2>&1 || true
+    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$BACKEND\",\"qmd_collection_action\":\"$QMD_COLLECTION_ACTION\",\"qmd_files_status\":\"$QMD_FILES_STATUS\",\"qmd_ensure_ms\":$QMD_ENSURE_MS,\"qmd_files_ms\":$QMD_FILES_MS,\"qmd_snippet_ms\":$QMD_SNIPPET_MS,\"fallback_ms\":$FALLBACK_MS,\"fallback_used\":$FALLBACK_USED,\"path_hint_short_circuit\":$PATH_HINT_SHORT_CIRCUIT,\"lines\":$LINES,\"chars\":$CHARS,\"latency_ms\":$LATENCY_MS,\"exit_code\":0,\"files_returned_count\":$FILES_RETURNED_COUNT,\"top_returned_paths\":$TOP_RETURNED_PATHS}" >/dev/null 2>&1 || true
   "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
   exit 0
 fi

@@ -146,6 +146,8 @@ def fresh_metrics(source: str) -> dict:
         "first_discovery_compliant": False,
         "first_discovery_seen": False,
         "first_discovery_kind": "unknown",
+        "discovery_outcome": "none",
+        "helper_used_before_broad_scan": False,
     }
 
 
@@ -163,6 +165,29 @@ def apply_text_metrics(metrics: dict, text: str) -> None:
         metrics["caveman_mention"] = True
     if CAVEMAN_COMMAND_RE.search(text):
         metrics["caveman_command"] = True
+
+
+def classify_discovery_outcome(metrics: dict) -> None:
+    """Classify what happened after a helper invocation in a session."""
+    helper = helper_used(metrics)
+    broad = metrics["broad_scan_violation"]
+    targeted = metrics["targeted_reads"]
+    if helper:
+        if broad and not targeted:
+            metrics["discovery_outcome"] = "miss"
+        elif broad and targeted:
+            metrics["discovery_outcome"] = "indirect_hit"
+        elif targeted:
+            metrics["discovery_outcome"] = "direct_hit"
+        else:
+            metrics["discovery_outcome"] = "standoff"
+    else:
+        if broad:
+            metrics["discovery_outcome"] = "bypass"
+        elif targeted:
+            metrics["discovery_outcome"] = "direct"
+        else:
+            metrics["discovery_outcome"] = "none"
 
 
 def apply_command_metrics(metrics: dict, command: str) -> None:
@@ -319,6 +344,7 @@ def parse_claude_session(session_file: Path) -> dict:
                             note_first_discovery(metrics, False, "broad_scan")
                             metrics["broad_scan_violation"] = True
 
+    classify_discovery_outcome(metrics)
     return metrics
 
 
@@ -348,6 +374,7 @@ def parse_codex_session(session_file: Path) -> dict:
             command = arguments.get("cmd", "")
             apply_command_metrics(metrics, command)
 
+    classify_discovery_outcome(metrics)
     return metrics
 
 
@@ -378,6 +405,12 @@ def measure(scope: str, repo_root: str) -> dict:
         "structural_helper_sessions",
         "mention_without_helper_sessions",
         "mention_without_helper_sessions_observed",
+        "discovery_outcome_direct_hit_sessions",
+        "discovery_outcome_indirect_hit_sessions",
+        "discovery_outcome_miss_sessions",
+        "discovery_outcome_standoff_sessions",
+        "discovery_outcome_bypass_sessions",
+        "discovery_outcome_direct_sessions",
     ):
         adoption[key] = 0
     per_source = defaultdict(lambda: defaultdict(int))
@@ -407,6 +440,12 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["mention_without_helper_sessions_observed"] += int(
             item["token_reduce_mention"] and item["first_discovery_seen"] and not helper_session
         )
+        adoption["discovery_outcome_direct_hit_sessions"] += int(item["discovery_outcome"] == "direct_hit")
+        adoption["discovery_outcome_indirect_hit_sessions"] += int(item["discovery_outcome"] == "indirect_hit")
+        adoption["discovery_outcome_miss_sessions"] += int(item["discovery_outcome"] == "miss")
+        adoption["discovery_outcome_standoff_sessions"] += int(item["discovery_outcome"] == "standoff")
+        adoption["discovery_outcome_bypass_sessions"] += int(item["discovery_outcome"] == "bypass")
+        adoption["discovery_outcome_direct_sessions"] += int(item["discovery_outcome"] == "direct")
         observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
         broad_violation_sessions += int(item["broad_scan_violation"])
@@ -499,6 +538,12 @@ def measure(scope: str, repo_root: str) -> dict:
             "mention_without_helper_pct_observed_discovery": pct_observed(
                 adoption["mention_without_helper_sessions_observed"]
             ),
+            "discovery_outcome_direct_hit_pct": pct(adoption["discovery_outcome_direct_hit_sessions"]),
+            "discovery_outcome_indirect_hit_pct": pct(adoption["discovery_outcome_indirect_hit_sessions"]),
+            "discovery_outcome_miss_pct": pct(adoption["discovery_outcome_miss_sessions"]),
+            "discovery_outcome_standoff_pct": pct(adoption["discovery_outcome_standoff_sessions"]),
+            "discovery_outcome_bypass_pct": pct(adoption["discovery_outcome_bypass_sessions"]),
+            "discovery_outcome_direct_pct": pct(adoption["discovery_outcome_direct_sessions"]),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,

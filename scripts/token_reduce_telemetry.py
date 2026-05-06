@@ -108,6 +108,67 @@ def event_context(event: dict) -> str:
     return "runtime"
 
 
+def _context_efficiency(ctx_events: list[dict], percentile_func) -> dict:
+    """Compute efficiency metrics scoped to a single context."""
+    ctx_helper_latencies: list[float] = []
+    ctx_ok = 0
+    ctx_err = 0
+    ctx_repeated = 0
+    ctx_rapid = 0
+    ctx_recovery = 0
+    ctx_queries: Counter[tuple[str, str]] = Counter()
+    ctx_last_call: dict[tuple[str, str], datetime] = {}
+    ctx_last_err: dict[tuple[str, str], datetime] = {}
+    ctx_sorted = sorted(
+        ctx_events,
+        key=lambda item: event_timestamp(item) or datetime.min.replace(tzinfo=timezone.utc),
+    )
+    for ev in ctx_sorted:
+        key = (str(ev.get("tool", "unknown")), str(ev.get("query", "")))
+        status = str(ev.get("status", "unknown"))
+        ts = event_timestamp(ev)
+        if status == "error":
+            ctx_err += 1
+        else:
+            ctx_ok += 1
+        prev_ts = ctx_last_call.get(key)
+        if ts is not None and prev_ts is not None:
+            if (ts - prev_ts).total_seconds() <= 120:
+                ctx_rapid += 1
+        if status != "error":
+            prev_err = ctx_last_err.get(key)
+            if ts is not None and prev_err is not None:
+                if 0 < (ts - prev_err).total_seconds() <= 300:
+                    ctx_recovery += 1
+                    ctx_last_err.pop(key, None)
+        if status == "error" and ts is not None:
+            ctx_last_err[key] = ts
+        if ts is not None:
+            ctx_last_call[key] = ts
+        ctx_queries[key] += 1
+        lat = (ev.get("meta") or {}).get("latency_ms")
+        if isinstance(lat, (int, float)) and float(lat) >= 0:
+            ctx_helper_latencies.append(float(lat))
+    ctx_calls = len(ctx_events)
+    ctx_repeated = sum(max(0, c - 1) for c in ctx_queries.values())
+    ctx_failure = ctx_err + ctx_recovery
+    return {
+        "helper_calls": ctx_calls,
+        "helper_ok_calls": ctx_ok,
+        "helper_error_calls": ctx_err,
+        "helper_error_rate_pct": round((ctx_err * 100.0 / ctx_calls), 1) if ctx_calls else 0.0,
+        "unique_helper_queries": len(ctx_queries),
+        "repeated_helper_calls": ctx_repeated,
+        "rapid_repeat_calls": ctx_rapid,
+        "error_recovery_retries": ctx_recovery,
+        "failure_overhead_calls": ctx_failure,
+        "failure_overhead_pct": round((ctx_failure * 100.0 / ctx_calls), 1) if ctx_calls else 0.0,
+        "helper_latency_avg_ms": round(sum(ctx_helper_latencies) / len(ctx_helper_latencies), 1) if ctx_helper_latencies else 0.0,
+        "helper_latency_p50_ms": round(percentile_func(ctx_helper_latencies, 50), 1) if ctx_helper_latencies else 0.0,
+        "helper_latency_p95_ms": round(percentile_func(ctx_helper_latencies, 95), 1) if ctx_helper_latencies else 0.0,
+        "helper_latency_max_ms": round(max(ctx_helper_latencies), 1) if ctx_helper_latencies else 0.0,
+    }
+
 def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -> dict:
     def percentile(values: list[float], pct: float) -> float:
         if not values:
@@ -141,6 +202,17 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     helper_negative_latency_count = 0
 
     excluded_event_count = 0
+
+    # Context-separated accumulators
+    context_helper_events: dict[str, list[dict]] = {ctx: [] for ctx in ("runtime", "benchmark", "test", "synthetic")}
+    context_helper_events["all"] = []
+
+    # QMD sub-latency accumulators (ms)
+    qmd_ensure_ms_vals: list[float] = []
+    qmd_files_ms_vals: list[float] = []
+    qmd_snippet_ms_vals: list[float] = []
+    fallback_ms_vals: list[float] = []
+
     for event in events:
         context = event_context(event)
         by_context[context] += 1
@@ -168,11 +240,26 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
                     helper_latencies_ms.append(latency_value)
                     helper_tool_latencies_ms[str(tool)].append(latency_value)
 
+            # Collect QMD sub-latencies where present
+            for key, dest in (
+                ("qmd_ensure_ms", qmd_ensure_ms_vals),
+                ("qmd_files_ms", qmd_files_ms_vals),
+                ("qmd_snippet_ms", qmd_snippet_ms_vals),
+                ("fallback_ms", fallback_ms_vals),
+            ):
+                val = meta.get(key)
+                if isinstance(val, (int, float)) and float(val) > 0:
+                    dest.append(float(val))
+
         if event_name == "hook_error":
             hook_error_count += 1
         if event_name == "helper_invocation":
             helper_events.append(event)
             helper_query_counts[(str(event.get("tool", "unknown")), str(event.get("query", "")))] += 1
+            # Also bin by context for context-separated analysis
+            ctx = context if context in context_helper_events else "runtime"
+            context_helper_events[ctx].append(event)
+            context_helper_events["all"].append(event)
 
             status = str(event.get("status", "unknown"))
             if isinstance(meta, dict) and meta:
@@ -321,6 +408,41 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     pending_balance = pending_marked - pending_cleared
     pending_leak_count = pending_balance if pending_balance > 0 else 0
 
+    # Build context-separated efficiency
+    efficiency_by_context = {}
+    for ctx in ("runtime", "benchmark", "test", "all"):
+        ctx_events = context_helper_events.get(ctx, [])
+        if ctx_events or ctx == "runtime":
+            efficiency_by_context[ctx] = _context_efficiency(ctx_events, percentile)
+
+    # QMD sub-latency breakdown
+    qmd_latency_breakdown = {
+        "qmd_ensure_ms": {
+            "count": len(qmd_ensure_ms_vals),
+            "avg_ms": round(sum(qmd_ensure_ms_vals) / len(qmd_ensure_ms_vals), 1) if qmd_ensure_ms_vals else 0.0,
+            "p50_ms": round(percentile(qmd_ensure_ms_vals, 50), 1) if qmd_ensure_ms_vals else 0.0,
+            "p95_ms": round(percentile(qmd_ensure_ms_vals, 95), 1) if qmd_ensure_ms_vals else 0.0,
+        },
+        "qmd_files_ms": {
+            "count": len(qmd_files_ms_vals),
+            "avg_ms": round(sum(qmd_files_ms_vals) / len(qmd_files_ms_vals), 1) if qmd_files_ms_vals else 0.0,
+            "p50_ms": round(percentile(qmd_files_ms_vals, 50), 1) if qmd_files_ms_vals else 0.0,
+            "p95_ms": round(percentile(qmd_files_ms_vals, 95), 1) if qmd_files_ms_vals else 0.0,
+        },
+        "qmd_snippet_ms": {
+            "count": len(qmd_snippet_ms_vals),
+            "avg_ms": round(sum(qmd_snippet_ms_vals) / len(qmd_snippet_ms_vals), 1) if qmd_snippet_ms_vals else 0.0,
+            "p50_ms": round(percentile(qmd_snippet_ms_vals, 50), 1) if qmd_snippet_ms_vals else 0.0,
+            "p95_ms": round(percentile(qmd_snippet_ms_vals, 95), 1) if qmd_snippet_ms_vals else 0.0,
+        },
+        "fallback_ms": {
+            "count": len(fallback_ms_vals),
+            "avg_ms": round(sum(fallback_ms_vals) / len(fallback_ms_vals), 1) if fallback_ms_vals else 0.0,
+            "p50_ms": round(percentile(fallback_ms_vals, 50), 1) if fallback_ms_vals else 0.0,
+            "p95_ms": round(percentile(fallback_ms_vals, 95), 1) if fallback_ms_vals else 0.0,
+        },
+    }
+
     return {
         "event_count": len(events) - excluded_event_count,
         "total_event_count": len(events),
@@ -379,6 +501,8 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             "pending_cleared": pending_cleared,
             "pending_leak_count": pending_leak_count,
         },
+        "efficiency_by_context": efficiency_by_context,
+        "qmd_latency_breakdown": qmd_latency_breakdown,
     }
 
 
