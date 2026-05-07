@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +12,14 @@ from typing import Any
 
 
 def repo_root_from_script() -> Path:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode == 0 and proc.stdout.strip():
+        return Path(proc.stdout.strip())
     return Path(__file__).resolve().parents[3]
 
 

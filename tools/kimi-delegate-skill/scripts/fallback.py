@@ -17,8 +17,7 @@ def run_codex(prompt: str, model: str, timeout: int) -> subprocess.CompletedProc
         "--model",
         model,
         "--sandbox",
-        "danger-full-access",
-        "--dangerously-bypass-approvals-and-sandbox",
+        "workspace-write",
         prompt,
     ]
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
