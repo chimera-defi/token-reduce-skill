@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kimi Delegate Event",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "event",
+    "status",
+    "task_class",
+    "model_used"
+  ],
+  "properties": {
+    "timestamp": {"type": "string"},
+    "event": {"type": "string"},
+    "status": {"type": "string"},
+    "task_class": {"type": "string"},
+    "model_used": {"type": "string"},
+    "fallback_used": {"type": "boolean"},
+    "fallback_reason": {"type": "string"},
+    "parent_context_tokens": {"type": "integer"},
+    "delegate_input_tokens": {"type": "integer"},
+    "delegate_output_tokens": {"type": "integer"},
+    "estimated_tokens_saved": {"type": "integer"},
+    "latency_ms": {"type": "number"},
+    "meta": {"type": "object"}
+  },
+  "additionalProperties": true
+}

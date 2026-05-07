@@ -1,0 +1,46 @@
+{
+  "version": "0.1.0",
+  "default": {
+    "model": "k2p6",
+    "max_output_tokens": 900,
+    "timeout_seconds": 90,
+    "retry": 1
+  },
+  "task_classes": {
+    "search": {
+      "model": "k2p6",
+      "max_output_tokens": 500,
+      "timeout_seconds": 60,
+      "retry": 1
+    },
+    "summarize": {
+      "model": "k2p6",
+      "max_output_tokens": 800,
+      "timeout_seconds": 75,
+      "retry": 1
+    },
+    "draft": {
+      "model": "k2p6",
+      "max_output_tokens": 1100,
+      "timeout_seconds": 120,
+      "retry": 1
+    },
+    "review": {
+      "model": "k2p6",
+      "max_output_tokens": 1200,
+      "timeout_seconds": 120,
+      "retry": 1
+    },
+    "implementation-lite": {
+      "model": "k2p6",
+      "max_output_tokens": 1200,
+      "timeout_seconds": 150,
+      "retry": 0
+    }
+  },
+  "escalate_if": [
+    "schema_invalid",
+    "timeout",
+    "provider_error"
+  ]
+}
