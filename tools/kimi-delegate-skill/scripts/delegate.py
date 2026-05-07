@@ -32,6 +32,8 @@ def current_repo_root() -> Path:
 
 
 def load_json(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"missing required config file: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -74,7 +76,10 @@ def build_envelope(task: str, context_file: str | None) -> dict:
         cmd += ["--context-file", context_file]
 
     proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return json.loads(proc.stdout)
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"plan_prompt.py produced invalid JSON: {exc}") from exc
 
 
 def main() -> int:
@@ -88,10 +93,18 @@ def main() -> int:
 
     repo_root = current_repo_root()
     skill = skill_root()
-    config = load_json(skill / "config" / "kimi-delegate.json")
-    routing = load_json(skill / "config" / "routing.json")
+    try:
+        config = load_json(skill / "config" / "kimi-delegate.json")
+        routing = load_json(skill / "config" / "routing.json")
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        print(f"error: {exc}", flush=True)
+        return 2
 
-    envelope = build_envelope(args.task, args.context_file)
+    try:
+        envelope = build_envelope(args.task, args.context_file)
+    except Exception as exc:  # pragma: no cover - surfaced to CLI
+        print(f"error: {exc}", flush=True)
+        return 2
     if args.task_class:
         envelope["task_class"] = args.task_class
 
@@ -142,7 +155,7 @@ def main() -> int:
     max_retries = int(route.get("retry", config.get("max_retries", 1)))
 
     retry_count = 0
-    while rc == 0 and not schema_valid and retry_count < max_retries:
+    while retry_count < max_retries and (rc != 0 or not schema_valid):
         retry_count += 1
         rc, out, err, extra_latency_ms = call(cmd, timeout=timeout_seconds)
         latency_ms += extra_latency_ms
