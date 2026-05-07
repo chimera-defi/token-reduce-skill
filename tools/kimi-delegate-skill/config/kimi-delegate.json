@@ -1,0 +1,12 @@
+{
+  "version": "0.1.0",
+  "provider": "kimi-coding",
+  "model": "k2p6",
+  "thinking": "medium",
+  "timeout_seconds": 120,
+  "max_output_tokens": 1200,
+  "max_retries": 1,
+  "fallback_engine": "codex",
+  "fallback_provider": "openai",
+  "fallback_model": "gpt-5.3-codex"
+}
