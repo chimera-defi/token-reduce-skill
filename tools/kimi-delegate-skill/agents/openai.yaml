@@ -1,6 +1,0 @@
-interface:
-  display_name: "Kimi Delegate"
-  short_description: "Structured delegation to cheap Kimi subagents with fallback and telemetry."
-  default_prompt: "Use $kimi-delegate for bounded subtasks: plan envelope -> delegate -> validate -> log telemetry."
-policy:
-  allow_implicit_invocation: true
