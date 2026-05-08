@@ -116,3 +116,29 @@ For additions like alternate search backends, structural indexers, or external M
 3. benchmark it on representative token-reduce tasks
 4. integrate it only if it improves a specific task class without harming the default workflow
 5. propagate the decision into docs and validation
+
+<!-- SHARED_ATTRIBUTION_RULES_START -->
+## Shared Attribution & Meta Learnings
+
+- Commit author should be the active agent model identity.
+- Commit trailer must include: `Co-authored-by: Chimera <chimera_defi@protonmail.com>`.
+- PR description must include:
+  - `**Agent:** <actual model name>`
+  - `**Co-authored-by:** Chimera <chimera_defi@protonmail.com>`
+- Never use placeholder model names; record the actual model used.
+- Never push directly to `main`/`master`; use a feature branch and PR.
+- Keep one task per PR for clear review and rollback.
+- Verify before claiming complete: run relevant tests/lint/checks or explicitly note what was not run.
+<!-- SHARED_ATTRIBUTION_RULES_END -->
+
+<!-- kimi-delegate:begin -->
+## Kimi Delegate Routing
+
+- **For bounded side tasks (search/summarize/draft/review), use the skill wrapper.**
+  - `./skills/kimi-delegate/scripts/delegate.py --task "..."`
+  - Or, if `setup.sh` has been run: `kimi-delegate --task "..."`
+- **Always produce an envelope first** with `./skills/kimi-delegate/scripts/plan_prompt.py --task "..."`.
+- **Direct `pi --provider kimi-coding` calls bypass telemetry and fallback.** Route through the skill so savings, quality, and fallback behavior are tracked.
+- Keep delegation scoped and include acceptance criteria.
+- If Kimi fails, keep fallback enabled and inspect telemetry (`./skills/kimi-delegate/scripts/kimi_delegate_telemetry.py summary --days 14`).
+<!-- kimi-delegate:end -->
