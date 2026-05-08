@@ -67,6 +67,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
+| `kimi-delegate-skill` companion (optional) | Offloads bounded side tasks to cheaper subagents while parent agent keeps critical-path orchestration | Planner-first delegation workflows; keep standalone repo integration |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |

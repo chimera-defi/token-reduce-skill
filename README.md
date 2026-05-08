@@ -34,6 +34,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 ### Conditional companions
 
 - [AXI](https://github.com/kunchenguid/axi) (`gh-axi`, `chrome-devtools-axi`) for GitHub/browser-heavy execution
+- [`kimi-delegate-skill`](https://github.com/chimera-defi/kimi-delegate-skill) for planner-first delegation to cheaper Kimi subagents (standalone repo integration)
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
 - [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
@@ -67,6 +68,13 @@ Optional QMD scope overrides:
 - `TOKEN_REDUCE_QMD_EXTENSIONS`: comma-separated extension list used to build the default mask
 - `TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS`: controls how often collection fingerprints are recomputed before refresh checks (default runtime: `900`)
 - `TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`: cap runtime `qmd search` latency before falling back to scoped `rg` (default: `8` in runtime, `0` in benchmark/test contexts)
+
+Standalone companion integration (`kimi-delegate-skill`):
+
+```bash
+git clone https://github.com/chimera-defi/kimi-delegate-skill /root/.openclaw/workspace/dev/kimi-delegate-skill
+./tools/token-reduce-skill/scripts/integrate-kimi-delegate.sh
+```
 
 One-command measured activation (core-only default + validate):
 
@@ -239,6 +247,8 @@ Default token-reduce routing/enforcement works with or without caveman.
 ## Learn More
 
 - [references/INDEX.md](references/INDEX.md)
+- [references/companion-tools.md](references/companion-tools.md)
+- [references/kimi-delegate-integration.md](references/kimi-delegate-integration.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)

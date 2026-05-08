@@ -264,6 +264,16 @@ for companion_skill in axi caveman caveman-cn caveman-es compress; do
   ensure_codex_companion_link "$companion_skill" "$AGENTS_SKILLS_DIR/$companion_skill"
 done
 
+# Optional standalone companion integration (kimi-delegate-skill).
+# This keeps companion source outside token-reduce while wiring local links consistently.
+if [[ "${TOKEN_REDUCE_SETUP_KIMI_DELEGATE:-1}" == "1" ]]; then
+  if "$REPO_ROOT/scripts/integrate-kimi-delegate.sh" >/dev/null 2>&1; then
+    ok "standalone kimi-delegate companion integrated"
+  else
+    warn "kimi-delegate companion integration skipped/failed (set TOKEN_REDUCE_SETUP_KIMI_DELEGATE=0 to silence)"
+  fi
+fi
+
 # ── Index this repo in QMD ────────────────────────────────────────────────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 if command -v qmd >/dev/null 2>&1; then
