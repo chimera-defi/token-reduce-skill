@@ -156,7 +156,7 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1826` | baseline |
+| `broad_inventory` | `1948` | baseline |
 | `guidance_scoped_rg` | `391` | `78.6%` saved |
 | `qmd_files` | `309` | `83.1%` saved |
 | `token_reduce_paths_warm` | `31` | `98.3%` saved |
@@ -166,12 +166,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2409` | baseline | `ok` |
-| `qmd_only` | `699` | `71.0%` saved | `ok` |
-| `token_reduce_only` | `322` | `86.6%` saved | `quality-fail` |
-| `token_savior_only` | `488` | `79.7%` saved | `ok` |
-| `rtk_only` | `755` | `68.7%` saved | `ok` |
-| `composite_stack` | `326` | `86.5%` saved | `ok` |
+| `broad_shell` | `2461` | baseline | `ok` |
+| `qmd_only` | `695` | `71.8%` saved | `ok` |
+| `token_reduce_only` | `322` | `86.9%` saved | `quality-fail` |
+| `token_savior_only` | `488` | `80.2%` saved | `ok` |
+| `rtk_only` | `779` | `68.3%` saved | `ok` |
+| `composite_stack` | `326` | `86.8%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
 

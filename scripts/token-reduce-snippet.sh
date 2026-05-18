@@ -67,9 +67,9 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
-  PATHS_META="$(printf '%s\n' "$OUTPUT" | python3 "$SCRIPT_DIR/extract_paths_meta.py")"
-  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | python3 -c 'import sys,json; print(json.load(sys.stdin)["files_returned_count"])')"
-  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | python3 -c 'import sys,json; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
+  PATHS_META="$(printf '%s\n' "$OUTPUT" | uv run "$SCRIPT_DIR/extract_paths_meta.py")"
+  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["files_returned_count"])')"
+  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
   uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \

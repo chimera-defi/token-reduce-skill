@@ -120,7 +120,7 @@ finish() {
 
 run_qmd_search() {
   if [[ "${QMD_SEARCH_TIMEOUT_SECONDS:-0}" -gt 0 ]] && command -v timeout >/dev/null 2>&1; then
-    timeout "${QMD_SEARCH_TIMEOUT_SECONDS}s" qmd search "$@"
+    timeout -k 2 "${QMD_SEARCH_TIMEOUT_SECONDS}s" qmd search "$@"
     return $?
   fi
   qmd search "$@"
@@ -142,7 +142,7 @@ if [[ "$QUERY" =~ [Tt]oken[[:space:]-]?[Rr]eduction ]]; then
   PREFER_SKILL_SCRIPTS=1
 fi
 
-if [[ "$QUERY" =~ (^|[[:space:]])(benchmark|measure|adoption)([[:space:]]|$) ]]; then
+if [[ "$QUERY" =~ (^|[[:space:]])(benchmark|measure|adoption|telemetry|compliance|review|latency)([[:space:]]|$) ]]; then
   PREFER_SCRIPT_CONTENT=1
 fi
 
@@ -480,6 +480,8 @@ if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
   fi
 elif [[ "$PREFER_SKILL_SCRIPTS" -eq 1 && "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
   CONTENT_HINTS="$(content_hits)"
+elif [[ "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
+  CONTENT_HINTS="$(content_hits)"
 fi
 
 if command -v qmd >/dev/null 2>&1; then
@@ -502,6 +504,22 @@ if command -v qmd >/dev/null 2>&1; then
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
     debug "[token-reduce-search] rg content hits"
     BACKEND="rg_content_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
+    printf '%s\n' "$CONTENT_HINTS"
+
+    if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
+      echo
+      fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
+    fi
+    finish 0
+  fi
+
+  if [[ "$PREFER_SCRIPT_CONTENT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
+    debug "[token-reduce-search] rg content hits"
+    BACKEND="rg_script_content_hint"
     PATH_HINT_SHORT_CIRCUIT=1
     printf '%s\n' "$CONTENT_HINTS"
 
