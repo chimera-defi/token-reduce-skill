@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# kimi-delegate bypass gate
+# Blocks commits if raw Kimi calls bypassing the wrapper were detected in this repo.
+
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+SKILL_ROOT="/root/.openclaw/workspace/dev/kimi-delegate-skill/.worktrees/main"
+BYPASS_OUT=$("$SKILL_ROOT/scripts/detect_bypass.py" --repo "$REPO_ROOT" --days 1 --nudge 2>&1)
+BYPASS_COUNT=$(echo "$BYPASS_OUT" | grep -oP 'Raw Kimi calls.*?: \K[0-9]+' || echo "0")
+
+if [ "$BYPASS_COUNT" -gt 0 ]; then
+    echo ""
+    echo "❌ COMMIT BLOCKED by kimi-delegate bypass gate"
+    echo ""
+    echo "$BYPASS_OUT"
+    echo ""
+    echo "Fix: re-run your tasks through the wrapper before committing:"
+    echo "  kd --task "...""
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git commit --no-verify"
+    exit 1
+fi
+
+# >>> devin-delegate bypass gate >>>
+# devin-delegate bypass gate
+# Blocks commits if raw Devin calls bypassing the wrapper were detected in this repo.
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+SKILL_ROOT="/root/.agents/skills/devin-delegate"
+if [ -x "$SKILL_ROOT/scripts/detect_bypass.py" ]; then
+    BYPASS_OUT=$("$SKILL_ROOT/scripts/detect_bypass.py" --workspace-root "$REPO_ROOT" --repo "$REPO_ROOT" --days 1 --nudge 2>&1 || true)
+    BYPASS_COUNT=$(echo "$BYPASS_OUT" | awk -F': ' '/Raw Devin calls/ {print $2; exit}')
+    BYPASS_COUNT=${BYPASS_COUNT:-0}
+    case "$BYPASS_COUNT" in
+        ''|*[!0-9]*) BYPASS_COUNT=0 ;;
+    esac
+
+    if [ "$BYPASS_COUNT" -gt 0 ]; then
+        echo ""
+        echo "COMMIT BLOCKED by devin-delegate bypass gate"
+        echo ""
+        echo "$BYPASS_OUT"
+        echo ""
+        echo "Fix: re-run your tasks through the wrapper before committing:"
+        echo "  devin-delegate --task \"...\""
+        echo ""
+        echo "To bypass this check (not recommended):"
+        echo "  git commit --no-verify"
+        exit 1
+    fi
+fi
+# <<< devin-delegate bypass gate <<<
+
+exit 0
