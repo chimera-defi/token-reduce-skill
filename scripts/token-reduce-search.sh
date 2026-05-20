@@ -57,6 +57,7 @@ QMD_FILES_MS=0
 QMD_SNIPPET_MS=0
 FALLBACK_MS=0
 NEEDS_PATH_HINT=0
+NEEDS_DOC_HINT=0
 PREFER_SKILL_SCRIPTS=0
 NEEDS_HOOK_FOCUS=0
 PREFER_SCRIPT_CONTENT=0
@@ -144,6 +145,10 @@ fi
 
 if [[ "$QUERY" =~ (^|[[:space:]])(benchmark|measure|adoption|telemetry|compliance|review|latency)([[:space:]]|$) ]]; then
   PREFER_SCRIPT_CONTENT=1
+fi
+
+if [[ "$QUERY" =~ (^|[[:space:]])(guide|readme|docs?|reference|references|architecture|integration|evaluation|playbook)([[:space:]]|$) ]]; then
+  NEEDS_DOC_HINT=1
 fi
 
 symbol_like_pattern() {
@@ -399,6 +404,40 @@ path_hits() {
   fi
 }
 
+doc_path_hits() {
+  local pattern all preferred
+  pattern="$(path_pattern)"
+  if [[ -n "$GLOB" ]]; then
+    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>/dev/null | rg -i -e "$pattern" || true)"
+  else
+    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" . 2>/dev/null | rg -i -e "$pattern" || true)"
+  fi
+  if [[ -z "$all" ]]; then
+    return 0
+  fi
+
+  preferred="$(
+    printf '%s\n' "$all" | rg -i '(^|/)(readme\.md|agents\.md|skill\.md|llms\.txt)$|(^|/)(docs|references)/' || true
+  )"
+
+  if [[ -z "$preferred" ]]; then
+    preferred="$all"
+  fi
+
+  printf '%s\n' "$preferred" | awk '
+    {
+      line = tolower($0)
+      score = 0
+      if (line ~ /token-reduction-guide\.md$/) score += 100
+      if (line ~ /readme\.md$/) score += 80
+      if (line ~ /references\//) score += 40
+      if (line ~ /docs\//) score += 30
+      if (line ~ /guide/) score += 15
+      printf "%d\t%s\n", score, $0
+    }
+  ' | sort -rn | cut -f2- | head -20
+}
+
 content_hits() {
   local pattern="$QUERY"
   if [[ "$NEEDS_PATH_HINT" -eq 1 || "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
@@ -478,6 +517,11 @@ if [[ "$NEEDS_PATH_HINT" -eq 1 ]]; then
   if [[ -z "$PATH_HINTS" ]]; then
     CONTENT_HINTS="$(content_hits)"
   fi
+elif [[ "$NEEDS_DOC_HINT" -eq 1 ]]; then
+  PATH_HINTS="$(doc_path_hits)"
+  if [[ -z "$PATH_HINTS" ]]; then
+    CONTENT_HINTS="$(content_hits)"
+  fi
 elif [[ "$PREFER_SKILL_SCRIPTS" -eq 1 && "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
   CONTENT_HINTS="$(content_hits)"
 elif [[ "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
@@ -504,6 +548,38 @@ if command -v qmd >/dev/null 2>&1; then
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
     debug "[token-reduce-search] rg content hits"
     BACKEND="rg_content_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
+    printf '%s\n' "$CONTENT_HINTS"
+
+    if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
+      echo
+      fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
+    fi
+    finish 0
+  fi
+
+  if [[ "$NEEDS_DOC_HINT" -eq 1 && -n "$PATH_HINTS" ]]; then
+    debug "[token-reduce-search] rg doc path hits"
+    BACKEND="rg_doc_path_hint"
+    PATH_HINT_SHORT_CIRCUIT=1
+    printf '%s\n' "$PATH_HINTS"
+
+    if [[ "$MODE" == "snippets" ]]; then
+      local_fallback_start_ms="$(now_ms)"
+      echo
+      fallback_snippets
+      FALLBACK_MS="$(( $(now_ms) - local_fallback_start_ms ))"
+      FALLBACK_USED=1
+    fi
+    finish 0
+  fi
+
+  if [[ "$NEEDS_DOC_HINT" -eq 1 && -n "$CONTENT_HINTS" ]]; then
+    debug "[token-reduce-search] rg doc content hits"
+    BACKEND="rg_doc_content_hint"
     PATH_HINT_SHORT_CIRCUIT=1
     printf '%s\n' "$CONTENT_HINTS"
 

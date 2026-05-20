@@ -166,12 +166,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2461` | baseline | `ok` |
-| `qmd_only` | `695` | `71.8%` saved | `ok` |
-| `token_reduce_only` | `322` | `86.9%` saved | `quality-fail` |
-| `token_savior_only` | `488` | `80.2%` saved | `ok` |
-| `rtk_only` | `779` | `68.3%` saved | `ok` |
-| `composite_stack` | `326` | `86.8%` saved | `ok` |
+| `broad_shell` | `2480` | baseline | `ok` |
+| `qmd_only` | `694` | `72.0%` saved | `ok` |
+| `token_reduce_only` | `322` | `87.0%` saved | `quality-fail` |
+| `token_savior_only` | `488` | `80.3%` saved | `ok` |
+| `rtk_only` | `779` | `68.6%` saved | `ok` |
+| `composite_stack` | `326` | `86.9%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
 
@@ -229,6 +229,17 @@ It gates on:
 
 `checkpoint` is the consistent maintenance harness: it runs release gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync and writes checkpoint artifacts under `artifacts/token-reduction/`.
 `release-gate` automatically refreshes README benchmark token rows from the generated artifacts; `sync-benchmarks` can be run manually when needed.
+
+Weekly automation (telemetry pull + skill improvement pass):
+
+```bash
+./scripts/install-token-reduction-cron.sh
+```
+
+This installs Monday cron entries for:
+
+- `token-reduce-manage.sh self-improve`
+- `token-reduce-manage.sh telemetry-sync`
 
 Dependency checks:
 
