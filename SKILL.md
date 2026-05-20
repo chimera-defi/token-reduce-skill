@@ -151,4 +151,7 @@ Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt
 Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
 Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
 Read `references/meta-learnings-2026-04-19.md` for QMD indexing/routing synchronization lessons and latency/adoption follow-ups.
+Read `references/meta-learnings-2026-04-25.md` for telemetry-window interpretation and diagnostics normalization lessons.
+Read `references/meta-learnings-2026-05-06.md` for telemetry-driven instrumentation and propagation workflow lessons.
+Read `references/meta-learnings-2026-05-20.md` for docs fast-path routing and weekly maintenance automation lessons.
 Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.

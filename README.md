@@ -269,6 +269,8 @@ Default token-reduce routing/enforcement works with or without caveman.
 - [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
 - [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
 - [references/meta-learnings-2026-04-25.md](references/meta-learnings-2026-04-25.md)
+- [references/meta-learnings-2026-05-06.md](references/meta-learnings-2026-05-06.md)
+- [references/meta-learnings-2026-05-20.md](references/meta-learnings-2026-05-20.md)
 - [references/agent-setup.md](references/agent-setup.md)
 - [references/workspace-integration.md](references/workspace-integration.md)
 - [references/codex-handoff.md](references/codex-handoff.md)
