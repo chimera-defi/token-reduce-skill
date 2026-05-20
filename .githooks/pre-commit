@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Delegate bypass gate
+# Blocks commits if raw Kimi/Devin calls bypassing wrappers were detected.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+extract_count() {
+  local label="$1"
+  local text="$2"
+  local value
+  value="$(printf '%s\n' "$text" | awk -F': ' -v lbl="$label" '$0 ~ lbl {print $2; exit}')"
+  value="${value:-0}"
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    value=0
+  fi
+  printf '%s' "$value"
+}
+
+check_kimi_bypass() {
+  local skill_root detector out count
+  skill_root="/root/.openclaw/workspace/dev/kimi-delegate-skill/.worktrees/main"
+  detector="$skill_root/scripts/detect_bypass.py"
+  if [[ ! -x "$detector" ]]; then
+    return 0
+  fi
+
+  out="$("$detector" --repo "$REPO_ROOT" --days 1 --nudge 2>&1 || true)"
+  count="$(extract_count 'Raw Kimi calls' "$out")"
+  if (( count > 0 )); then
+    echo
+    echo "COMMIT BLOCKED by kimi-delegate bypass gate"
+    echo
+    echo "$out"
+    echo
+    echo "Fix: re-run tasks through the wrapper:"
+    echo "  kimi-delegate --task \"...\""
+    echo
+    echo "To bypass this check (not recommended):"
+    echo "  git commit --no-verify"
+    exit 1
+  fi
+}
+
+check_devin_bypass() {
+  local skill_root detector out count
+  skill_root="/root/.agents/skills/devin-delegate"
+  detector="$skill_root/scripts/detect_bypass.py"
+  if [[ ! -x "$detector" ]]; then
+    return 0
+  fi
+
+  out="$("$detector" --workspace-root "$REPO_ROOT" --repo "$REPO_ROOT" --days 1 --nudge 2>&1 || true)"
+  count="$(extract_count 'Raw Devin calls' "$out")"
+  if (( count > 0 )); then
+    echo
+    echo "COMMIT BLOCKED by devin-delegate bypass gate"
+    echo
+    echo "$out"
+    echo
+    echo "Fix: re-run tasks through the wrapper:"
+    echo "  devin-delegate --task \"...\""
+    echo
+    echo "To bypass this check (not recommended):"
+    echo "  git commit --no-verify"
+    exit 1
+  fi
+}
+
+check_kimi_bypass
+check_devin_bypass
+
+exit 0
