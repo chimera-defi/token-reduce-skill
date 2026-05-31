@@ -21,19 +21,24 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.payload.pull_request;
+            // Fetch the current PR body via REST API rather than using the
+            // event payload, which can be stale when the body was just edited.
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+
             const title = pr.title || '';
             const body = pr.body || '';
             const errors = [];
             const warnings = [];
 
-            const agentPattern = /^\*\*Agent:\*\*\s+.+/i;
-            if (!agentPattern.test(body.trim())) {
+            const agentPattern = /^\*\*Agent:\*\*\s+.+/im;
+            if (!agentPattern.test(body)) {
               errors.push('❌ PR description missing agent attribution. Add `**Agent:** [Model Name]` at the top.');
             }
 
-            // Email format is enforced in the commit trailer check; here we only
-            // verify the human co-author name is present in the PR body.
+            // Email format is enforced in the commit-trailer check.
+            // Only verify that the human co-author name is present.
             const coauthorPattern = /^\*\*Co-authored-by:\*\*\s+(Chimera|ChimeraDeFi)/im;
             if (!coauthorPattern.test(body)) {
               errors.push('❌ PR description missing canonical human co-author attribution. Add `**Co-authored-by:** Chimera <chimera_defi@protonmail.com>`');
@@ -44,7 +49,7 @@ jobs:
             }
 
             const badTitlePatterns = [/user\s+asked/i, /as\s+requested/i];
-            if (badTitlePatterns.some((pattern) => pattern.test(title))) {
+            if (badTitlePatterns.some((p) => p.test(title))) {
               warnings.push('⚠️ PR title appears to reference the prompt rather than the change.');
             }
 
@@ -62,31 +67,27 @@ jobs:
               }
               comment += 'See `AGENTS.md` for the required attribution pattern.\n';
 
-              const issue_number = pr.number;
-              const { owner, repo } = context.repo;
               const { data: comments } = await github.rest.issues.listComments({
-                issue_number,
+                issue_number: pull_number,
                 owner,
                 repo,
                 per_page: 100
               });
-              const attributionComment = comments.find((c) =>
+              const existing = comments.find((c) =>
                 c.user && c.user.type === 'Bot' &&
                 typeof c.body === 'string' &&
                 c.body.startsWith('## PR Attribution Check')
               );
-              if (attributionComment) {
+              if (existing) {
                 await github.rest.issues.updateComment({
-                  owner,
-                  repo,
-                  comment_id: attributionComment.id,
+                  owner, repo,
+                  comment_id: existing.id,
                   body: comment
                 });
               } else {
                 await github.rest.issues.createComment({
-                  issue_number,
-                  owner,
-                  repo,
+                  issue_number: pull_number,
+                  owner, repo,
                   body: comment
                 });
               }
