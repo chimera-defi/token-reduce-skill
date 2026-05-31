@@ -91,10 +91,12 @@ TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.s
 
 ### Claude Code
 
-```text
-claude plugin marketplace add chimera-defi/token-reduce-skill
-claude plugin install token-reduce@chimera-defi
+```bash
+git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
+./tools/token-reduce-skill/scripts/setup.sh
 ```
+
+The skill is then available as `/token-reduce` in any Claude Code session rooted in the repo.
 
 ### Codex
 
