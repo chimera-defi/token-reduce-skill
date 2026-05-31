@@ -1,15 +1,11 @@
 ---
 name: token-reduce
 license: MIT
-description: |
-  Reduce total token usage across AI coding tasks by keeping discovery, reading, and follow-up context minimal.
-  Use when file location is uncertain, the repo is large, or the user asks to explore, review, gather context, or work across multiple files.
-  Prefer QMD BM25 when available; otherwise fall back to scoped `rg`. Skip for small edits with an exact file path.
-  For GitHub/browser-heavy tool tasks, prefer AXI companions (`gh-axi`, `chrome-devtools-axi`) when installed.
+description: "Reduce repo context cost with QMD/helper discovery, scoped rg, targeted reads, concise summaries, and AI-delegate call batching."
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.4.1"
+  version: "5.6.0"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -18,27 +14,9 @@ allowed-tools:
   - Bash
 ---
 
-# Token Reduction Skill
+# Token Reduce
 
-## Description
-
-Use targeted retrieval and short summaries for `$ARGUMENTS`.
-
-## Triggers
-
-- The user asks to review, explore, search for context, or find where something lives.
-- The user asks to validate, check, verify, improve, fix, or update a skill, hook, script, or file.
-- The user's request implies the skill is not being used correctly or needs to work better.
-- You do not know the exact file path yet.
-- The task spans several files or areas of the repo.
-- Broad scans or full-file reads would likely waste context.
-- When maintaining this skill itself, the same narrow-discovery rules apply.
-
-## Skip
-
-- The exact file path is already given and the task is a small local edit.
-- A one-command operational check is enough.
-- A direct targeted read is clearly cheaper than search.
+Use when paths are unknown, the repo is large, or the task spans multiple files. Skip exact-path tiny edits.
 
 ## First Move
 
@@ -111,36 +89,88 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 ## QMD
 
 ```bash
-command -v qmd >/dev/null 2>&1 || bun install -g https://github.com/tobi/qmd
-
-qmd collection add /path/to/repo --name my-repo
-# default token-reduce scope mirrors docs+code extensions:
-# qmd collection add /path/to/repo --name my-repo --mask '**/*.{md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php}'
-
-qmd search "topic" -n 5 --files
-qmd search "topic" -n 5
-qmd get filename.md -l 50 --from 100
+scripts/token-reduce-paths.sh topic words
+scripts/token-reduce-snippet.sh topic words
+scripts/token-reduce-adaptive.sh topic words
 ```
 
-Skip `qmd embed`, `qmd vsearch`, and `qmd query` for this workflow.
+If helpers are unavailable, use `qmd search "topic" -n 5 --files` or narrowly scoped `rg -n -g '<glob>' '<pattern>'`.
 
-## Anti-Patterns
+Never start discovery with `find .`, `ls -R`, `grep -R`, `rg --files .`, broad `Glob`, or chained fallback shell logic.
 
-- Restating requests
-- Narrating tool usage
-- Starting exploration with `find .`, `ls -R`, `grep -R`, or broad `Glob` patterns
-- Reading entire large files
-- Re-reading the same file in one session unless it changed
-- Per-file commentary instead of a single summary
+## Flow
 
-## Usage
+1. Check QMD once: `command -v qmd >/dev/null 2>&1 && qmd collection list 2>/dev/null | head -1`.
+2. Known keyword/path: scoped search, then read only needed ranges.
+3. Unknown path: `scripts/token-reduce-paths.sh`.
+4. Need one excerpt: `scripts/token-reduce-snippet.sh`.
+5. Exact symbol impact: `uv run python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`.
+6. More than five likely files or two failed searches: stop expanding and ask for narrower scope.
+7. Final response: cite only the files needed to explain the result.
 
+## Success
+
+- Discovery starts with helper/QMD/scoped `rg`.
+- Large files are read in slices.
+- Output is concise unless the user asks for depth.
+- Optional companions (`gh-axi`, `chrome-devtools-axi`, graph/review tools) are used only when installed and clearly cheaper.
+
+See `references/feature-matrix.md` for full command/config details.
+
+## AI Delegate Call Reduction (kimi-delegate / devin-delegate)
+
+Orchestrator-to-subagent calls have fixed overhead (envelope, fallback wiring, telemetry). Reduce by:
+
+### 1. Batch — 5 questions per call, not 1
+
+```bash
+# BAD: 5 calls × overhead
+kimi-delegate --task "Check zero-value guard in submit()"
+kimi-delegate --task "Check oracle replay protection"
+...
+
+# GOOD: 1 call, 5 questions, ~70% token savings
+kimi-delegate --task "Answer CLEAN or FINDING+file:line for each:
+Q1. StakingRouter.submit(): zero-value ETH guard?
+Q2. reportModuleBeaconBalance: replay protection?
+Q3-Q5. ..."
 ```
-/token-reduce src/app.tsx
-/token-reduce wallets/frontend
-/token-reduce
+
+### 2. Reference, don't quote
+
+```bash
+# BAD (pastes 50 lines into prompt)
+kimi-delegate --task "Review this: [code block]"
+
+# GOOD (Kimi reads it itself — 30-70% cheaper)
+kimi-delegate --task "Read OracleAdapter.sol:120-135. Does _validateSlashGuard
+enforce a floor? CLEAN or FINDING."
 ```
 
+### 3. Constrain output format
+
+Append to every task: `"Answer CLEAN or FINDING+file:line. No preamble."` — cuts response tokens 40-60%.
+
+### 4. Pre-compress context before delegating
+
+```bash
+./scripts/token-reduce-paths.sh "staking contracts" > /tmp/ctx.txt
+kimi-delegate --task "..." --context-file /tmp/ctx.txt
+```
+
+### 5. Never background with `&` — use Agent tool for parallelism
+
+`kimi-delegate ... 2>&1 &` writes to terminal FD, not the task output file.
+Use `Agent(description=..., prompt="Use kimi-delegate ...")` instead.
+
+### 6. Use plan_prompt.py envelope to reduce in-model planning
+
+```bash
+./skills/kimi-delegate/scripts/plan_prompt.py --task "audit X" > /tmp/envelope.txt
+kimi-delegate --context-file /tmp/envelope.txt --task "execute the plan above"
+```
+
+Details: `references/meta-learnings-2026-05-31.md`
 ---
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
 Read `references/companion-tools.md` for how to evaluate future companion backends.
