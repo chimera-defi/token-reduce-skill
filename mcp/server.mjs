@@ -9,7 +9,7 @@ import process from "node:process";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SERVER = {
   name: "token-reduce-mcp",
-  version: "0.1.0",
+  version: "0.2.3",
 };
 
 const TOOLS = [
