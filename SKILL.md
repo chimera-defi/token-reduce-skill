@@ -9,7 +9,7 @@ description: |
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.4.0"
+  version: "5.4.1"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -67,6 +67,7 @@ Use targeted retrieval and short summaries for `$ARGUMENTS`.
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
+| `kimi-delegate-skill` companion (optional) | Offloads bounded side tasks to cheaper subagents while parent agent keeps critical-path orchestration | Planner-first delegation workflows; keep standalone repo integration |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
@@ -150,4 +151,7 @@ Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt
 Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
 Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
 Read `references/meta-learnings-2026-04-19.md` for QMD indexing/routing synchronization lessons and latency/adoption follow-ups.
+Read `references/meta-learnings-2026-04-25.md` for telemetry-window interpretation and diagnostics normalization lessons.
+Read `references/meta-learnings-2026-05-06.md` for telemetry-driven instrumentation and propagation workflow lessons.
+Read `references/meta-learnings-2026-05-20.md` for docs fast-path routing and weekly maintenance automation lessons.
 Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.

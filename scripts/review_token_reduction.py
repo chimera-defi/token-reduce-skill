@@ -70,6 +70,7 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     window_1d_helper_calls = int(window_1d.get("helper_calls", 0) or 0)
     window_1d_latency_p95 = float(window_1d.get("helper_latency_p95_ms", 0.0) or 0.0)
     window_1d_logging_score = float(window_1d.get("logging_quality_score", 0.0) or 0.0)
+    recent_runtime_latency_healthy = window_1d_helper_calls >= 1 and 0.0 < window_1d_latency_p95 <= 2000.0
 
     codex = report["by_source"].get("codex", {})
     claude = report["by_source"].get("claude", {})
@@ -139,20 +140,37 @@ def build_findings(report: dict) -> list[dict[str, str]]:
             }
         )
     if helper_latency_p95_ms > 8000.0:
-        findings.append(
-            {
-                "priority": "high",
-                "area": "latency_overhead",
-                "finding": (
-                    f"Helper latency is elevated (p95 {helper_latency_p95_ms:.0f} ms, "
-                    f"max {helper_latency_max_ms:.0f} ms)."
-                ),
-                "recommendation": (
-                    "Inspect dependency latency (QMD collection refresh/search, filesystem scope, "
-                    "and fallback path noise) and treat high-latency calls as overhead even when status is ok."
-                ),
-            }
-        )
+        if recent_runtime_latency_healthy:
+            findings.append(
+                {
+                    "priority": "medium",
+                    "area": "latency_overhead",
+                    "finding": (
+                        f"14d helper latency remains elevated (p95 {helper_latency_p95_ms:.0f} ms, "
+                        f"max {helper_latency_max_ms:.0f} ms), but recent 1d runtime p95 is healthy "
+                        f"({window_1d_latency_p95:.0f} ms)."
+                    ),
+                    "recommendation": (
+                        "Treat this as historical tail latency; keep watching runtime windows while "
+                        "continuing to reduce QMD-heavy paths."
+                    ),
+                }
+            )
+        else:
+            findings.append(
+                {
+                    "priority": "high",
+                    "area": "latency_overhead",
+                    "finding": (
+                        f"Helper latency is elevated (p95 {helper_latency_p95_ms:.0f} ms, "
+                        f"max {helper_latency_max_ms:.0f} ms)."
+                    ),
+                    "recommendation": (
+                        "Inspect dependency latency (QMD collection refresh/search, filesystem scope, "
+                        "and fallback path noise) and treat high-latency calls as overhead even when status is ok."
+                    ),
+                }
+            )
     if logging_quality_tier == "low" or logging_quality_score < 75.0:
         findings.append(
             {
@@ -346,14 +364,30 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     if qmd_breakdown and qmd_breakdown.get("qmd_files_ms", {}).get("p95_ms", 0) > 5000:
         qmd_p95 = qmd_breakdown["qmd_files_ms"]["p95_ms"]
         qmd_avg = qmd_breakdown["qmd_files_ms"]["avg_ms"]
-        findings.append(
-            {
-                "priority": "high",
-                "area": "qmd_latency",
-                "finding": f"QMD search latency is high (p95 {qmd_p95:.0f} ms, avg {qmd_avg:.0f} ms).",
-                "recommendation": "Consider lowering TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS, pre-warming the QMD collection in CI, or reducing the indexed file mask to exclude generated artifacts.",
-            }
-        )
+        if recent_runtime_latency_healthy:
+            findings.append(
+                {
+                    "priority": "medium",
+                    "area": "qmd_latency",
+                    "finding": (
+                        f"QMD latency is high in 14d aggregate (p95 {qmd_p95:.0f} ms, avg {qmd_avg:.0f} ms), "
+                        f"but recent runtime latency is healthy ({window_1d_latency_p95:.0f} ms p95 in 1d)."
+                    ),
+                    "recommendation": (
+                        "Keep collection masks tight and continue runtime monitoring; treat this as a backlog "
+                        "cleanup signal unless 1d/2d windows regress."
+                    ),
+                }
+            )
+        else:
+            findings.append(
+                {
+                    "priority": "high",
+                    "area": "qmd_latency",
+                    "finding": f"QMD search latency is high (p95 {qmd_p95:.0f} ms, avg {qmd_avg:.0f} ms).",
+                    "recommendation": "Consider lowering TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS, pre-warming the QMD collection in CI, or reducing the indexed file mask to exclude generated artifacts.",
+                }
+            )
     if runtime_efficiency and runtime_efficiency.get("helper_latency_p95_ms", 0) > 0:
         rt_p95 = runtime_efficiency["helper_latency_p95_ms"]
         rt_avg = runtime_efficiency["helper_latency_avg_ms"]

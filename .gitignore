@@ -5,3 +5,8 @@ __pycache__/
 node_modules/
 .worktrees/
 .claude/token-reduce-state/
+.claude/token-reduce-config.json
+skills/devin-delegate
+skills/kimi-delegate
+tools/token-reduce-skill/
+tools/kimi-delegate-skill/

@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _maybe_update_check() {
   local cfg="$SCRIPT_DIR/../.claude/token-reduce-config.json"
   local enabled="true"
-  if [[ -f "$cfg" ]] && command -v python3 >/dev/null 2>&1; then
-    enabled=$(python3 -c "
+  if [[ -f "$cfg" ]] && command -v uv >/dev/null 2>&1; then
+    enabled=$(uv run python -c "
 import json, sys
 try:
     c = json.load(open('$cfg'))
