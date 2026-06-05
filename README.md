@@ -34,6 +34,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 ### Conditional companions
 
 - [AXI](https://github.com/kunchenguid/axi) (`gh-axi`, `chrome-devtools-axi`) for GitHub/browser-heavy execution
+- [`kimi-delegate-skill`](https://github.com/chimera-defi/kimi-delegate-skill) for planner-first delegation to cheaper Kimi subagents (standalone repo integration)
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
 - [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
@@ -67,6 +68,13 @@ Optional QMD scope overrides:
 - `TOKEN_REDUCE_QMD_EXTENSIONS`: comma-separated extension list used to build the default mask
 - `TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS`: controls how often collection fingerprints are recomputed before refresh checks (default runtime: `900`)
 - `TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`: cap runtime `qmd search` latency before falling back to scoped `rg` (default: `8` in runtime, `0` in benchmark/test contexts)
+
+Standalone companion integration (`kimi-delegate-skill`):
+
+```bash
+git clone https://github.com/chimera-defi/kimi-delegate-skill /root/.openclaw/workspace/dev/kimi-delegate-skill
+./tools/token-reduce-skill/scripts/integrate-kimi-delegate.sh
+```
 
 One-command measured activation (core-only default + validate):
 
@@ -163,7 +171,7 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1826` | baseline |
+| `broad_inventory` | `1948` | baseline |
 | `guidance_scoped_rg` | `391` | `78.6%` saved |
 | `qmd_files` | `309` | `83.1%` saved |
 | `token_reduce_paths_warm` | `31` | `98.3%` saved |
@@ -173,12 +181,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2409` | baseline | `ok` |
-| `qmd_only` | `699` | `71.0%` saved | `ok` |
-| `token_reduce_only` | `322` | `86.6%` saved | `quality-fail` |
-| `token_savior_only` | `488` | `79.7%` saved | `ok` |
-| `rtk_only` | `755` | `68.7%` saved | `ok` |
-| `composite_stack` | `326` | `86.5%` saved | `ok` |
+| `broad_shell` | `2480` | baseline | `ok` |
+| `qmd_only` | `694` | `72.0%` saved | `ok` |
+| `token_reduce_only` | `322` | `87.0%` saved | `quality-fail` |
+| `token_savior_only` | `488` | `80.3%` saved | `ok` |
+| `rtk_only` | `779` | `68.6%` saved | `ok` |
+| `composite_stack` | `326` | `86.9%` saved | `ok` |
 
 This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
 
@@ -237,6 +245,17 @@ It gates on:
 `checkpoint` is the consistent maintenance harness: it runs release gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync and writes checkpoint artifacts under `artifacts/token-reduction/`.
 `release-gate` automatically refreshes README benchmark token rows from the generated artifacts; `sync-benchmarks` can be run manually when needed.
 
+Weekly automation (telemetry pull + skill improvement pass):
+
+```bash
+./scripts/install-token-reduction-cron.sh
+```
+
+This installs Monday cron entries for:
+
+- `token-reduce-manage.sh self-improve`
+- `token-reduce-manage.sh telemetry-sync`
+
 Dependency checks:
 
 - core only: `deps-check`, `deps-update`
@@ -254,6 +273,8 @@ Default token-reduce routing/enforcement works with or without caveman.
 ## Learn More
 
 - [references/INDEX.md](references/INDEX.md)
+- [references/companion-tools.md](references/companion-tools.md)
+- [references/kimi-delegate-integration.md](references/kimi-delegate-integration.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)
@@ -263,6 +284,8 @@ Default token-reduce routing/enforcement works with or without caveman.
 - [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
 - [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
 - [references/meta-learnings-2026-04-25.md](references/meta-learnings-2026-04-25.md)
+- [references/meta-learnings-2026-05-06.md](references/meta-learnings-2026-05-06.md)
+- [references/meta-learnings-2026-05-20.md](references/meta-learnings-2026-05-20.md)
 - [references/agent-setup.md](references/agent-setup.md)
 - [references/workspace-integration.md](references/workspace-integration.md)
 - [references/codex-handoff.md](references/codex-handoff.md)
