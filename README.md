@@ -121,6 +121,19 @@ Codex fresh-context handoff generator:
 }
 ```
 
+#### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `token_reduce_paths` | Return the smallest useful candidate path list for a repo query |
+| `token_reduce_snippet` | Return a path-first result plus one ranked excerpt |
+| `token_reduce_benchmark` | Run the local token-reduction benchmark and return the summary table |
+| `token_reduce_measure` | Measure recent token-reduce adoption and write fresh repo-local artifacts |
+| `token_reduce_self_review` | Generate a telemetry-driven self-review with prioritised next improvements |
+| `token_reduce_setup` | Return plugin and MCP install instructions for this repo |
+| `token_reduce_full_setup` | Run one-command full setup (installs QMD + RTK, wires hook layers, indexes repo) |
+| `anthropic_cache_plan` | Annotate Anthropic API payloads with `cache_control` and estimate repeated-call savings |
+
 ## Routing Model
 
 Default first move:
