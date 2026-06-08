@@ -1,5 +1,5 @@
 # PR Response State
-last_run: 2026-06-08T17:15
+last_run: 2026-06-08T17:30
 
 prs:
   - number: 27
@@ -37,4 +37,14 @@ prs:
     notes: >
       docs(dream) consolidation PR 2026-06-06. CI green (Check PR Attribution +
       Check Commit Messages: both success). No CHANGES_REQUESTED.
+      Awaiting human review/merge.
+
+  - number: 31
+    repo: chimera-defi/token-reduce-skill
+    last_activity: "2026-06-08T17:12:29Z"
+    attempt_count: 0
+    status: skipped
+    notes: >
+      docs(dream): 2026-06-07 consolidation pass. CI green (Check Commit Messages:
+      success, Check PR Attribution: success). No CHANGES_REQUESTED.
       Awaiting human review/merge.
