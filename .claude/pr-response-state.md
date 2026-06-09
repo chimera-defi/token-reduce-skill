@@ -1,5 +1,5 @@
 # PR Response State
-last_run: 2026-06-09T14:15
+last_run: 2026-06-09T19:15
 
 prs:
   - number: 27
@@ -17,8 +17,7 @@ prs:
     attempt_count: 0
     status: skipped
     notes: >
-      CI all green (Check PR Attribution + Check Commit Messages both pass).
-      Clean mergeable_state. No CHANGES_REQUESTED. Awaiting human merge.
+      CI all green. No CHANGES_REQUESTED. Awaiting human merge.
 
   - number: 29
     repo: chimera-defi/token-reduce-skill
@@ -26,8 +25,8 @@ prs:
     attempt_count: 0
     status: skipped
     notes: >
-      docs(skill) PR 2026-06-06. CI green (Check PR Attribution + Check Commit
-      Messages: both success). No CHANGES_REQUESTED. Awaiting human review/merge.
+      docs(skill) PR 2026-06-06. CI green. No CHANGES_REQUESTED.
+      Awaiting human review/merge.
 
   - number: 30
     repo: chimera-defi/token-reduce-skill
@@ -35,8 +34,7 @@ prs:
     attempt_count: 0
     status: skipped
     notes: >
-      docs(dream) consolidation PR 2026-06-06. CI green (Check PR Attribution +
-      Check Commit Messages: both success). No CHANGES_REQUESTED.
+      docs(dream) consolidation PR 2026-06-06. CI green. No CHANGES_REQUESTED.
       Awaiting human review/merge.
 
   - number: 31
@@ -45,8 +43,7 @@ prs:
     attempt_count: 0
     status: skipped
     notes: >
-      docs(dream): 2026-06-07 consolidation pass. CI green (Check Commit Messages:
-      success, Check PR Attribution: success). No CHANGES_REQUESTED.
+      docs(dream): 2026-06-07 consolidation pass. CI green. No CHANGES_REQUESTED.
       Awaiting human review/merge.
 
   - number: 32
@@ -56,5 +53,5 @@ prs:
     status: skipped
     notes: >
       chore(maintenance): 2026-06-09 - Python cleanup. CI green (Check Commit
-      Messages: success, Check PR Attribution: success). Confirmed green on
-      2026-06-09T14:15 re-check. No CHANGES_REQUESTED. Awaiting human review/merge.
+      Messages: success, Check PR Attribution: success). No CHANGES_REQUESTED.
+      Awaiting human review/merge.
