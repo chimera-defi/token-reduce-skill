@@ -8,7 +8,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from token_reduce_state import consume_block, discovery_hint, is_pending, last_block_info, record_block, repo_root, session_key
+from token_reduce_state import consume_block, discovery_hint, is_pending, record_block, repo_root, session_key
 from token_reduce_telemetry import record_event
 
 
