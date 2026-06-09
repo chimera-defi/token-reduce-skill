@@ -1,11 +1,9 @@
 """Tests for previously zero-coverage modules: token_reduce_config and extract_paths_meta."""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
-import pytest
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
