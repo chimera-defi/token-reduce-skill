@@ -38,6 +38,8 @@ Use this index to keep maintenance repeatable and avoid drift.
   - `references/tier-value-profile.md`
 - Companion intake rubric:
   - `references/companion-tools.md`
+- Headroom proxy/MCP pilot:
+  - `references/headroom-evaluation-2026-06-10.md`
 - Freshness checks:
   - `./scripts/token-reduce-manage.sh deps-check`
   - `./scripts/token-reduce-manage.sh deps-check-conditional`

@@ -37,6 +37,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 - [`kimi-delegate-skill`](https://github.com/chimera-defi/kimi-delegate-skill) for planner-first delegation to cheaper Kimi subagents (standalone repo integration)
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
+- [`headroom`](https://github.com/chopratejas/headroom) as an optional pilot proxy/MCP layer for large tool-result and long-session context pressure; token-reduce remains the master router
 - [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
 - [`caveman`](https://github.com/JuliusBrussee/caveman) for optional terse output and memory-file compression
 
@@ -171,24 +172,24 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1948` | baseline |
-| `guidance_scoped_rg` | `391` | `78.6%` saved |
-| `qmd_files` | `309` | `83.1%` saved |
-| `token_reduce_paths_warm` | `31` | `98.3%` saved |
-| `token_reduce_snippet_warm` | `195` | `89.3%` saved |
+| `broad_inventory` | `980` | baseline |
+| `guidance_scoped_rg` | `221` | `77.4%` saved |
+| `qmd_files` | `243` | `75.2%` saved |
+| `token_reduce_paths_warm` | `245` | `75.0%` saved |
+| `token_reduce_snippet_warm` | `373` | `61.9%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2480` | baseline | `ok` |
-| `qmd_only` | `694` | `72.0%` saved | `ok` |
-| `token_reduce_only` | `322` | `87.0%` saved | `quality-fail` |
-| `token_savior_only` | `488` | `80.3%` saved | `ok` |
-| `rtk_only` | `779` | `68.6%` saved | `ok` |
-| `composite_stack` | `326` | `86.9%` saved | `ok` |
+| `broad_shell` | `1560` | baseline | `ok` |
+| `qmd_only` | `678` | `56.5%` saved | `ok` |
+| `token_reduce_only` | `389` | `75.1%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `86.3%` saved | `quality-fail` |
+| `rtk_only` | `773` | `50.4%` saved | `ok` |
+| `composite_stack` | `338` | `78.3%` saved | `quality-fail` |
 
-This confirms the active orchestration stack beats single-tool strategies that also pass quality checks.
+This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
 ### Honest outcome reporting (anti-gaming)
 
@@ -277,6 +278,7 @@ Default token-reduce routing/enforcement works with or without caveman.
 - [references/kimi-delegate-integration.md](references/kimi-delegate-integration.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
+- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)
 - [references/composite-benchmark.md](references/composite-benchmark.md)
 - [references/profile-presets.md](references/profile-presets.md)
