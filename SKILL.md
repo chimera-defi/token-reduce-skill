@@ -2,10 +2,15 @@
 name: token-reduce
 license: MIT
 description: "Reduce repo context cost with QMD/helper discovery, scoped rg, targeted reads, concise summaries, and AI-delegate call batching."
+triggers:
+  - reduce context
+  - token-reduce
+  - find where code lives
+  - large repo discovery
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.0"
+  version: "5.6.1"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -60,6 +65,7 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 | AI delegate companions (`devin-delegate`, `kimi-delegate`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Devin for research/writing/implementation/debug/browser; Kimi for cheap exploration and independent review |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
+| Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
 
 ## Process
@@ -77,6 +83,23 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 7. If the search space stays broad, stop expanding and ask the user to narrow it.
 8. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
 9. When routing behavior should be formally constrained, apply a profile (`minimal-load`, `balanced`, `max-savings`) via `token-reduce-manage.sh settings profile apply <name>`.
+
+## Headroom Companion (Pilot)
+
+Token-reduce remains the master router. Use helper-first discovery, scoped reads, QMD, RTK, and structural helpers before adding a proxy layer.
+
+Use Headroom only when `headroom --version` works, `headroom install status` or `/readyz` shows a healthy local proxy, telemetry is disabled, and the task has large tool payloads, repeated log/API/test outputs, or long-session context pressure.
+
+Do not use Headroom as the first move for unknown-path repo discovery. Do not enable `--learn` until memory writes are reviewed against `MEMORY.md`, daily memory, and gbrain policy. If the OpenClaw installer emits obsolete plugin keys such as `startupTimeoutMs` or `gatewayProviderIds`, keep the manually verified config and do not rerun `headroom install apply --providers all`.
+
+Preferred checks:
+
+```bash
+headroom install status
+curl -fsS http://127.0.0.1:8787/readyz
+```
+
+Read `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
 
 ## Output Brevity Profile (Companion)
 
@@ -202,6 +225,7 @@ Read `references/token-reduction-guide.md` for benchmark notes and integration d
 Read `references/companion-tools.md` for how to evaluate future companion backends.
 Read `references/graphify-evaluation.md` for the graphify companion verdict.
 Read `references/caveman-evaluation.md` for the caveman companion verdict.
+Read `references/headroom-evaluation-2026-06-10.md` for the Headroom proxy/MCP pilot verdict.
 Read `references/axi-evaluation.md` for the AXI companion verdict.
 Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
 Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.

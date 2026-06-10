@@ -37,6 +37,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 - [`kimi-delegate-skill`](https://github.com/chimera-defi/kimi-delegate-skill) for planner-first delegation to cheaper Kimi subagents (standalone repo integration)
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
+- [`headroom`](https://github.com/chopratejas/headroom) as an optional pilot proxy/MCP layer for large tool-result and long-session context pressure; token-reduce remains the master router
 - [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
 - [`caveman`](https://github.com/JuliusBrussee/caveman) for optional terse output and memory-file compression
 
@@ -277,6 +278,7 @@ Default token-reduce routing/enforcement works with or without caveman.
 - [references/kimi-delegate-integration.md](references/kimi-delegate-integration.md)
 - [references/feature-matrix.md](references/feature-matrix.md)
 - [references/tier-value-profile.md](references/tier-value-profile.md)
+- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md)
 - [references/token-reduction-guide.md](references/token-reduction-guide.md)
 - [references/composite-benchmark.md](references/composite-benchmark.md)
 - [references/profile-presets.md](references/profile-presets.md)
