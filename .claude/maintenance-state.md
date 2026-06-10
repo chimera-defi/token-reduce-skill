@@ -1,8 +1,8 @@
 # Maintenance State
-last_run: 2026-06-04
-focus: test-coverage
+last_run: 2026-06-10
+focus: security
 status: completed
-completed: [add 22 tests for token_reduce_config.deep_merge/parse_value and extract_paths_meta.extract_paths (13→35 tests), PR #28 open and green]
+completed: [add .env/.env.*/.env.local to .gitignore (was missing — preventative hardening); secret scan passed (no tokens or credentials found)]
 in_progress:
 pending: [validate_skill_package, checkpoint_gate, rolling_baseline_report — zero coverage, lower priority]
 known_failures:
