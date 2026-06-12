@@ -65,3 +65,13 @@ prs:
       chore(maintenance): 2026-06-10 - security pass. CI green (Check Commit
       Messages: success, Check PR Attribution: success).
       No CHANGES_REQUESTED. Awaiting human review/merge.
+
+  - number: 34
+    repo: chimera-defi/token-reduce-skill
+    last_activity: "2026-06-12T00:15:39Z"
+    attempt_count: 0
+    status: skipped
+    notes: >
+      chore(maintenance): 2026-06-12 - dead code pass. CI green (Check PR
+      Attribution: success, Check Commit Messages: success). No CHANGES_REQUESTED.
+      Awaiting human review/merge.
