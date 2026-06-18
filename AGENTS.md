@@ -125,28 +125,38 @@ For additions like alternate search backends, structural indexers, or external M
 4. integrate it only if it improves a specific task class without harming the default workflow
 5. propagate the decision into docs and validation
 
-<!-- devin-delegate:begin -->
-## Devin Delegate Routing — MANDATORY
+<!-- delegate-skill:begin -->
+## AI Delegate Routing — MANDATORY
 
-All Devin calls MUST route through the skill wrapper. Direct `devin --print` and `devin --task` calls are **prohibited** — they bypass envelope checks, fallback routing, clarification handling, and telemetry.
+All delegation MUST go through the `delegate-skill` router, which selects the backend and calls its wrapper. Direct `devin`, `pi --provider kimi-coding`, raw `grok`, or backgrounded delegate commands are **prohibited** — they bypass envelope checks, fallback routing, auth detection, timeout scaling, and telemetry.
 
-- **One-liner:** `devin-delegate --task "..."`
-- **Interactive:** `devin-delegate --interactive`
-- **Long path (fallback):** `./skills/devin-delegate/scripts/delegate.py --task "..."`
+**Pick the delegate with the router, then call the named wrapper:**
+
+| Task | Wrapper |
+|------|---------|
+| Browser / UI / screenshot / sandbox | `devin-delegate --task "..."` |
+| Cheap research / review / summarize / draft | `kimi-delegate --task "..."` |
+| Multi-file refactor / large codebase | `grok-delegate --task "..."` |
+| Local Codex write-mode implementation | `/spark` |
+| Unknown scope | `kimi-delegate` to scope, then escalate |
+
+- **Interactive envelope builder:** `<delegate>-delegate --interactive`
+- **Print envelope only:** `<delegate>-delegate --print-envelope --task "..."`
 
 **Why this matters:**
 - Structured envelopes prevent vague handoffs
-- Codex then Claude guidance resolves many clarification loops before human escalation
-- Provider fallback keeps execution moving when Devin fails
+- Provider fallback keeps execution moving when a delegate fails
+- Auto-scaling timeouts and auth detection prevent silent hangs
 - Telemetry enables continuous improvement
 
 **Bypassing the wrapper will be detected and reported.**
 
-- Always produce an envelope first with `./skills/devin-delegate/scripts/plan_prompt.py --task "..."`.
 - Keep delegation scoped and include acceptance criteria.
-- If Devin asks for clarification, use Codex guidance first and Claude second before asking a human.
-- Inspect telemetry regularly (`./skills/devin-delegate/scripts/devin_delegate_telemetry.py summary --days 14`).
-<!-- devin-delegate:end -->
+- If a delegate asks for clarification, resolve with Codex guidance first and Claude second before asking a human.
+- Inspect telemetry regularly (`<delegate>-delegate --stats`).
+
+See `~/.claude/skills/delegate-skill/SKILL.md` for the full routing table and health checks.
+<!-- delegate-skill:end -->
 
 <!-- SHARED_ATTRIBUTION_RULES_START -->
 ## Shared Attribution & Meta Learnings
@@ -161,49 +171,3 @@ All Devin calls MUST route through the skill wrapper. Direct `devin --print` and
 - Keep one task per PR for clear review and rollback.
 - Verify before claiming complete: run relevant tests/lint/checks or explicitly note what was not run.
 <!-- SHARED_ATTRIBUTION_RULES_END -->
-
-<!-- kimi-delegate:begin -->
-## Kimi Delegate Routing — MANDATORY
-
-All Kimi subagent calls MUST route through the skill wrapper. Direct `pi --provider kimi-coding` calls are **prohibited** — they bypass telemetry, fallback, auth detection, and timeout scaling.
-
-- **One-liner:** `kimi-delegate --task "..."`
-- **Interactive:** `kimi-delegate --interactive`
-- **Long path (fallback):** `./skills/kimi-delegate/scripts/delegate.py --task "..."`
-
-**Why this matters:**
-- Structured envelopes prevent vague handoffs
-- Auto-scaling timeouts prevent hangs on large repos
-- Auth error detection gives explicit resume steps instead of silent failures
-- Codex fallback ensures tasks always complete
-- Telemetry enables continuous improvement
-
-**Bypassing the wrapper will be detected and reported.**
-
-- Always produce an envelope first with `./skills/kimi-delegate/scripts/plan_prompt.py --task "..."`.
-- Keep delegation scoped and include acceptance criteria.
-- If Kimi fails, keep fallback enabled and inspect telemetry (`./skills/kimi-delegate/scripts/kimi_delegate_telemetry.py summary --days 14`).
-<!-- kimi-delegate:end -->
-
-<!-- devin-delegate:begin -->
-## Devin Delegate Routing — MANDATORY
-
-All Devin calls MUST route through the skill wrapper. Direct `devin --print` and `devin --task` calls are **prohibited** — they bypass envelope checks, fallback routing, clarification handling, and telemetry.
-
-- **One-liner:** `devin-delegate --task "..."`
-- **Interactive:** `devin-delegate --interactive`
-- **Long path (fallback):** `./skills/devin-delegate/scripts/delegate.py --task "..."`
-
-**Why this matters:**
-- Structured envelopes prevent vague handoffs
-- Codex then Claude guidance resolves many clarification loops before human escalation
-- Provider fallback keeps execution moving when Devin fails
-- Telemetry enables continuous improvement
-
-**Bypassing the wrapper will be detected and reported.**
-
-- Always produce an envelope first with `./skills/devin-delegate/scripts/plan_prompt.py --task "..."`.
-- Keep delegation scoped and include acceptance criteria.
-- If Devin asks for clarification, use Codex guidance first and Claude second before asking a human.
-- Inspect telemetry regularly (`./skills/devin-delegate/scripts/devin_delegate_telemetry.py summary --days 14`).
-<!-- devin-delegate:end -->
