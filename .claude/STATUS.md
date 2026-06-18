@@ -1,9 +1,13 @@
-# token-reduce-skill Status - 2026-06-06
+# token-reduce-skill Status - 2026-06-07
+
 ## Last Dream Pass
-- Files deleted: 0, compressed: 0, lines removed: 0
-- references/claude-review-handoff.md (41L): KEPT — reusable review template
-- references/codex-handoff.md (48L): KEPT — reusable Codex context template
+- Files compressed: 0, lines removed: 0
+- Reviewed: references/claude-review-handoff.md (41 lines) and references/codex-handoff.md (48 lines) — KEPT (operational copy-paste prompts)
+
 ## Verified Features
-- SKILL.md feature claims: deferred to next deep pass (no code change commits found)
+- 35 tests (up from 13), PR #28 open and green
+- token_reduce_config.deep_merge/parse_value covered
+- extract_paths_meta.extract_paths covered
+
 ## Open Items
-- None from this light pass
+- Zero coverage: validate_skill_package, checkpoint_gate, rolling_baseline_report

@@ -34,6 +34,7 @@ These are only worth enabling for narrow task classes:
 | Tier | Dependency / Tool | Why conditional |
 |---|---|---|
 | T2 output-heavy companion | `context-mode` | strong for large payload sessions; unnecessary for normal discovery |
+| T2 proxy/MCP context companion | `headroom` | helps large tool-result and long-session context bloat; pilot only, keep behind token-reduce routing and verified local proxy |
 | T2 large-repo structural companion | `code-review-graph` | can win on large dependency-heavy repos; can lose on tiny diffs |
 | T2 execution-surface companion | `gh-axi`, `chrome-devtools-axi` | turn-count improvement for GitHub/browser workflows only |
 | T2 response-style companion | `caveman` | output/memory compression, not discovery routing |
@@ -53,7 +54,8 @@ These are only worth enabling for narrow task classes:
 
 1. Core activation is default; conditional companions are opt-in.
 2. Core dependency checks are default; conditional dependency checks are explicit.
-3. Major change sets must pass release gate:
+3. Headroom stays conditional: verify `headroom install status` plus `/readyz`, keep telemetry disabled, and do not enable `--learn` without memory-policy review.
+4. Major change sets must pass release gate:
 
 ```bash
 ./scripts/token-reduce-manage.sh release-gate
