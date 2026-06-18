@@ -52,7 +52,7 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     telemetry_events = int(report["telemetry"]["event_count"])
     telemetry_windows = report.get("telemetry_windows", {})
     window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
-    window_14d = telemetry_windows.get("14d", {}) if isinstance(telemetry_windows, dict) else {}
+    _window_14d = telemetry_windows.get("14d", {}) if isinstance(telemetry_windows, dict) else {}
     efficiency = report["telemetry"].get("efficiency", {})
     logging = report["telemetry"].get("logging", {})
     helper_error_rate = float(efficiency.get("helper_error_rate_pct", 0.0))
