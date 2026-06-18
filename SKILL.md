@@ -62,7 +62,7 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
-| AI delegate companions (`devin-delegate`, `kimi-delegate`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Devin for research/writing/implementation/debug/browser; Kimi for cheap exploration and independent review |
+| AI delegate router (`delegate-skill`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Let the router pick the delegate: devin (browser/sandbox), kimi (cheap research/review), grok (large codebase), spark (local Codex write-mode) |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
@@ -158,28 +158,38 @@ Never start discovery with `find .`, `ls -R`, `grep -R`, `rg --files .`, broad `
 
 See `references/feature-matrix.md` for full command/config details.
 
-## AI Delegate Call Reduction (kimi-delegate / devin-delegate)
+## AI Delegate Call Reduction (via the delegate-skill router)
+
+Delegate *selection* goes through the `delegate-skill` router — do not hand-pick a delegate or hardcode one wrapper. The router maps the task to the right backend and keeps the parent context small (only the result summary returns):
+
+| Task | Router picks | Wrapper |
+|------|--------------|---------|
+| Browser / UI / screenshot / sandbox | devin | `devin-delegate` |
+| Cheap research / review / summarize / draft | kimi | `kimi-delegate` |
+| Multi-file refactor / large codebase | grok | `grok-delegate` |
+| Local Codex write-mode implementation | spark | `/spark` |
+| Unknown scope | kimi to scope, then escalate | `kimi-delegate` |
 
 For owned workspace projects, default to the PR-backed delegation workflow:
 
 1. Keep the parent agent as orchestrator, integrator, and final verifier.
-2. Use `devin-delegate` wrappers for bounded research, writing, implementation, debugging, browser checks, and output drafting. Include workspace path, scope, constraints, acceptance checks, and expected output.
-3. Use `kimi-delegate` wrappers for cheap parallel exploration and independent review. Prefer batched questions and file references over pasted code.
-4. Do not call raw `devin`, raw `pi --provider kimi-coding`, or backgrounded delegate commands; wrappers preserve telemetry, fallback, and guardrails.
+2. Pick the delegate with the `delegate-skill` router, not by hand. See `delegate-skill/SKILL.md` for the full routing table and health checks.
+3. Always call the wrapper the router names (`devin-delegate`, `kimi-delegate`, `grok-delegate`, `/spark`) — never raw `devin`, raw `pi --provider kimi-coding`, or backgrounded delegate commands. Wrappers preserve envelope checks, fallback, and telemetry.
+4. Give every delegate the workspace path, scope, constraints, acceptance checks, and expected output. Prefer batched questions and file references over pasted code.
 5. For non-trivial owned-repo changes, stage only relevant files, run the repo's validation, push a feature branch, and open a PR so the work is backed up off the server.
 
-Orchestrator-to-subagent calls have fixed overhead (envelope, fallback wiring, telemetry). Reduce by:
+The call-reduction tips below apply to whichever wrapper the router selects (written here as `<delegate>-delegate`). Orchestrator-to-subagent calls have fixed overhead (envelope, fallback wiring, telemetry). Reduce by:
 
 ### 1. Batch — 5 questions per call, not 1
 
 ```bash
 # BAD: 5 calls × overhead
-kimi-delegate --task "Check zero-value guard in submit()"
-kimi-delegate --task "Check oracle replay protection"
+<delegate>-delegate --task "Check zero-value guard in submit()"
+<delegate>-delegate --task "Check oracle replay protection"
 ...
 
 # GOOD: 1 call, 5 questions, ~70% token savings
-kimi-delegate --task "Answer CLEAN or FINDING+file:line for each:
+<delegate>-delegate --task "Answer CLEAN or FINDING+file:line for each:
 Q1. StakingRouter.submit(): zero-value ETH guard?
 Q2. reportModuleBeaconBalance: replay protection?
 Q3-Q5. ..."
@@ -189,10 +199,10 @@ Q3-Q5. ..."
 
 ```bash
 # BAD (pastes 50 lines into prompt)
-kimi-delegate --task "Review this: [code block]"
+<delegate>-delegate --task "Review this: [code block]"
 
-# GOOD (Kimi reads it itself — 30-70% cheaper)
-kimi-delegate --task "Read OracleAdapter.sol:120-135. Does _validateSlashGuard
+# GOOD (the delegate reads it itself — 30-70% cheaper)
+<delegate>-delegate --task "Read OracleAdapter.sol:120-135. Does _validateSlashGuard
 enforce a floor? CLEAN or FINDING."
 ```
 
@@ -204,24 +214,26 @@ Append to every task: `"Answer CLEAN or FINDING+file:line. No preamble."` — cu
 
 ```bash
 ./scripts/token-reduce-paths.sh "staking contracts" > /tmp/ctx.txt
-kimi-delegate --task "..." --context-file /tmp/ctx.txt
+<delegate>-delegate --task "..." --context-file /tmp/ctx.txt
 ```
 
 ### 5. Never background with `&` — use Agent tool for parallelism
 
-`kimi-delegate ... 2>&1 &` writes to terminal FD, not the task output file.
-Use `Agent(description=..., prompt="Use kimi-delegate ...")` instead.
+`<delegate>-delegate ... 2>&1 &` writes to terminal FD, not the task output file.
+Use `Agent(description=..., prompt="Use <delegate>-delegate ...")` instead.
 
-### 6. Use plan_prompt.py envelope to reduce in-model planning
+### 6. Build the envelope with the wrapper to reduce in-model planning
 
 ```bash
-./skills/kimi-delegate/scripts/plan_prompt.py --task "audit X" > /tmp/envelope.txt
-kimi-delegate --context-file /tmp/envelope.txt --task "execute the plan above"
+# --print-envelope emits the structured plan; no per-skill script paths needed
+<delegate>-delegate --print-envelope --task "audit X" > /tmp/envelope.txt
+<delegate>-delegate --context-file /tmp/envelope.txt --task "execute the plan above"
 ```
 
 Details: `references/meta-learnings-2026-05-31.md`
 ---
 Read `references/token-reduction-guide.md` for benchmark notes and integration details.
+Read `references/delegate-skill-integration.md` for how token-reduce integrates the delegate-skill router.
 Read `references/companion-tools.md` for how to evaluate future companion backends.
 Read `references/graphify-evaluation.md` for the graphify companion verdict.
 Read `references/caveman-evaluation.md` for the caveman companion verdict.
