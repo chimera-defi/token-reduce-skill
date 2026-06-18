@@ -8,7 +8,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from token_reduce_state import consume_block, discovery_hint, is_pending, last_block_info, record_block, repo_root, session_key
+from token_reduce_state import consume_block, discovery_hint, is_pending, record_block, repo_root, session_key
 from token_reduce_telemetry import record_event
 
 
@@ -303,6 +303,11 @@ def main() -> int:
                     return 0
                 return block(helper_required_reason(), data)
             if tool_name in {"Glob", "Grep", "Read"}:
+                # Read on an absolute path is targeted, not exploratory — always allow
+                if tool_name == "Read":
+                    file_path = str(tool_input.get("file_path", "") or "")
+                    if file_path.startswith("/") and not any(c in file_path for c in "*?["):
+                        return 0
                 return block(helper_required_reason(), data)
             return 0
 
