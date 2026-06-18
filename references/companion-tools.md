@@ -52,7 +52,7 @@ Do not integrate a companion tool on intuition alone.
 - If the tool is clearly better only for exact symbol / dependency questions, integrate it as an optional structural accelerator.
 - If the tool is clearly better only for response brevity or memory-file compression, integrate it as an optional style/input companion.
 - If the tool is clearly better only for specific operational surfaces (for example GitHub/browser), integrate it as an optional interface companion and keep core discovery defaults unchanged.
-- If the tool adds planner/delegation orchestration (for example `kimi-delegate-skill`), keep it as a standalone repo and integrate by link/script, not by embedding source into token-reduce.
+- If the tool adds planner/delegation orchestration (for example the `delegate-skill` router), keep it as a standalone repo and integrate by link/script, not by embedding source into token-reduce.
 - If it degrades broad topic discovery or adds heavy runtime/install cost, do not make it the default first move.
 - If it cannot beat token-reduce on real repo tasks, document the result and reject it.
 

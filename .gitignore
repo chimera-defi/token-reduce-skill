@@ -10,3 +10,6 @@ skills/devin-delegate
 skills/kimi-delegate
 tools/token-reduce-skill/
 tools/kimi-delegate-skill/
+.env
+.env.*
+.env.local
