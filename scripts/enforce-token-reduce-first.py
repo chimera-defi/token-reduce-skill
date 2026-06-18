@@ -303,6 +303,11 @@ def main() -> int:
                     return 0
                 return block(helper_required_reason(), data)
             if tool_name in {"Glob", "Grep", "Read"}:
+                # Read on an absolute path is targeted, not exploratory — always allow
+                if tool_name == "Read":
+                    file_path = str(tool_input.get("file_path", "") or "")
+                    if file_path.startswith("/") and not any(c in file_path for c in "*?["):
+                        return 0
                 return block(helper_required_reason(), data)
             return 0
 
