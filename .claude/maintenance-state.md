@@ -1,8 +1,8 @@
 # Maintenance State
-last_run: 2026-06-18
-focus: tests
+last_run: 2026-06-19
+focus: dead-code
 status: completed
-completed: [validate_skill_package parse_frontmatter+validate, rolling_baseline_report window_split+metric_stats+build_report+render_markdown]
+completed: [dead code scan clean — vulture found nothing, pyflakes found no unused imports, no TODOs/FIXMEs, no unused shell functions. All scripts and functions actively used.]
 in_progress:
 pending: [checkpoint_gate — requires real filesystem commands to run steps]
 known_failures:
