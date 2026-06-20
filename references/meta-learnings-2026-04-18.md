@@ -36,7 +36,7 @@ These are the implementation lessons from validating the tiered token-reduce sta
 
 1. Duplicate mirror content in `tools/token-reduce-skill` can inflate search output in local benchmarks.
 2. Structural tiers depend on companion availability; fallback behavior must stay deterministic.
-3. Recommendation flags (`context-mode`, `code-review-graph`) can over-suggest if intent terms are too broad; keep thresholds and heuristics under review.
+3. Recommendation flags (`context-mode`, `headroom`, `code-review-graph`) can over-suggest if intent terms are too broad; keep thresholds and heuristics under review.
 
 ## Next Validation Checkpoints
 

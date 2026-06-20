@@ -1,7 +1,7 @@
 # Companion Tool Intake
 
 Use this when evaluating additions like structural indexers, alternate search backends, new MCP servers, or agent-native CLI companions.
-Also use it for response-style or memory-compression companions (for example caveman).
+Also use it for response-style, memory-compression, proxy, or MCP companions (for example caveman or Headroom).
 
 ## Rule
 
@@ -51,6 +51,7 @@ Do not integrate a companion tool on intuition alone.
 
 - If the tool is clearly better only for exact symbol / dependency questions, integrate it as an optional structural accelerator.
 - If the tool is clearly better only for response brevity or memory-file compression, integrate it as an optional style/input companion.
+- If the tool is clearly better only for large tool-result or long-session context pressure, integrate it as an optional proxy/MCP companion with health checks and rollback guidance.
 - If the tool is clearly better only for specific operational surfaces (for example GitHub/browser), integrate it as an optional interface companion and keep core discovery defaults unchanged.
 - If the tool adds planner/delegation orchestration (for example the `delegate-skill` router), keep it as a standalone repo and integrate by link/script, not by embedding source into token-reduce.
 - If it degrades broad topic discovery or adds heavy runtime/install cost, do not make it the default first move.
@@ -62,3 +63,5 @@ Future additions should enter through the same benchmark-and-adapter path:
 - benchmark first
 - adapter second
 - docs and validation third
+
+Current Headroom verdict: see `references/headroom-evaluation-2026-06-10.md`.

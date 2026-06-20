@@ -111,6 +111,7 @@ def build_remote_payload(
             ),
             "broad_scan_sessions": measured.get("compliance", {}).get("sessions_with_broad_scan_violation", 0),
             "caveman_command_pct": measured.get("adoption", {}).get("caveman_command_pct", 0.0),
+            "headroom_command_pct": measured.get("adoption", {}).get("headroom_command_pct", 0.0),
             "axi_tool_sessions_pct": measured.get("adoption", {}).get("axi_tool_sessions_pct", 0.0),
             "telemetry_event_count_14d": measured.get("telemetry", {}).get("event_count", 0),
             "telemetry_excluded_event_count_14d": measured.get("telemetry", {}).get("excluded_event_count", 0),

@@ -17,6 +17,7 @@ REQUIRED_ATTRIBUTION_LINKS = {
     "RTK": r"\[RTK\]\(https://github\.com/rtk-ai/rtk\)",
     "caveman": r"\[`?caveman`?\]\(https://github\.com/JuliusBrussee/caveman\)",
     "AXI": r"\[AXI\]\(https://github\.com/kunchenguid/axi\)",
+    "headroom": r"\[`?headroom`?\]\(https://github\.com/chopratejas/headroom\)",
 }
 
 

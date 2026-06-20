@@ -11,7 +11,7 @@ That reduces wasted context and makes host behavior more predictable.
 
 ## System Model
 
-`token-reduce` has five layers:
+`token-reduce` has six layers:
 
 | Layer | What it does | Files |
 |------|---------------|-------|
@@ -20,6 +20,7 @@ That reduces wasted context and makes host behavior more predictable.
 | Retrieval helpers | Return the smallest useful search result first | `scripts/token-reduce-paths.sh`, `scripts/token-reduce-snippet.sh`, `scripts/token-reduce-search.sh` |
 | Host enforcement | Blocks broad discovery patterns and pushes the host back to the helper flow | `scripts/remind-token-reduce.py`, `scripts/enforce-token-reduce-first.py`, `.claude/settings.json` |
 | Integration surfaces | Make the same workflow usable from different hosts | `.claude-plugin/`, `mcp/server.mjs`, `agents/openai.yaml` |
+| Conditional companions | Add opt-in compression, execution, and structural helpers after the first-move workflow is satisfied | `scripts/token-reduce-dependency-health.py`, `references/feature-matrix.md`, `references/headroom-evaluation-2026-06-10.md` |
 
 ## Request Flow
 
@@ -33,6 +34,8 @@ For an ambiguous repo question, the intended path is:
 6. After that, the host should switch to exact-file `Read` or a narrow `Grep`.
 
 The goal is not "never search." The goal is "pay for the cheapest useful search result first."
+
+For output-heavy or long-session work, the adaptive router may recommend Headroom when the local `headroom` command is available. Headroom does not replace the path-first flow; it is used after discovery when repeated tool results or old session context become the dominant cost.
 
 ## Why The Wrapper Exists
 
@@ -78,6 +81,7 @@ There are two different benchmark stories in this repo:
 
 - output-size benchmarks: how much text the helper returns compared with broader discovery
 - host-behavior checks: whether Claude or Codex actually start with the intended workflow
+- companion-adoption checks: whether optional companions such as Headroom are merely mentioned or actually used in sessions
 
 Those are related, but not identical.
 The helper can be efficient while the host still ignores it.
@@ -95,6 +99,7 @@ The repo now has a direct telemetry and self-review loop:
 
 - helper wrappers append repo-local events to `artifacts/token-reduction/events.jsonl` (including adaptive tier and recommendation metadata)
 - session measurement still parses Claude and Codex history for adoption/compliance
+- session measurement tracks Headroom mentions and command usage so low adoption is visible
 - composite telemetry adds RTK inputs (`gain`, `discover`, `session`, `hook-audit`) plus install/hook wiring checks
 - `review_token_reduction.py` converts the latest evidence into prioritized next fixes
 

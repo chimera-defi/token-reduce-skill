@@ -44,6 +44,7 @@ Default config:
     "rapid_repeat_snippet_threshold": 0.35,
     "enable_structural": true,
     "enable_context_mode_recommendations": true,
+    "enable_headroom_recommendations": true,
     "enable_code_review_graph_recommendations": true
   }
 }

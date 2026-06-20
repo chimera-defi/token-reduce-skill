@@ -234,7 +234,7 @@ def main() -> int:
                 (
                     "exact_symbol",
                     f"qmd search \"prompt requires helper token reduce state\" -n 8 --files -c {QMD_COLLECTION}",
-                    ["scripts/token-reduce-state.py"],
+                    ["scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",

@@ -54,7 +54,7 @@ commands:
   composite   Generate composite telemetry (token-reduce + RTK + wiring)
   benchmark-composite  Run the composite stack benchmark
   deps-check  Check core dependency freshness (qmd + rtk)
-  deps-check-conditional  Check conditional companion freshness (AXI/context-mode/code-review-graph)
+  deps-check-conditional  Check conditional companion freshness (AXI/context-mode/headroom/code-review-graph)
   deps-update  Update core dependencies when possible
   deps-update-conditional  Update conditional companions when possible
   measure     Measure repo-local adoption and write artifacts
