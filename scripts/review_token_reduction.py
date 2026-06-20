@@ -48,8 +48,18 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
     caveman_command_sessions = int(report["adoption"].get("caveman_command_sessions", 0))
     caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
+    headroom_mentions = int(report["adoption"].get("headroom_mentions", 0))
+    headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0))
+    headroom_command_pct = float(report["adoption"].get("headroom_command_pct", 0.0))
     axi_tool_pct = float(report["adoption"].get("axi_tool_sessions_pct", 0.0))
     telemetry_events = int(report["telemetry"]["event_count"])
+    companion_recommendations = report["telemetry"].get("companion_recommendations", {})
+    headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
+    headroom_conversion_pct = (
+        round((headroom_command_sessions * 100.0 / headroom_recommended_events), 1)
+        if headroom_recommended_events
+        else 0.0
+    )
     telemetry_windows = report.get("telemetry_windows", {})
     window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
     _window_14d = telemetry_windows.get("14d", {}) if isinstance(telemetry_windows, dict) else {}
@@ -333,6 +343,24 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "Add explicit examples (`/caveman lite`, `/caveman:compress CLAUDE.md`) to repo instructions so mentions convert into usage.",
             }
         )
+    if headroom_mentions > 0 and headroom_command_sessions == 0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "headroom_adoption",
+                "finding": "Headroom is mentioned in session text, but no Headroom command usage was detected.",
+                "recommendation": "For large tool-result or long-session pressure, verify `headroom install status` or `/readyz`, then use `headroom wrap codex`/`headroom wrap claude` or the proxy with telemetry disabled.",
+            }
+        )
+    if headroom_recommended_events > 0 and headroom_command_sessions == 0:
+        findings.append(
+            {
+                "priority": "high",
+                "area": "headroom_conversion",
+                "finding": f"Headroom was recommended {headroom_recommended_events} time(s), but no Headroom command usage was detected.",
+                "recommendation": "When adaptive routing recommends Headroom, run `headroom install status` or `/readyz`; if healthy, use `headroom wrap codex`/`headroom wrap claude` or the proxy with telemetry disabled.",
+            }
+        )
     if session_count >= 20 and caveman_command_pct < 5.0:
         findings.append(
             {
@@ -340,6 +368,15 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "area": "caveman_adoption",
                 "finding": f"Caveman command usage is low at {caveman_command_pct:.1f}% of sessions.",
                 "recommendation": "Install caveman globally and add short trigger cues in AGENTS.md/CLAUDE.md where terse output is useful.",
+            }
+        )
+    if session_count >= 20 and headroom_command_pct < 5.0:
+        findings.append(
+            {
+                "priority": "medium",
+                "area": "headroom_adoption",
+                "finding": f"Headroom command usage is low at {headroom_command_pct:.1f}% of sessions.",
+                "recommendation": "Exercise Headroom on output-heavy test/log/API sessions and long-running agent sessions, then compare quality and latency against RTK/token-reduce alone.",
             }
         )
     if session_count >= 20 and axi_tool_pct < 2.0:
@@ -441,6 +478,14 @@ def build_findings(report: dict) -> list[dict[str, str]]:
 
 
 def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
+    companion_recommendations = report["telemetry"].get("companion_recommendations", {})
+    headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
+    headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0) or 0)
+    headroom_conversion_pct = (
+        round((headroom_command_sessions * 100.0 / headroom_recommended_events), 1)
+        if headroom_recommended_events
+        else 0.0
+    )
     lines = [
         "# Token-Reduce Self Review",
         "",
@@ -452,6 +497,8 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
         f"- Helper usage (all sessions): `{report['routing']['helper_first_or_helper_any_pct']}%`",
         f"- Helper usage (observed sessions): `{report['adoption'].get('helper_sessions_pct_observed_discovery', report['routing']['helper_first_or_helper_any_pct'])}%`",
         f"- Caveman command usage: `{report['adoption'].get('caveman_command_pct', 0.0)}%`",
+        f"- Headroom command usage: `{report['adoption'].get('headroom_command_pct', 0.0)}%`",
+        f"- Headroom recommendation conversion: `{headroom_conversion_pct}%` ({headroom_command_sessions}/{headroom_recommended_events})",
         f"- AXI tool usage: `{report['adoption'].get('axi_tool_sessions_pct', 0.0)}%`",
         f"- Telemetry events (14d, runtime): `{report['telemetry']['event_count']}`",
         f"- Telemetry events excluded (benchmark/test): `{report['telemetry'].get('excluded_event_count', 0)}`",

@@ -26,12 +26,18 @@ TARGETED_BASH_RE = re.compile(r"\b(head|tail)\b|\bsed\s+-n\b|\bqmd\s+get\b")
 BROAD_SCAN_RE = re.compile(r"\bfind\s+(\.|/)|\bls\s+-R\b|\bgrep\s+-R\b|\bgrep\s+--recursive\b")
 TOKEN_REDUCE_RE = re.compile(r"token-reduce|/token-reduce", re.IGNORECASE)
 CAVEMAN_RE = re.compile(r"(?:^|[^a-z])(?:caveman|/caveman|\$caveman)(?:[^a-z]|$)", re.IGNORECASE)
+HEADROOM_RE = re.compile(r"(?:^|[^a-z])headroom(?:[^a-z]|$)", re.IGNORECASE)
 GH_AXI_RE = re.compile(r"\bgh-axi\b")
 CHROME_DEVTOOLS_AXI_RE = re.compile(r"\bchrome-devtools-axi\b")
 CAVEMAN_COMMAND_RE = re.compile(
     r"(?:(?:/|\$)caveman(?:-cn|-es)?(?:\s+\w+|:compress)?|caveman:compress)",
     re.IGNORECASE,
 )
+HEADROOM_COMMAND_RE = re.compile(
+    r"(?:^|\s)(?:uvx\s+.*?\s)?headroom(?:\s+--[\w-]+(?:=\S+)?)*\s+(?:install|proxy|wrap|compress|retrieve)\b|(?:^|\s)headroom\s+(?:--version|--help)\b",
+    re.IGNORECASE,
+)
+HEADROOM_TOOL_RE = re.compile(r"(?:^|__)headroom(?:__|_|-)?(?:compress|retrieve|stats)?\b", re.IGNORECASE)
 RG_OPTIONS_WITH_VALUE = {
     "-e",
     "--regexp",
@@ -139,6 +145,8 @@ def fresh_metrics(source: str) -> dict:
         "token_reduce_mention": False,
         "caveman_mention": False,
         "caveman_command": False,
+        "headroom_mention": False,
+        "headroom_command": False,
         "axi_tool": False,
         "gh_axi_tool": False,
         "chrome_devtools_axi_tool": False,
@@ -165,6 +173,8 @@ def apply_text_metrics(metrics: dict, text: str) -> None:
         metrics["caveman_mention"] = True
     if CAVEMAN_COMMAND_RE.search(text):
         metrics["caveman_command"] = True
+    if HEADROOM_RE.search(text):
+        metrics["headroom_mention"] = True
 
 
 def classify_discovery_outcome(metrics: dict) -> None:
@@ -208,6 +218,8 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         metrics["chrome_devtools_axi_tool"] = True
     if CAVEMAN_COMMAND_RE.search(command):
         metrics["caveman_command"] = True
+    if HEADROOM_COMMAND_RE.search(command):
+        metrics["headroom_command"] = True
     if SCOPED_RG_RE.search(command):
         metrics["scoped_rg"] = True
         note_first_discovery(metrics, True, "scoped_rg")
@@ -216,6 +228,11 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
     if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command) or is_exploratory_rg(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
+
+
+def apply_tool_name_metrics(metrics: dict, tool_name: str) -> None:
+    if HEADROOM_TOOL_RE.search(tool_name):
+        metrics["headroom_command"] = True
 
 
 def helper_used(metrics: dict) -> bool:
@@ -328,6 +345,8 @@ def parse_claude_session(session_file: Path) -> dict:
 
                     name = item.get("name")
                     tool_input = item.get("input", {})
+                    if isinstance(name, str):
+                        apply_tool_name_metrics(metrics, name)
 
                     if name == "Read":
                         if tool_input.get("limit") is not None or tool_input.get("offset") is not None:
@@ -366,6 +385,7 @@ def parse_codex_session(session_file: Path) -> dict:
         event_type = payload.get("type")
 
         if event_type == "function_call" and payload.get("name") == "exec_command":
+            apply_tool_name_metrics(metrics, str(payload.get("name", "")))
             arguments_raw = payload.get("arguments", "{}")
             try:
                 arguments = json.loads(arguments_raw)
@@ -373,6 +393,8 @@ def parse_codex_session(session_file: Path) -> dict:
                 arguments = {}
             command = arguments.get("cmd", "")
             apply_command_metrics(metrics, command)
+        elif event_type == "function_call":
+            apply_tool_name_metrics(metrics, str(payload.get("name", "")))
 
     classify_discovery_outcome(metrics)
     return metrics
@@ -398,6 +420,8 @@ def measure(scope: str, repo_root: str) -> dict:
         "token_reduce_mentions",
         "caveman_mentions",
         "caveman_command_sessions",
+        "headroom_mentions",
+        "headroom_command_sessions",
         "axi_tool_sessions",
         "gh_axi_sessions",
         "chrome_devtools_axi_sessions",
@@ -428,6 +452,8 @@ def measure(scope: str, repo_root: str) -> dict:
         adoption["token_reduce_mentions"] += int(item["token_reduce_mention"])
         adoption["caveman_mentions"] += int(item["caveman_mention"])
         adoption["caveman_command_sessions"] += int(item["caveman_command"])
+        adoption["headroom_mentions"] += int(item["headroom_mention"])
+        adoption["headroom_command_sessions"] += int(item["headroom_command"])
         adoption["axi_tool_sessions"] += int(item["axi_tool"])
         adoption["gh_axi_sessions"] += int(item["gh_axi_tool"])
         adoption["chrome_devtools_axi_sessions"] += int(item["chrome_devtools_axi_tool"])
@@ -458,6 +484,7 @@ def measure(scope: str, repo_root: str) -> dict:
         per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
         per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
         per_source[source]["caveman_command_sessions"] += int(item["caveman_command"])
+        per_source[source]["headroom_command_sessions"] += int(item["headroom_command"])
         per_source[source]["axi_tool_sessions"] += int(item["axi_tool"])
 
     pct = lambda n: round((n * 100.0 / session_count), 1) if session_count else 0.0
@@ -504,6 +531,11 @@ def measure(scope: str, repo_root: str) -> dict:
             )
             if source_sessions
             else 0.0,
+            "headroom_command_pct": round(
+                (counts["headroom_command_sessions"] * 100.0 / source_sessions), 1
+            )
+            if source_sessions
+            else 0.0,
             "axi_tool_pct": round((counts["axi_tool_sessions"] * 100.0 / source_sessions), 1)
             if source_sessions
             else 0.0,
@@ -528,6 +560,8 @@ def measure(scope: str, repo_root: str) -> dict:
             "token_reduce_mention_pct": pct(adoption["token_reduce_mentions"]),
             "caveman_mention_pct": pct(adoption["caveman_mentions"]),
             "caveman_command_pct": pct(adoption["caveman_command_sessions"]),
+            "headroom_mention_pct": pct(adoption["headroom_mentions"]),
+            "headroom_command_pct": pct(adoption["headroom_command_sessions"]),
             "axi_tool_sessions_pct": pct(adoption["axi_tool_sessions"]),
             "gh_axi_sessions_pct": pct(adoption["gh_axi_sessions"]),
             "chrome_devtools_axi_sessions_pct": pct(adoption["chrome_devtools_axi_sessions"]),

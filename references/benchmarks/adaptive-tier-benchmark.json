@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-20T04:35:37.745806+00:00",
+  "generated_at": "2026-06-20T09:35:08.785896+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -30,7 +30,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 362,
+      "duration_ms": 286,
       "bytes": 227,
       "lines": 6,
       "tokens": 51,
@@ -43,20 +43,20 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 1255,
-      "bytes": 191,
-      "lines": 8,
-      "tokens": 55,
-      "quality_pass": true,
-      "quality_note": "ok",
-      "stdout_preview": "{\n  \"name\": \"prompt_requires_helper\",\n  \"file\": \"scripts/token_reduce_state.py\",\n  \"line\": 109,\n  \"end_line\": 110,\n  \"type\": \"function\",\n  \"signature\": \"def prompt_requires_helper(prompt)\"\n}"
+      "duration_ms": 325,
+      "bytes": 227,
+      "lines": 6,
+      "tokens": 51,
+      "quality_pass": false,
+      "quality_note": "missing: token_reduce_state.py",
+      "stdout_preview": "./scripts/token-reduce-structural.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-search.sh\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/token-reduce-update-check.py\n./scripts/install_workspace_skill.py"
     },
     {
       "task": "hook_discovery",
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 330,
+      "duration_ms": 238,
       "bytes": 512,
       "lines": 14,
       "tokens": 125,
@@ -69,7 +69,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 411,
+      "duration_ms": 295,
       "bytes": 512,
       "lines": 14,
       "tokens": 125,
@@ -82,7 +82,7 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 323,
+      "duration_ms": 213,
       "bytes": 134,
       "lines": 3,
       "tokens": 31,
@@ -95,7 +95,7 @@
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 419,
+      "duration_ms": 278,
       "bytes": 134,
       "lines": 3,
       "tokens": 31,
@@ -106,13 +106,13 @@
   ],
   "summary": {
     "baseline_tokens": 207,
-    "adaptive_tokens": 211,
-    "adaptive_savings_vs_baseline_pct": -1.9,
+    "adaptive_tokens": 207,
+    "adaptive_savings_vs_baseline_pct": 0.0,
     "baseline_quality_pass": false,
-    "adaptive_quality_pass": true
+    "adaptive_quality_pass": false
   },
   "verdict": {
-    "promote_adaptive_default": true,
+    "promote_adaptive_default": false,
     "reason": "Adaptive default is safe when quality is preserved and token overhead stays within 2.0% of baseline path-only discovery.",
     "promotion_tolerance_pct": 2.0
   }

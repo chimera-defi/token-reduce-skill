@@ -90,6 +90,7 @@ def _make_valid_readme() -> str:
         "Uses [QMD](https://github.com/tobi/qmd), "
         "[RTK](https://github.com/rtk-ai/rtk), "
         "[`caveman`](https://github.com/JuliusBrussee/caveman), "
+        "[`headroom`](https://github.com/chopratejas/headroom), "
         "and [AXI](https://github.com/kunchenguid/axi).\n"
     )
 

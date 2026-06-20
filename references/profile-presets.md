@@ -11,7 +11,7 @@ Use when you want the lightest operational footprint and lowest companion/tool c
 - short behavior lookback (`1` day)
 - high snippet-promotion threshold (`0.65`)
 - structural tier disabled
-- companion recommendations disabled (`context-mode`, `code-review-graph`)
+- companion recommendations disabled (`context-mode`, `headroom`, `code-review-graph`)
 
 ### `balanced`
 

@@ -81,7 +81,7 @@ else
   fi
 fi
 
-# ── Optional extended companions (context-mode + code-review-graph) ───────────
+# ── Optional extended companions (context-mode + headroom + code-review-graph) ─
 if [[ "$EXTENDED_STACK" == "1" ]]; then
   if command -v context-mode >/dev/null 2>&1; then
     ok "context-mode already installed ($(context-mode --version 2>/dev/null | head -1 || echo installed))"
@@ -94,6 +94,24 @@ if [[ "$EXTENDED_STACK" == "1" ]]; then
       fi
     else
       warn "npm not found — skipping context-mode install"
+    fi
+  fi
+
+  if command -v headroom >/dev/null 2>&1; then
+    ok "headroom already installed ($(headroom --version 2>/dev/null | head -1 || echo installed))"
+  else
+    if command -v uv >/dev/null 2>&1; then
+      HEADROOM_PYTHON="/usr/bin/python3.12"
+      if [[ ! -x "$HEADROOM_PYTHON" ]]; then
+        HEADROOM_PYTHON="python3.12"
+      fi
+      if uv tool install --python "$HEADROOM_PYTHON" 'headroom-ai[proxy]==0.24.0' >/dev/null 2>&1; then
+        ok "headroom installed"
+      else
+        warn "headroom install failed — run \"uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'\" manually"
+      fi
+    else
+      warn "uv not found — skipping headroom install"
     fi
   fi
 
@@ -322,7 +340,7 @@ echo "  RTK hook            →  compress output of commands that do run"
 echo "  QMD                 →  BM25 search backend for path helpers"
 echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn tool usage"
 if [[ "$EXTENDED_STACK" == "1" ]]; then
-  echo "  extended companions →  context-mode + code-review-graph install attempt enabled"
+  echo "  extended companions →  context-mode + headroom + code-review-graph install attempt enabled"
 fi
 echo "  global wrappers     →  token-reduce-adaptive / token-reduce-paths / token-reduce-snippet from any repo"
 echo "  Codex skill link    →  $CODEX_SKILL_DIR"
