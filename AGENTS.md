@@ -125,6 +125,16 @@ For additions like alternate search backends, structural indexers, or external M
 4. integrate it only if it improves a specific task class without harming the default workflow
 5. propagate the decision into docs and validation
 
+### Headroom Companion
+
+Use Headroom more aggressively when the task is dominated by large tool results, repeated logs/API payloads, or long-session context pressure, but only after the token-reduce first-move helper flow has run.
+
+- Verify first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`.
+- Prefer selected wrapped sessions: `headroom wrap codex` or `headroom wrap claude`.
+- Keep Headroom telemetry disabled and do not enable `--learn` until memory writes are reviewed.
+- Do not use Headroom as unknown-path repo discovery; start with `./scripts/token-reduce-paths.sh topic words`.
+- After routing or docs changes, run `./scripts/token-reduce-manage.sh measure` and `review`; check `headroom_command_pct` and recommendation conversion findings.
+
 <!-- delegate-skill:begin -->
 ## AI Delegate Routing — MANDATORY
 

@@ -23,6 +23,7 @@ def _availability(**overrides: bool) -> Availability:
         "snippet": True,
         "structural": True,
         "context_mode": True,
+        "headroom": True,
         "code_review_graph": True,
     }
     base.update(overrides)
@@ -43,6 +44,7 @@ def _policy(
     snippet_threshold: float = 0.35,
     enable_structural: bool = True,
     enable_context_mode: bool = True,
+    enable_headroom: bool = True,
     enable_code_review_graph: bool = True,
 ) -> RoutingPolicy:
     return RoutingPolicy(
@@ -50,6 +52,7 @@ def _policy(
         rapid_repeat_snippet_threshold=snippet_threshold,
         enable_structural=enable_structural,
         enable_context_mode_recommendations=enable_context_mode,
+        enable_headroom_recommendations=enable_headroom,
         enable_code_review_graph_recommendations=enable_code_review_graph,
     )
 
@@ -103,6 +106,51 @@ def test_output_heavy_recommends_context_mode() -> None:
         repo_file_count=800,
     )
     assert decision.context_mode_recommended is True
+
+
+def test_output_heavy_recommends_headroom_when_available() -> None:
+    decision = decide(
+        "long session tool_result payload history",
+        behavior=_behavior(),
+        availability=_availability(headroom=True, structural=False),
+        policy=_policy(enable_structural=False, enable_headroom=True),
+        root=Path("."),
+        repo_file_count=800,
+    )
+    assert decision.headroom_recommended is True
+
+
+def test_headroom_recommendation_respects_config_and_availability() -> None:
+    disabled = decide(
+        "long session tool_result payload history",
+        behavior=_behavior(),
+        availability=_availability(headroom=True, structural=False),
+        policy=_policy(enable_structural=False, enable_headroom=False),
+        root=Path("."),
+        repo_file_count=800,
+    )
+    missing = decide(
+        "long session tool_result payload history",
+        behavior=_behavior(),
+        availability=_availability(headroom=False, structural=False),
+        policy=_policy(enable_structural=False, enable_headroom=True),
+        root=Path("."),
+        repo_file_count=800,
+    )
+    assert disabled.headroom_recommended is False
+    assert missing.headroom_recommended is False
+
+
+def test_headroom_recommendation_avoids_generic_session_terms() -> None:
+    decision = decide(
+        "review session history for docs",
+        behavior=_behavior(),
+        availability=_availability(headroom=True, structural=False),
+        policy=_policy(enable_structural=False, enable_headroom=True),
+        root=Path("."),
+        repo_file_count=800,
+    )
+    assert decision.headroom_recommended is False
 
 
 def test_structural_unavailable_demotes_to_paths() -> None:

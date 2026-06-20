@@ -19,6 +19,7 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
             "rapid_repeat_snippet_threshold": 0.65,
             "enable_structural": False,
             "enable_context_mode_recommendations": False,
+            "enable_headroom_recommendations": False,
             "enable_code_review_graph_recommendations": False,
         }
     },
@@ -30,6 +31,7 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
             "rapid_repeat_snippet_threshold": 0.35,
             "enable_structural": True,
             "enable_context_mode_recommendations": True,
+            "enable_headroom_recommendations": True,
             "enable_code_review_graph_recommendations": True,
         }
     },
@@ -41,6 +43,7 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
             "rapid_repeat_snippet_threshold": 0.2,
             "enable_structural": True,
             "enable_context_mode_recommendations": True,
+            "enable_headroom_recommendations": True,
             "enable_code_review_graph_recommendations": True,
         }
     },

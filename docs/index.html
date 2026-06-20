@@ -66,6 +66,7 @@
           <div>Working MCP server</div>
           <div>Reproducible local benchmark</div>
           <div>QMD index auto-refresh</div>
+          <div>Headroom adoption metrics</div>
         </section>
 
         <section id="how" class="content-grid">
@@ -85,6 +86,10 @@
             <article>
               <h3>Architecture</h3>
               <p>The value is the whole system: guidance, helper scripts, hooks, and install surfaces. See <code>references/architecture.md</code> for the high-level flow.</p>
+            </article>
+            <article>
+              <h3>Headroom companion</h3>
+              <p>For large tool-result payloads or long-session context pressure, verify <code>headroom install status</code> or <code>/readyz</code>, then use selected <code>headroom wrap codex</code> or <code>headroom wrap claude</code> sessions with telemetry disabled.</p>
             </article>
             <article>
               <h3>Use this when</h3>
@@ -160,6 +165,10 @@
               <h3>Exposed tools</h3>
               <p>`token_reduce_paths`, `token_reduce_snippet`, `token_reduce_benchmark`, `token_reduce_install_info`, and `anthropic_cache_plan`.</p>
             </article>
+            <article>
+              <h3>Companion metrics</h3>
+              <p><code>token-reduce-manage.sh measure</code> reports Headroom mentions and command sessions so teams can tell whether the proxy/MCP pilot is actually being used.</p>
+            </article>
           </div>
         </section>
 
@@ -198,6 +207,10 @@
             <details>
               <summary>Does the Anthropic helper affect Codex or Claude Code sessions?</summary>
               <p>No. It only helps when you own the Anthropic API payload and can place `cache_control` markers yourself.</p>
+            </details>
+            <details>
+              <summary>Should Headroom replace token-reduce discovery?</summary>
+              <p>No. Start unknown-path repo discovery with token-reduce helpers. Use Headroom after that when repeated tool results or old session context become the dominant cost.</p>
             </details>
           </div>
         </section>

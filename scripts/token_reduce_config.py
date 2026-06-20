@@ -36,6 +36,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "rapid_repeat_snippet_threshold": 0.35,
         "enable_structural": True,
         "enable_context_mode_recommendations": True,
+        "enable_headroom_recommendations": True,
         "enable_code_review_graph_recommendations": True,
     },
 }
