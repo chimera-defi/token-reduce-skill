@@ -158,7 +158,7 @@ Tier behavior:
 - base: `token-reduce-paths`
 - promote: `token-reduce-snippet` for clarification/repeat behavior
 - promote: `token-reduce-structural` for symbol/impact queries when available
-- recommendations: `context-mode` and `code-review-graph` only for matching task classes
+- recommendations: `context-mode`, `headroom`, and `code-review-graph` only for matching task classes
 
 Disable adaptive hinting if needed:
 
@@ -172,22 +172,22 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `980` | baseline |
-| `guidance_scoped_rg` | `221` | `77.4%` saved |
-| `qmd_files` | `243` | `75.2%` saved |
-| `token_reduce_paths_warm` | `245` | `75.0%` saved |
-| `token_reduce_snippet_warm` | `373` | `61.9%` saved |
+| `broad_inventory` | `1028` | baseline |
+| `guidance_scoped_rg` | `221` | `78.5%` saved |
+| `qmd_files` | `241` | `76.6%` saved |
+| `token_reduce_paths_warm` | `245` | `76.2%` saved |
+| `token_reduce_snippet_warm` | `373` | `63.7%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1560` | baseline | `ok` |
-| `qmd_only` | `678` | `56.5%` saved | `ok` |
-| `token_reduce_only` | `389` | `75.1%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `86.3%` saved | `quality-fail` |
-| `rtk_only` | `773` | `50.4%` saved | `ok` |
-| `composite_stack` | `338` | `78.3%` saved | `quality-fail` |
+| `broad_shell` | `1599` | baseline | `ok` |
+| `qmd_only` | `680` | `57.5%` saved | `ok` |
+| `token_reduce_only` | `389` | `75.7%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `86.7%` saved | `quality-fail` |
+| `rtk_only` | `788` | `50.7%` saved | `ok` |
+| `composite_stack` | `338` | `78.9%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
@@ -261,6 +261,17 @@ Dependency checks:
 
 - core only: `deps-check`, `deps-update`
 - conditional companions: `deps-check-conditional`, `deps-update-conditional`
+
+## Headroom Status
+
+`headroom` is a conditional pilot companion for large tool-result payloads and long sessions where old tool output keeps inflating context.
+
+- check health first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`
+- use selected wrapped sessions before global routing: `headroom wrap codex` or `headroom wrap claude`
+- keep telemetry disabled and do not enable `--learn` until memory writes are reviewed
+- measure adoption with `./scripts/token-reduce-manage.sh measure` and `review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings
+
+Default discovery still starts with token-reduce helpers. Headroom is for context pressure after the cheapest discovery and command-output paths are in place.
 
 ## Caveman Status
 

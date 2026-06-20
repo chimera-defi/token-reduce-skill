@@ -69,6 +69,14 @@ CONDITIONAL_DEPENDENCIES: tuple[Dependency, ...] = (
         tier="conditional",
     ),
     Dependency(
+        name="headroom",
+        command=["headroom", "--version"],
+        source_type="fixed",
+        source_value="headroom-ai[proxy]==0.24.0",
+        update_hint="uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'",
+        tier="conditional",
+    ),
+    Dependency(
         name="code-review-graph",
         command=["code-review-graph", "--version"],
         source_type="github",
@@ -166,6 +174,8 @@ def latest_version(dep: Dependency) -> str:
         return latest_npm_version(dep.source_value)
     if dep.source_type == "github":
         return latest_github_version(dep.source_value)
+    if dep.source_type == "fixed":
+        return dep.source_value
     return ""
 
 
@@ -299,6 +309,31 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 }
             )
 
+    headroom_status = next((item for item in statuses if item["name"] == "headroom"), None)
+    if headroom_status and needs_action(str(headroom_status.get("state"))):
+        if shutil.which("uv"):
+            python = "/usr/bin/python3.12" if Path("/usr/bin/python3.12").exists() else "python3.12"
+            code, out, err = run(
+                ["uv", "tool", "install", "--python", python, "headroom-ai[proxy]==0.24.0"]
+            )
+            actions.append(
+                {
+                    "target": "headroom",
+                    "command": f"uv tool install --python {python} 'headroom-ai[proxy]==0.24.0'",
+                    "status": "updated" if code == 0 else "failed",
+                    "detail": out or err,
+                }
+            )
+        else:
+            actions.append(
+                {
+                    "target": "headroom",
+                    "command": "uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'",
+                    "status": "skipped",
+                    "detail": "uv not installed",
+                }
+            )
+
     code_review_graph_status = next(
         (item for item in statuses if item["name"] == "code-review-graph"), None
     )
@@ -367,7 +402,7 @@ def main() -> int:
     parser.add_argument(
         "--include-conditional",
         action="store_true",
-        help="Include conditional companions (AXI/context-mode/code-review-graph) in checks and updates.",
+        help="Include conditional companions (AXI/context-mode/headroom/code-review-graph) in checks and updates.",
     )
     args = parser.parse_args()
 

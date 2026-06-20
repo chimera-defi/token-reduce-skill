@@ -1,6 +1,6 @@
 # token-reduce
 
-> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional companions (AXI, caveman, context-mode, code-review-graph).
+> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional companions (AXI, caveman, context-mode, headroom, code-review-graph).
 
 ## Install (run this once, then restart Claude Code)
 
@@ -30,7 +30,7 @@ Optional extended companion install:
 TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.sh
 ```
 
-This attempts to install `context-mode` and `code-review-graph` only when explicitly requested.
+This attempts to install `context-mode`, `headroom`, and `code-review-graph` only when explicitly requested.
 
 Claude Code plugin alternative:
 
@@ -101,11 +101,11 @@ Numbers from `references/benchmarks/local-benchmark.json` (this repo, QMD warm):
 
 | Approach | Tokens | vs broad inventory |
 |----------|--------|-------------------|
-| `rg --files .` broad inventory | `980` | baseline |
-| `rg -n -i -g '*.md' "topic" .` scoped | `221` | `77.4%` saved |
-| `qmd search` (file-list only) | `243` | `75.2%` saved |
-| `token-reduce-paths.sh` (QMD warm) | `245` | `75.0%` saved |
-| `token-reduce-snippet.sh` (QMD warm) | `373` | `61.9%` saved |
+| `rg --files .` broad inventory | `1028` | baseline |
+| `rg -n -i -g '*.md' "topic" .` scoped | `221` | `78.5%` saved |
+| `qmd search` (file-list only) | `241` | `76.6%` saved |
+| `token-reduce-paths.sh` (QMD warm) | `245` | `76.2%` saved |
+| `token-reduce-snippet.sh` (QMD warm) | `373` | `63.7%` saved |
 
 Full composite-stack benchmark (vs broad shell): `78.3%` saved, quality-fail.
 See `references/benchmarks/composite-benchmark.json` for per-strategy detail.
@@ -118,6 +118,16 @@ If installed, `caveman` can be layered on top of token-reduce:
 - memory-file compression: `/caveman:compress CLAUDE.md`
 
 Use this as a companion only. `token-reduce` still owns discovery routing and hook enforcement.
+
+## Optional companion (large tool-result / long-session pressure)
+
+If installed and healthy, use Headroom more aggressively for sessions dominated by repeated tool results, huge payloads, or long-running agent context pressure:
+
+- check: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`
+- run selected sessions: `headroom wrap codex` or `headroom wrap claude`
+- keep telemetry disabled; do not enable `--learn` until memory writes are reviewed
+
+Do not use Headroom as the first move for unknown-path discovery. Use token-reduce first, then Headroom when context pressure remains.
 
 ## Optional companion (GitHub/browser execution)
 
@@ -171,7 +181,7 @@ MCP config:
 - Full docs: `SKILL.md`
 - Codex overrides: `AGENTS.md`
 - Setup details: `references/agent-setup.md`
-- Companion verdicts: `references/token-savior-evaluation.md`, `references/caveman-evaluation.md`
+- Companion verdicts: `references/token-savior-evaluation.md`, `references/caveman-evaluation.md`, `references/headroom-evaluation-2026-06-10.md`
 - AXI verdict: `references/axi-evaluation.md`
 - Prompt stack intake verdict: `references/prompt-stack-intake-2026-04-18.md`
 - Feature matrix: `references/feature-matrix.md`

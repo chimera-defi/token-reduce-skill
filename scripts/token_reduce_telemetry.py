@@ -200,6 +200,7 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     helper_status_exit_mismatch_count = 0
     helper_non_numeric_latency_count = 0
     helper_negative_latency_count = 0
+    companion_recommendations = Counter()
 
     excluded_event_count = 0
 
@@ -300,6 +301,10 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
                         helper_negative_latency_count += 1
                 elif latency_ms is not None:
                     helper_non_numeric_latency_count += 1
+
+                for companion in ("context_mode", "headroom", "code_review_graph"):
+                    if meta.get(f"{companion}_recommended") is True:
+                        companion_recommendations[f"{companion}_recommended_events"] += 1
             else:
                 helper_backend_counts["unknown"] += 1
 
@@ -502,6 +507,7 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             "pending_leak_count": pending_leak_count,
         },
         "efficiency_by_context": efficiency_by_context,
+        "companion_recommendations": dict(sorted(companion_recommendations.items())),
         "qmd_latency_breakdown": qmd_latency_breakdown,
     }
 

@@ -9,6 +9,7 @@ This controller promotes or demotes helper tiers based on:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -37,6 +38,12 @@ OUTPUT_HEAVY_TERMS = {
     "payload",
     "stderr",
     "stdout",
+    "tool_result",
+    "tool-result",
+    "tool-results",
+    "transcript",
+    "long-session",
+    "long-sessions",
 }
 IMPACT_TERMS = {
     "impact",
@@ -74,6 +81,7 @@ class Availability:
     snippet: bool
     structural: bool
     context_mode: bool
+    headroom: bool
     code_review_graph: bool
 
 
@@ -83,6 +91,7 @@ class Decision:
     command: list[str]
     rationale: list[str]
     context_mode_recommended: bool
+    headroom_recommended: bool
     code_review_graph_recommended: bool
     symbol: str
     behavior: BehaviorProfile
@@ -95,6 +104,7 @@ class RoutingPolicy:
     rapid_repeat_snippet_threshold: float
     enable_structural: bool
     enable_context_mode_recommendations: bool
+    enable_headroom_recommendations: bool
     enable_code_review_graph_recommendations: bool
 
 
@@ -136,13 +146,23 @@ def count_repo_files(root: Path) -> int:
 
 def collect_availability() -> Availability:
     sdir = script_dir()
+    structural_backend_available = importlib.util.find_spec("token_savior") is not None
     return Availability(
         paths=(sdir / "token-reduce-paths.sh").exists() or shutil.which("token-reduce-paths") is not None,
         snippet=(sdir / "token-reduce-snippet.sh").exists() or shutil.which("token-reduce-snippet") is not None,
-        structural=shutil.which("token-reduce-structural") is not None or (sdir / "token-reduce-structural.py").exists(),
+        structural=structural_backend_available
+        and (shutil.which("token-reduce-structural") is not None or (sdir / "token-reduce-structural.py").exists()),
         context_mode=shutil.which("context-mode") is not None,
+        headroom=shutil.which("headroom") is not None,
         code_review_graph=shutil.which("code-review-graph") is not None,
     )
+
+
+def structural_command() -> str:
+    installed = shutil.which("token-reduce-structural")
+    if installed:
+        return installed
+    return str(script_dir() / "token-reduce-structural.py")
 
 
 def load_behavior_profile(root: Path, *, days: int = 3) -> BehaviorProfile:
@@ -204,15 +224,15 @@ def decide(
     if symbol and structural_enabled:
         if impact_like:
             tier = "structural_impact"
-            command = ["token-reduce-structural", "--project-root", str(root), "change-impact", symbol]
+            command = [structural_command(), "--project-root", str(root), "change-impact", symbol]
             rationale.append("symbol+impact query promoted to structural impact tier")
         else:
             tier = "structural_symbol"
-            command = ["token-reduce-structural", "--project-root", str(root), "find-symbol", symbol]
+            command = [structural_command(), "--project-root", str(root), "find-symbol", symbol]
             rationale.append("symbol-like query promoted to structural symbol tier")
     elif impact_like and structural_enabled:
         tier = "structural_search"
-        command = ["token-reduce-structural", "--project-root", str(root), "search", query]
+        command = [structural_command(), "--project-root", str(root), "search", query]
         rationale.append("impact query promoted to structural search tier")
     elif availability.snippet and (
         snippet_hint or behavior.rapid_repeat_ratio >= policy.rapid_repeat_snippet_threshold
@@ -234,6 +254,9 @@ def decide(
     context_mode_recommended = (
         policy.enable_context_mode_recommendations and output_heavy and availability.context_mode
     )
+    headroom_recommended = (
+        policy.enable_headroom_recommendations and output_heavy and availability.headroom
+    )
     code_review_graph_recommended = (
         policy.enable_code_review_graph_recommendations
         and impact_like
@@ -242,6 +265,8 @@ def decide(
     )
     if context_mode_recommended:
         rationale.append("output-heavy terms detected; context-mode recommended for follow-up tool output")
+    if headroom_recommended:
+        rationale.append("output-heavy or long-session terms detected; verify Headroom proxy health and consider headroom wrap/proxy with telemetry disabled")
     if code_review_graph_recommended:
         rationale.append("large repo impact task detected; code-review-graph recommended")
 
@@ -250,6 +275,7 @@ def decide(
         command=command,
         rationale=rationale,
         context_mode_recommended=context_mode_recommended,
+        headroom_recommended=headroom_recommended,
         code_review_graph_recommended=code_review_graph_recommended,
         symbol=symbol,
         behavior=behavior,
@@ -293,6 +319,9 @@ def main() -> int:
         enable_structural=bool(routing.get("enable_structural", True)),
         enable_context_mode_recommendations=bool(
             routing.get("enable_context_mode_recommendations", True)
+        ),
+        enable_headroom_recommendations=bool(
+            routing.get("enable_headroom_recommendations", True)
         ),
         enable_code_review_graph_recommendations=bool(
             routing.get("enable_code_review_graph_recommendations", True)
@@ -345,6 +374,7 @@ def main() -> int:
             "behavior_repeated_ratio": decision.behavior.repeated_ratio,
             "behavior_rapid_repeat_ratio": decision.behavior.rapid_repeat_ratio,
             "context_mode_recommended": decision.context_mode_recommended,
+            "headroom_recommended": decision.headroom_recommended,
             "code_review_graph_recommended": decision.code_review_graph_recommended,
         },
     )

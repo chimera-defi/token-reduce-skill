@@ -21,9 +21,10 @@ TOKEN_REDUCE_HELPER_RE = re.compile(
 )
 CAVEMAN_RE = re.compile(r"(?:^|[^a-z])caveman(?:[^a-z]|$)|/caveman", re.IGNORECASE)
 AXI_RE = re.compile(r"\b(?:axi|gh-axi|chrome-devtools-axi)\b", re.IGNORECASE)
+HEADROOM_RE = re.compile(r"(?:^|[^a-z])headroom(?:[^a-z]|$)", re.IGNORECASE)
 
 DOC_FILES = ("AGENTS.md", "CLAUDE.md", ".cursorrules", "README.md")
-SKILL_NAMES = ("token-reduce", "axi", "caveman", "caveman-cn", "caveman-es", "compress")
+SKILL_NAMES = ("token-reduce", "axi", "caveman", "caveman-cn", "caveman-es", "compress", "headroom")
 
 
 @dataclass
@@ -93,10 +94,11 @@ def repo_from_cwd(cwd: str, workspace_root: Path) -> str | None:
     return repo_name
 
 
-def doc_signals(repo: Path) -> tuple[list[str], bool, bool]:
+def doc_signals(repo: Path) -> tuple[list[str], bool, bool, bool]:
     refs: list[str] = []
     saw_caveman = False
     saw_axi = False
+    saw_headroom = False
     for filename in DOC_FILES:
         doc = repo / filename
         if not doc.exists():
@@ -111,7 +113,9 @@ def doc_signals(repo: Path) -> tuple[list[str], bool, bool]:
             saw_caveman = True
         if AXI_RE.search(text):
             saw_axi = True
-    return refs, saw_caveman, saw_axi
+        if HEADROOM_RE.search(text):
+            saw_headroom = True
+    return refs, saw_caveman, saw_axi, saw_headroom
 
 
 def local_skill_state(repo: Path) -> bool:
@@ -202,6 +206,7 @@ def command_state() -> dict[str, bool]:
         "rtk": shutil.which("rtk") is not None,
         "gh-axi": shutil.which("gh-axi") is not None,
         "chrome-devtools-axi": shutil.which("chrome-devtools-axi") is not None,
+        "headroom": shutil.which("headroom") is not None,
     }
 
 
@@ -374,12 +379,15 @@ def build_rows(
     rows: list[RepoSignals] = []
     caveman_docs = 0
     axi_docs = 0
+    headroom_docs = 0
     for repo in repos:
-        refs, caveman, axi = doc_signals(repo)
+        refs, caveman, axi, headroom = doc_signals(repo)
         if caveman:
             caveman_docs += 1
         if axi:
             axi_docs += 1
+        if headroom:
+            headroom_docs += 1
         stats = usage.get(repo.name, {"sessions": 0, "helper_sessions": 0})
         session_count = int(stats["sessions"])
         helper_sessions = int(stats["helper_sessions"])
@@ -427,6 +435,7 @@ def build_rows(
     return rows, {
         "caveman_docs": caveman_docs,
         "axi_docs": axi_docs,
+        "headroom_docs": headroom_docs,
         "expected_skill_root": str(expected_root),
         "expected_skill_version": expected_version,
         "expected_skill_commit": expected_commit,
@@ -468,6 +477,7 @@ def summarize(rows: list[RepoSignals], extra: dict[str, object]) -> dict:
         "total_recent_sessions": sessions,
         "caveman_docs": int(extra.get("caveman_docs", 0)),
         "axi_docs": int(extra.get("axi_docs", 0)),
+        "headroom_docs": int(extra.get("headroom_docs", 0)),
         "local_skill_installed_pct": pct(installed),
         "token_reduce_docs_pct": pct(docs),
         "install_and_docs_compliant_pct": pct(install_docs),
