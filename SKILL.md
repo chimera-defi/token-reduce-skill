@@ -35,6 +35,12 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 - Broad scans or full-file reads would likely waste context.
 - When maintaining this skill itself, the same narrow-discovery rules apply.
 
+## Setup (First Invocation)
+
+On first invocation in a new repo, if no config exists at `~/.claude/token-reduce-config.json`,
+run `token-reduce-manage.sh setup` (or `token-reduce-manage.sh setup --non-interactive` in CI)
+and relay the choices to the user via AskUserQuestion. Skip if config already exists.
+
 ## First Move
 
 - If file location is unknown, start with one standalone discovery command:
