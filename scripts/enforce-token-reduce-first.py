@@ -8,7 +8,23 @@ import shlex
 import sys
 from pathlib import Path
 
-from token_reduce_state import consume_block, discovery_hint, is_pending, record_block, repo_root, session_key
+from command_rewrites import (
+    estimate_output_tokens,
+    format_block_message,
+    is_catastrophic,
+    suggest_rewrite,
+)
+from coverage_patterns import matches_any_broad_pattern
+from token_reduce_state import (
+    broad_attempt_count,
+    consume_block,
+    discovery_hint,
+    is_pending,
+    record_block,
+    record_broad_attempt,
+    repo_root,
+    session_key,
+)
 from token_reduce_telemetry import record_event
 
 
@@ -25,7 +41,7 @@ BROAD_BASH_PATTERNS = [
 # Commands that are safe orchestrators — they may have broad-looking args in --body/--message,
 # but are never themselves filesystem scanners.
 _SAFE_TOOL_RE = re.compile(
-    r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
+    r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python(?:\d+(?:\.\d+)?)?|ruby|perl|cargo|go\s+run)\b"
 )
 HELPER_COMMAND_RE = re.compile(
     r"token-reduce-(?:adaptive|paths|snippet|structural)(?:\.(?:sh|py))?\b|qmd\s+search\b"
@@ -56,19 +72,32 @@ RG_OPTIONS_WITH_VALUE = {
 RG_PATTERN_OPTIONS_WITH_VALUE = {"-e", "--regexp", "-f", "--file"}
 
 
-def block(reason: str, data: dict[str, object] | None = None) -> int:
+def block(
+    reason: str,
+    data: dict[str, object] | None = None,
+    *,
+    extra_meta: dict[str, object] | None = None,
+) -> int:
     if data is not None:
         repo = repo_root()
         tool_name = str(data.get("tool_name", "unknown"))
         tool_input = data.get("tool_input", {}) or {}
-        meta = {}
+        meta: dict[str, object] = {}
         if isinstance(tool_input, dict):
             for key in ("command", "pattern", "path", "glob"):
                 value = str(tool_input.get(key, "") or "")[:240]
                 if value:
                     meta[key] = value
         meta["session_key"] = session_key(data)
-        record_block(repo, tool_name, reason, meta.get("command"))
+        if extra_meta:
+            meta.update(extra_meta)
+        # B4: cost-aware telemetry — log estimated tokens this block prevented
+        command = str(meta.get("command", ""))
+        if command:
+            est = estimate_output_tokens(command)
+            if est is not None:
+                meta["estimated_output_tokens"] = est
+        record_block(repo, tool_name, reason, meta.get("command"))  # type: ignore[arg-type]
         record_event(
             repo,
             event="hook_block",
@@ -80,6 +109,40 @@ def block(reason: str, data: dict[str, object] | None = None) -> int:
     json.dump({"decision": "block", "reason": reason}, sys.stdout)
     print()
     return 2
+
+
+def warn_and_allow(
+    data: dict[str, object],
+    *,
+    command: str,
+    reason: str,
+    attempt_count: int,
+) -> int:
+    """B3 first-attempt path: emit a warn event but allow the command through.
+
+    The block message would have cost tokens on a failed attempt; we trade
+    that for a single advisory event and trust the agent to switch to the
+    helper next time. Repeat attempts then hit the hard-block branch.
+    """
+    repo = repo_root()
+    est = estimate_output_tokens(command)
+    rewrite = suggest_rewrite(command) or ""
+    record_event(
+        repo,
+        event="hook_warn",
+        source="hook",
+        tool=str(data.get("tool_name", "unknown")),
+        status="warn",
+        meta={
+            "command": command[:240],
+            "reason": reason,
+            "attempt_count": attempt_count,
+            "estimated_output_tokens": est,
+            "rewrite": rewrite[:200],
+            "session_key": session_key(data),
+        },
+    )
+    return 0
 
 
 def is_broad_glob(pattern: str) -> bool:
@@ -299,7 +362,14 @@ def main() -> int:
         if pending:
             if tool_name == "Bash":
                 command = tool_input.get("command", "") or ""
-                if HELPER_COMMAND_RE.search(command.split("\n")[0]):
+                first_line = command.split("\n")[0]
+                if HELPER_COMMAND_RE.search(first_line):
+                    # N2 fix: check continuation lines for broad patterns before allowing
+                    rest_lines = [l.strip() for l in command.split("\n")[1:] if l.strip() and l.strip() != "\\"]
+                    if any(
+                        re.search(p, line) for line in rest_lines for p in BROAD_BASH_PATTERNS
+                    ) or any(is_exploratory_rg(line, repo) for line in rest_lines):
+                        return block(helper_required_reason(), data)
                     return 0
                 return block(helper_required_reason(), data)
             if tool_name in {"Glob", "Grep", "Read"}:
@@ -314,24 +384,61 @@ def main() -> int:
         if tool_name == "Bash":
             command = tool_input.get("command", "") or ""
             first_line = command.split("\n")[0]
-            # Safe orchestrators: may carry broad-looking strings as arguments
-            if _SAFE_TOOL_RE.match(first_line):
+            # Safe orchestrators: may carry broad-looking strings as arguments.
+            # N1 fix: python3 -c/-m must fall through to coverage checks; only
+            # plain `python3 script.py` is safe.
+            if re.match(r"^\s*python(?:\d+(?:\.\d+)?)?\s+(-c|-m)\b", first_line):
+                pass  # fall through to broad-pattern checks below
+            elif _SAFE_TOOL_RE.match(first_line):
                 return 0
             # Check all lines — broad scans may be on continuation lines
             lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
-            if any(
+            broad_hit = any(
                 re.search(pattern, line)
                 for line in lines
                 for pattern in BROAD_BASH_PATTERNS
-            ):
-                return block(
-                    f"Blocked broad exploratory Bash scan. Use a path-only kickoff first: {discovery_hint()}.",
-                    data,
+            )
+            rg_hit = any(is_exploratory_rg(line, repo) for line in lines)
+            # Track C: extra advisory patterns (unscoped rg, whole-dir cat,
+            # python glob.glob/os.walk, xargs cat). Fold into broad_hit so
+            # the warn-first/block-on-repeat policy applies uniformly.
+            coverage_hit = any(matches_any_broad_pattern(line) for line in lines)
+            if broad_hit or rg_hit or coverage_hit:
+                # B3 catastrophic patterns → always hard block
+                if any(is_catastrophic(line) for line in lines):
+                    msg = format_block_message(
+                        reason="catastrophic scan",
+                        command=first_line,
+                        helper_hint=discovery_hint(),
+                    )
+                    return block(msg, data, extra_meta={"policy": "catastrophic"})
+                # B3 first attempt → warn + measure, allow
+                # B3 repeat → block
+                sk = session_key(data)
+                count = broad_attempt_count(repo, sk)
+                if count == 0:
+                    record_broad_attempt(repo, sk)
+                    return warn_and_allow(
+                        data,
+                        command=first_line,
+                        reason=(
+                            "broad bash scan" if broad_hit else "exploratory rg scan"
+                        ),
+                        attempt_count=1,
+                    )
+                # Repeat broad attempt
+                record_broad_attempt(repo, sk)
+                msg = format_block_message(
+                    reason=(
+                        f"broad scan x{count + 1} this session"
+                    ),
+                    command=first_line,
+                    helper_hint=discovery_hint(),
                 )
-            if any(is_exploratory_rg(line, repo) for line in lines):
                 return block(
-                    f"Blocked exploratory rg scan. Run {discovery_hint()} first, then use rg on exact file paths or scoped globs.",
+                    msg,
                     data,
+                    extra_meta={"policy": "repeat_broad", "attempt_count": count + 1},
                 )
             return 0
 

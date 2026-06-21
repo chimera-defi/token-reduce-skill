@@ -155,6 +155,54 @@ def is_pending(repo: Path, key: str) -> bool:
     return state_path(repo, key).exists() or state_path(repo, "default").exists()
 
 
+def broad_attempt_path(repo: Path, key: str) -> Path:
+    safe_key = normalize_session_key(key)
+    return state_dir(repo) / f"broad_attempt_{safe_key}.json"
+
+
+def broad_attempt_count(repo: Path, key: str) -> int:
+    """Return current broad-attempt counter for the session (0 if unset)."""
+    path = broad_attempt_path(repo, key)
+    if not path.exists():
+        return 0
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return 0
+    count = data.get("count")
+    if isinstance(count, int):
+        return count
+    return 0
+
+
+def record_broad_attempt(repo: Path, key: str) -> int:
+    """Increment the per-session broad-attempt counter and return new value."""
+    root = state_dir(repo)
+    root.mkdir(parents=True, exist_ok=True)
+    path = broad_attempt_path(repo, key)
+    count = broad_attempt_count(repo, key) + 1
+    payload = json.dumps({"count": count, "updated_at": time.time()}) + "\n"
+    path.write_text(payload)
+    return count
+
+
+def clear_broad_attempts(repo: Path, key: str | None = None) -> None:
+    root = state_dir(repo)
+    if not root.exists():
+        return
+    if key is None:
+        for path in root.glob("broad_attempt_*.json"):
+            try:
+                path.unlink()
+            except OSError:
+                continue
+        return
+    try:
+        broad_attempt_path(repo, key).unlink()
+    except FileNotFoundError:
+        pass
+
+
 def block_state_path(repo: Path) -> Path:
     return state_dir(repo) / "last_block.json"
 

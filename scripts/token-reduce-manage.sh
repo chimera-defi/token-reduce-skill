@@ -73,6 +73,9 @@ commands:
   self-improve  Run benchmark + telemetry + review + update check
   workspace-audit  Audit skill install and doc adoption across sibling repos
   workspace-install  Install skill links and token-reduce routing guidance across sibling repos
+  setup         Interactive setup wizard (auto-detect delegates/companions, save config)
+  delegate-health  Check installed/missing status for each configured delegate and companion
+  tools         List all available tools with enabled/disabled status from config
 EOF
 }
 
@@ -231,6 +234,36 @@ case "$cmd" in
     ;;
   workspace-install)
     exec uv run "$SCRIPT_DIR/install_workspace_skill.py" "$@"
+    ;;
+  setup)
+    exec uv run python3 "$SCRIPT_DIR/token_reduce_setup_wizard.py" "$@"
+    ;;
+  delegate-health)
+    # O2: check installed/missing for each configured delegate and companion
+    _CONFIG="${HOME}/.claude/token-reduce-config.json"
+    printf 'Delegates:\n'
+    for _delegate in devin kimi grok spark; do
+      _cmd="${_delegate}-delegate"
+      if command -v "$_cmd" >/dev/null 2>&1; then
+        _status="installed"
+      else
+        _status="not found"
+      fi
+      printf '  %-12s  %s\n' "$_cmd" "$_status"
+    done
+    printf 'Companions:\n'
+    for _tool in headroom qmd gbrain caveman; do
+      if command -v "$_tool" >/dev/null 2>&1; then
+        _status="installed"
+      else
+        _status="not found"
+      fi
+      printf '  %-12s  %s\n' "$_tool" "$_status"
+    done
+    ;;
+  tools)
+    # O5: list all tools with enabled/disabled status from config
+    exec uv run python3 "$SCRIPT_DIR/token_reduce_config.py" --list-tools
     ;;
   *)
     usage >&2

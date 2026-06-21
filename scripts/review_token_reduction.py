@@ -477,6 +477,135 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     return findings
 
 
+# --------------------------------------------------------------------------- #
+# Track D4 — per-companion conversion funnel
+# --------------------------------------------------------------------------- #
+
+_COMPANION_SAVINGS_PCT = {
+    "headroom": 30.0,
+    "caveman": 40.0,
+    "context_mode": 50.0,
+    "code_review_graph": 60.0,
+    "axi": 15.0,
+}
+
+
+def _funnel_row(
+    companion: str,
+    *,
+    mentions: int,
+    recommended: int,
+    used: int,
+    sessions_total: int = 0,
+) -> dict:
+    conversion_pct = round((used * 100.0 / recommended), 1) if recommended else 0.0
+    # Per-use savings is a benchmark constant from references/benchmarks/.
+    # We surface two things: (1) the per-use constant so the reader knows
+    # what one adoption is worth, and (2) the weighted-savings estimate:
+    # (used / sessions_total) * per_use_savings — the share of sessions
+    # plausibly benefiting at that per-use rate.
+    per_use_savings_pct = round(_COMPANION_SAVINGS_PCT.get(companion, 0.0), 1)
+    weighted_savings_pct = (
+        round(per_use_savings_pct * used / sessions_total, 1)
+        if used and sessions_total
+        else 0.0
+    )
+    return {
+        "companion": companion,
+        "mentions": mentions,
+        "recommended": recommended,
+        "used": used,
+        "conversion_pct": conversion_pct,
+        "per_use_savings_pct": per_use_savings_pct,
+        "weighted_savings_pct": weighted_savings_pct,
+        # Back-compat alias for any consumer still reading the old key.
+        # DELETE-BY: 2026-09-21
+        #   estimated_savings_pct -> use per_use_savings_pct (or weighted_savings_pct)
+        "estimated_savings_pct": per_use_savings_pct,
+    }
+
+
+def build_companion_funnels(report: dict) -> list[dict]:
+    """Return mention -> recommended -> used -> savings rows per companion.
+
+    Mentions come from the adoption section (text scan), recommended from the
+    telemetry section (router events), used from explicit command-session
+    counts. Estimated savings are per-companion constants applied per use.
+    """
+    adoption = report.get("adoption", {}) or {}
+    telemetry = report.get("telemetry", {}) or {}
+    rec_events = telemetry.get("companion_recommendations", {}) or {}
+    sessions_total = int(adoption.get("session_count", 0) or 0)
+
+    rows: list[dict] = []
+    rows.append(
+        _funnel_row(
+            "headroom",
+            mentions=int(adoption.get("headroom_mentions", 0) or 0),
+            recommended=int(rec_events.get("headroom_recommended_events", 0) or 0),
+            used=int(adoption.get("headroom_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "caveman",
+            mentions=int(adoption.get("caveman_mentions", 0) or 0),
+            recommended=int(adoption.get("caveman_mentions", 0) or 0),
+            used=int(adoption.get("caveman_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "context_mode",
+            mentions=int(adoption.get("context_mode_mentions", 0) or 0),
+            recommended=int(rec_events.get("context_mode_recommended_events", 0) or 0),
+            used=int(adoption.get("context_mode_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "code_review_graph",
+            mentions=int(adoption.get("code_review_graph_mentions", 0) or 0),
+            recommended=int(rec_events.get("code_review_graph_recommended_events", 0) or 0),
+            used=int(adoption.get("code_review_graph_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
+        )
+    )
+    axi_used = int(adoption.get("axi_tool_sessions", 0) or 0)
+    rows.append(
+        _funnel_row(
+            "axi",
+            mentions=int(adoption.get("axi_mentions", 0) or 0),
+            recommended=axi_used,
+            used=axi_used,
+            sessions_total=sessions_total,
+        )
+    )
+    return rows
+
+
+def format_companion_funnels_markdown(report: dict) -> str:
+    rows = build_companion_funnels(report)
+    lines = [
+        "## Companion conversion funnel",
+        "",
+        "_Per-use savings is the benchmark constant. Weighted savings = per-use × (used / total sessions)._",
+        "",
+        "| Companion | Mentions | Recommended | Used | Conversion | Per-use savings | Weighted savings |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['companion']} | {row['mentions']} | {row['recommended']} | "
+            f"{row['used']} | {row['conversion_pct']}% | {row['per_use_savings_pct']}% | "
+            f"{row['weighted_savings_pct']}% |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
     headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
@@ -543,6 +672,13 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
     for outcome in ("direct_hit", "indirect_hit", "miss", "standoff", "bypass", "direct"):
         pct_val = outcomes.get(f"discovery_outcome_{outcome}_pct", 0.0)
         lines.append(f"- **{outcome}**: `{pct_val:.1f}%`")
+    # Track D4 + F2 — companion funnel and context impact sections appear
+    # before the prioritized findings so reviewers see the rollups first.
+    lines.extend(["", format_companion_funnels_markdown(report)])
+    raw_sessions = report.get("raw_session_metrics") or []
+    if raw_sessions:
+        from cost_ledger import build_context_impact_markdown
+        lines.extend(["", build_context_impact_markdown(raw_sessions)])
     lines.extend(["", "## Prioritized Findings", ""])
     for finding in findings:
         lines.extend(
