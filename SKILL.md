@@ -101,6 +101,8 @@ Two modes — pick based on payload size:
 - **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% reduction on tool-result-heavy workloads.
 - **Active MCP compress** (>20k-token result): call `headroom_compress` directly on large blobs before reasoning over them.
 
+Trigger cues — run the corresponding command verbatim:
+
 | You see | Run |
 |---------|-----|
 | Tool result >20k tokens | `headroom_compress` (MCP) on that result |
