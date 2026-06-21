@@ -63,13 +63,15 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
       RANK_APPLIED=1
     fi
   fi
+  printf '%s\n' "$OUTPUT"
   if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
-    BRAIN_HINT="$(python3 -c "import sys; sys.path.insert(0, '$SCRIPT_DIR'); from token_reduce_adaptive import brain_hint_line; print(brain_hint_line(' '.join(sys.argv[1:])) or '')" "$QUERY" 2>/dev/null || true)"
+    BRAIN_HINT="$(python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>/dev/null || true)"
     if [[ -n "$BRAIN_HINT" ]]; then
-      printf '# %s\n' "$BRAIN_HINT"
+      # Print to stderr so it doesn't get interleaved with the path list
+      # the caller will pipe/process. Phrased as a follow-up suggestion.
+      printf 'token-reduce: also try `%s` for semantic memory hits\n' "$BRAIN_HINT" >&2
     fi
   fi
-  printf '%s\n' "$OUTPUT"
   LINES=$(printf '%s\n' "$OUTPUT" | sed '/^$/d' | wc -l | tr -d ' ')
   CHARS=$(printf '%s' "$OUTPUT" | wc -c | tr -d ' ')
   END_MS="$(now_ms)"
