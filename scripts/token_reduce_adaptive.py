@@ -58,6 +58,91 @@ HEADROOM_ACTION_COMMANDS = (
     "curl -fsS http://127.0.0.1:8787/readyz",
     "headroom_compress  # MCP action for >20k-token tool results",
 )
+
+# Track E — subagent + gstack integration ----------------------------------- #
+
+# Cues that mean "fan out across the codebase" — even with a small initial
+# candidate set, those queries blow up downstream and are cheaper to delegate
+# to an Explore subagent than to keep stuffing into the parent context.
+BROAD_SCOPE_TERMS = {
+    "everywhere",
+    "everything",
+    "all-files",
+    "all_files",
+    "across",
+    "workspace",
+    "repository",
+    "repositories",
+    "monorepo",
+    "codebase-wide",
+}
+
+# Cues that imply work spans sibling repos/workspaces — triggers the
+# /create-session escalation when gstack-session-spawn is available.
+MULTI_REPO_TERMS = {
+    "sibling",
+    "siblings",
+    "monorepo",
+    "workspaces",
+    "workspace",
+    "across",
+    "repos",
+    "multi-repo",
+}
+
+# Track E1 — subagent threshold. Above this candidate count the router
+# recommends fanning out via Agent(subagent_type=Explore).
+SUBAGENT_CANDIDATE_THRESHOLD = 5
+
+# Track E4 — sibling-skill intent map. (regex, /skill) pairs. First match wins.
+SIBLING_SKILL_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\breview\b.{0,30}\b(pr|pull\s*request|patch|diff|cl|change)\b", re.IGNORECASE), "/review"),
+    (re.compile(r"\b(fix|debug|investigate|root\s*cause|why\s+does|why\s+is)\b", re.IGNORECASE), "/investigate"),
+    (re.compile(r"\b(brainstorm|design|architect|propose)\b", re.IGNORECASE), "/brainstorm"),
+)
+
+
+def brain_hint_line(query: str) -> str | None:
+    """Return a one-line brain-first hint when qmd or gbrain is on PATH.
+
+    The hint nudges the caller to check semantic memory before doing a
+    filesystem scan. Returns ``None`` when neither CLI is available, so
+    callers can prepend conditionally without extra checks.
+    """
+    have_qmd = shutil.which("qmd") is not None
+    have_gbrain = shutil.which("gbrain") is not None
+    if not (have_qmd or have_gbrain):
+        return None
+    safe = query.replace('"', '\\"').strip() or "<query>"
+    if have_qmd and have_gbrain:
+        cmd = f'qmd search "{safe}" -n 5 --files  # or: gbrain search "{safe}"'
+    elif have_qmd:
+        cmd = f'qmd search "{safe}" -n 5 --files'
+    else:
+        cmd = f'gbrain search "{safe}"'
+    return f"brain hits available — run `{cmd}` before filesystem scan"
+
+
+def sibling_skill_for_query(query: str) -> str | None:
+    """Return a sibling skill name (e.g. ``/review``) when the query
+    matches a known intent. Returns ``None`` for plain discovery queries.
+    """
+    if not query:
+        return None
+    for pattern, skill in SIBLING_SKILL_PATTERNS:
+        if pattern.search(query):
+            return skill
+    return None
+
+
+def _subagent_snippet(query: str) -> str:
+    """Return a ready-to-copy ``Agent(...)`` snippet for the Explore agent."""
+    safe = (query or "").replace('"', '\\"').strip() or "<query>"
+    return (
+        f'Agent(subagent_type="Explore", description="discover {safe}", '
+        f'prompt="Find files and symbols matching: {safe}. '
+        'Report a ranked list with paths and 1-line summaries.")'
+    )
 IMPACT_TERMS = {
     "impact",
     "blast",
@@ -110,6 +195,10 @@ class Decision:
     behavior: BehaviorProfile
     repo_file_count: int
     headroom_commands: list[str] = field(default_factory=list)
+    subagent_recommended: bool = False
+    subagent_snippet: str = ""
+    session_spawn_recommended: bool = False
+    sibling_skill: str = ""
 
 
 @dataclass
@@ -222,6 +311,8 @@ def decide(
     policy: RoutingPolicy,
     root: Path,
     repo_file_count: int,
+    candidate_count: int = 0,
+    gstack_skill_available: bool = False,
 ) -> Decision:
     terms = query_terms(query)
     symbol = extract_symbol(query)
@@ -290,6 +381,30 @@ def decide(
     if code_review_graph_recommended:
         rationale.append("large repo impact task detected; code-review-graph recommended")
 
+    # Track E1 — subagent recommendation
+    broad_scope_hit = bool(terms & BROAD_SCOPE_TERMS)
+    subagent_recommended = (
+        candidate_count > SUBAGENT_CANDIDATE_THRESHOLD or broad_scope_hit
+    )
+    subagent_snippet = _subagent_snippet(query) if subagent_recommended else ""
+    if subagent_recommended:
+        rationale.append(
+            f"candidate set or scope wide; delegate via {subagent_snippet}"
+        )
+
+    # Track E3 — session-spawn escalation
+    multi_repo_hit = bool(terms & MULTI_REPO_TERMS)
+    session_spawn_recommended = bool(gstack_skill_available and multi_repo_hit)
+    if session_spawn_recommended:
+        rationale.append(
+            "multi-repo scope detected; run `/create-session` to fan out per sibling repo"
+        )
+
+    # Track E4 — sibling-skill routing
+    sibling_skill = sibling_skill_for_query(query) or ""
+    if sibling_skill:
+        rationale.append(f"query intent matches {sibling_skill}; consider that skill")
+
     return Decision(
         tier=tier,
         command=command,
@@ -301,6 +416,10 @@ def decide(
         behavior=behavior,
         repo_file_count=repo_file_count,
         headroom_commands=headroom_commands,
+        subagent_recommended=subagent_recommended,
+        subagent_snippet=subagent_snippet,
+        session_spawn_recommended=session_spawn_recommended,
+        sibling_skill=sibling_skill,
     )
 
 
