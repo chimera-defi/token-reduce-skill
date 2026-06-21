@@ -282,6 +282,84 @@ def aggregate_priors(
 # --------------------------------------------------------------------------- #
 
 
+_PATH_FROM_LINE_PATTERNS = [
+    # qmd://abs|repo-rel|score  → group(1) is repo-relative path
+    re.compile(r"^qmd://[^|]+\|([^|]+)\|"),
+    # rg "path:line:content" or "path:content" → path before first colon
+    re.compile(r"^([^:\s]+\.[A-Za-z0-9]+):\d+:"),
+    re.compile(r"^([^:\s]+):\d+:"),
+]
+
+
+def _extract_path_from_line(line: str) -> str:
+    stripped = line.strip()
+    if not stripped:
+        return ""
+    for pat in _PATH_FROM_LINE_PATTERNS:
+        m = pat.match(stripped)
+        if m:
+            return m.group(1)
+    # plain "path" or "path|..."
+    head = stripped.split("|", 1)[0].split(" ", 1)[0]
+    return head
+
+
+def rerank_lines(
+    lines: Iterable[str],
+    query: str,
+    *,
+    repo_root: Path,
+    now_epoch: int,
+    click_through_priors: dict[str, dict[str, float]] | None = None,
+) -> list[str]:
+    """Re-order raw helper output by the extracted-path rank score."""
+    items: list[tuple[str, str]] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        path = _extract_path_from_line(line)
+        items.append((path, line.rstrip("\n")))
+    if not items:
+        return []
+    # Score unique paths once, reuse.
+    unique_paths = list({p for p, _ in items if p})
+    scored = rank_paths(
+        query,
+        unique_paths,
+        repo_root=Path(repo_root),
+        now_epoch=now_epoch,
+        click_through_priors=click_through_priors,
+        return_scores=True,
+    )
+    score_by_path = {s.path: s.total for s in scored}
+    # Stable sort: by score desc, then original index.
+    indexed = list(enumerate(items))
+    indexed.sort(
+        key=lambda e: (-(score_by_path.get(e[1][0], 0.0)), e[0])
+    )
+    return [line for _, (_, line) in indexed]
+
+
+def load_priors_from_events_file(path: Path) -> dict[str, dict[str, float]]:
+    """Read a JSONL event log and build click-through priors from it."""
+    if not path.exists():
+        return {}
+    import json
+
+    events: list[dict] = []
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(ev, dict):
+            events.append(ev)
+    return aggregate_priors(events)
+
+
 def rank_paths(
     query: str,
     candidates: Sequence[str],
@@ -319,3 +397,88 @@ def rank_paths(
     if return_scores:
         return scored
     return [s.path for s in scored]
+
+
+# --------------------------------------------------------------------------- #
+# CLI — used by token-reduce-search.sh to re-rank candidate paths
+# --------------------------------------------------------------------------- #
+
+
+def _cli(argv: list[str] | None = None) -> int:
+    import argparse
+    import sys
+    import time
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Re-rank candidate paths via git-recency / symbol-match / demotion / "
+            "click-through priors. Reads candidate paths from stdin, one per line."
+        ),
+    )
+    parser.add_argument("--query", required=True)
+    parser.add_argument("--repo-root", default=".")
+    parser.add_argument(
+        "--now-epoch", type=int, default=None,
+        help="Override for testing. Defaults to current epoch.",
+    )
+    parser.add_argument(
+        "--events-file", default=None,
+        help="Path to telemetry events.jsonl for click-through priors.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=0,
+        help="Trim to N top results (0 = no limit).",
+    )
+    parser.add_argument(
+        "--scores", action="store_true",
+        help="Emit '<score>\\t<path>' instead of plain paths.",
+    )
+    parser.add_argument(
+        "--rerank-lines", action="store_true",
+        help="Treat stdin as raw helper output; reorder lines by extracted path.",
+    )
+    args = parser.parse_args(argv)
+
+    raw_lines = sys.stdin.read().splitlines()
+
+    priors: dict[str, dict[str, float]] = {}
+    if args.events_file:
+        priors = load_priors_from_events_file(Path(args.events_file))
+
+    now_epoch = args.now_epoch if args.now_epoch is not None else int(time.time())
+
+    if args.rerank_lines:
+        out = rerank_lines(
+            raw_lines,
+            args.query,
+            repo_root=Path(args.repo_root),
+            now_epoch=now_epoch,
+            click_through_priors=priors,
+        )
+        for line in out:
+            sys.stdout.write(line + "\n")
+        return 0
+
+    candidates = [line.strip() for line in raw_lines if line.strip()]
+    if not candidates:
+        return 0
+    scored = rank_paths(
+        args.query,
+        candidates,
+        repo_root=Path(args.repo_root),
+        now_epoch=now_epoch,
+        click_through_priors=priors,
+        return_scores=True,
+    )
+    if args.limit > 0:
+        scored = scored[: args.limit]
+    for item in scored:
+        if args.scores:
+            sys.stdout.write(f"{item.total:.4f}\t{item.path}\n")
+        else:
+            sys.stdout.write(f"{item.path}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_cli())
