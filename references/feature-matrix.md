@@ -34,6 +34,20 @@ Profile benchmark artifact:
 
 - `references/benchmarks/profile-presets-benchmark.json`
 
+## PR #41 modules (2026-06-21)
+
+| Module | Layer | Config knobs | Telemetry signal |
+|---|---|---|---|
+| `scripts/rank_paths.py` | Adaptive routing policy | `TOKEN_REDUCE_DISABLE_RANK=1` to skip | `meta.rank_applied` on `token_reduce_paths` |
+| `scripts/cost_ledger.py` | Reporting | n/a | per-source rows in `review` markdown |
+| `scripts/escalation.py` | Host enforcement | n/a | `event=hook_block` with escalation context |
+| `scripts/coverage_patterns.py` | Host enforcement | n/a | folded into `hook_warn` / `hook_block` events |
+| `scripts/qmd_warm_cache.py` | Retrieval helpers | TTL constant in module; cache dir `.claude/token-reduce-state/qmd-cache/` | `meta.qmd_collection_action`, `meta.qmd_ensure_ms` |
+| `scripts/brain_hint.py` | Adaptive routing policy | `TOKEN_REDUCE_DISABLE_BRAIN_HINT=1` to skip in helpers | stderr-only hint line; no helper event field |
+| `scripts/command_rewrites.py` | Host enforcement | n/a | `meta.estimated_output_tokens`, `meta.rewrite` on warn/block |
+
+The 2026-04-18 savings figures in the Core Controls table above were measured before path-rank re-ordering shipped. Re-ranking changes which path appears first but not the set returned, so the 71–83% reduction-vs-broad-inventory figure in `local-benchmark.json` is unchanged (re-confirmed by the round-2 baseline benchmark in `artifacts/benchmark-pr41-followup.json`). Per-query distributions may shift; see the round-2 dogfood note in PR #41's "Follow-up (2026-06-21 round 2)" section.
+
 ## Companion Integrations
 
 | Companion | Role | Default routing | When to use | Evidence |
