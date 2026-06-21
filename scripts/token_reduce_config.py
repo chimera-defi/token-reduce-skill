@@ -66,6 +66,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "caveman": {"enabled": False},
         "context_mode": {"enabled": True},
         "code_review_graph": {"enabled": False},
+        "qmd": {"enabled": True},
     },
     "enforcement": "warn_first",
 }
