@@ -125,15 +125,9 @@ Measure Headroom adoption with `scripts/token-reduce-manage.sh measure` and `scr
 
 The adaptive router emits a subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. See: `references/subagent-and-brain-integration.md`.
 
-## Structural backend (`token-savior`) — optional, exact-symbol only
+## Structural backend (`token-savior`)
 
-The structural tier (`scripts/token-reduce-structural.py`) is powered by the optional [`token-savior`](https://github.com/Mibayy/token-savior) package. It is **optional**: install via `uv tool install token-savior` only when you actively need exact-symbol `find-symbol` / `change-impact` queries on a large repo.
-
-- **Do not auto-install.** The router demotes the structural tier to path-only when the backend is missing, and that path-only result is good enough for >90% of discovery tasks.
-- **When it helps:** exact symbol you can name (`StakingRouter.submit`), blast-radius / dependency-impact questions, monorepos where rg-only scope is too broad.
-- **When to skip it:** vague topic discovery, prose searches, anything where you'd hesitate to type the exact symbol — `qmd search` and the path helper are cheaper.
-
-See `references/tier-value-profile.md` for the full keep/conditional/excluded tier matrix.
+Optional, exact-symbol only — do not auto-install. Run `uv tool install token-savior` only when you need `find-symbol` / `change-impact` on a known symbol; the path helper covers >90% of discovery without it. See: `references/token-savior-evaluation.md` and `references/tier-value-profile.md`.
 
 ## Output-hook over-compression workaround
 
