@@ -647,6 +647,13 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
     for outcome in ("direct_hit", "indirect_hit", "miss", "standoff", "bypass", "direct"):
         pct_val = outcomes.get(f"discovery_outcome_{outcome}_pct", 0.0)
         lines.append(f"- **{outcome}**: `{pct_val:.1f}%`")
+    # Track D4 + F2 — companion funnel and context impact sections appear
+    # before the prioritized findings so reviewers see the rollups first.
+    lines.extend(["", format_companion_funnels_markdown(report)])
+    raw_sessions = report.get("raw_session_metrics") or []
+    if raw_sessions:
+        from cost_ledger import build_context_impact_markdown
+        lines.extend(["", build_context_impact_markdown(raw_sessions)])
     lines.extend(["", "## Prioritized Findings", ""])
     for finding in findings:
         lines.extend(

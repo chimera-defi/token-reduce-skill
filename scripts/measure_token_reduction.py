@@ -551,6 +551,7 @@ def measure(scope: str, repo_root: str) -> dict:
         "scope": scope,
         "repo_root": repo_root,
         "session_count": session_count,
+        "raw_session_metrics": parsed,
         "sources": {
             "claude_sessions": len(claude_session_files),
             "codex_sessions": len(codex_files),
