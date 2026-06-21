@@ -228,6 +228,11 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
     if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command) or is_exploratory_rg(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
+    # Track C: additional advisory broad patterns (kept in sync with enforce hook).
+    from coverage_patterns import matches_any_broad_pattern
+    if matches_any_broad_pattern(command):
+        metrics["broad_scan_violation"] = True
+        note_first_discovery(metrics, False, "broad_scan")
 
 
 def apply_tool_name_metrics(metrics: dict, tool_name: str) -> None:
