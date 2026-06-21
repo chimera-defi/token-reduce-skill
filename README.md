@@ -271,6 +271,11 @@ Dependency checks:
 - keep telemetry disabled and do not enable `--learn` until memory writes are reviewed
 - measure adoption with `./scripts/token-reduce-manage.sh measure` and `review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings
 
+Two operating modes:
+
+- **passive proxy/wrap** (default): wrapping `claude`/`codex` lets Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads.
+- **active MCP `headroom_compress`** (>20k-token tool results): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes). The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as ready-to-run commands whenever Headroom is recommended.
+
 Default discovery still starts with token-reduce helpers. Headroom is for context pressure after the cheapest discovery and command-output paths are in place.
 
 ## Caveman Status

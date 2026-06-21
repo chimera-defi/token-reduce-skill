@@ -99,6 +99,11 @@ headroom install status
 curl -fsS http://127.0.0.1:8787/readyz
 ```
 
+There are two operating modes — pick the one that matches the payload size:
+
+- **Passive proxy/wrap** (default): wrap `claude` or `codex` and let Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads. Good for steady background pressure.
+- **Active MCP compress** (>20k-token tool result): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes) so they get summarized before they hit context. The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as copy-pasteable commands whenever it recommends Headroom, so the caller can run them without translation.
+
 Read `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
 
 Measure Headroom adoption with `scripts/token-reduce-manage.sh measure` and `scripts/token-reduce-manage.sh review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.

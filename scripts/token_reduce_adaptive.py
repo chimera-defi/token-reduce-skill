@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Sequence
 
@@ -44,7 +44,20 @@ OUTPUT_HEAVY_TERMS = {
     "transcript",
     "long-session",
     "long-sessions",
+    # Track D2 — widened trigger matrix
+    "dump",
+    "pytest",
+    "api",
+    "paste",
 }
+
+# Track D1 — actionable, copy-pasteable commands. Router emits these literal
+# strings instead of prose so the caller can run them without translation.
+HEADROOM_ACTION_COMMANDS = (
+    "headroom install status",
+    "curl -fsS http://127.0.0.1:8787/readyz",
+    "headroom_compress  # MCP action for >20k-token tool results",
+)
 IMPACT_TERMS = {
     "impact",
     "blast",
@@ -96,6 +109,7 @@ class Decision:
     symbol: str
     behavior: BehaviorProfile
     repo_file_count: int
+    headroom_commands: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -265,8 +279,14 @@ def decide(
     )
     if context_mode_recommended:
         rationale.append("output-heavy terms detected; context-mode recommended for follow-up tool output")
+    headroom_commands: list[str] = []
     if headroom_recommended:
-        rationale.append("output-heavy or long-session terms detected; verify Headroom proxy health and consider headroom wrap/proxy with telemetry disabled")
+        headroom_commands = list(HEADROOM_ACTION_COMMANDS)
+        # D1: emit copy-pasteable commands instead of prose
+        rationale.append(
+            "headroom recommended; run: "
+            + " ; ".join(headroom_commands)
+        )
     if code_review_graph_recommended:
         rationale.append("large repo impact task detected; code-review-graph recommended")
 
@@ -280,6 +300,7 @@ def decide(
         symbol=symbol,
         behavior=behavior,
         repo_file_count=repo_file_count,
+        headroom_commands=headroom_commands,
     )
 
 
