@@ -139,6 +139,33 @@ brain hits available — run `qmd search "<query>" -n 5 --files` before filesyst
 
 Check semantic memory before a filesystem walk. If the brain returns relevant hits, you can skip the helper entirely.
 
+## Structural backend (`token-savior`) — optional, exact-symbol only
+
+The structural tier (`scripts/token-reduce-structural.py`) is powered by the optional [`token-savior`](https://github.com/Mibayy/token-savior) package. It is **optional**: install via `uv tool install token-savior` only when you actively need exact-symbol `find-symbol` / `change-impact` queries on a large repo.
+
+- **Do not auto-install.** The router demotes the structural tier to path-only when the backend is missing, and that path-only result is good enough for >90% of discovery tasks.
+- **When it helps:** exact symbol you can name (`StakingRouter.submit`), blast-radius / dependency-impact questions, monorepos where rg-only scope is too broad.
+- **When to skip it:** vague topic discovery, prose searches, anything where you'd hesitate to type the exact symbol — `qmd search` and the path helper are cheaper.
+
+See `references/tier-value-profile.md` for the full keep/conditional/excluded tier matrix.
+
+## Output-hook over-compression workaround
+
+Some sessions run a global `~/.claude/hooks` PostToolUse hook that compresses tool output and accidentally mangles `pytest` summaries ("No tests collected" or truncated pass/fail lines). This repo has no PostToolUse hook of its own — the offending hook lives outside the repo and is intentionally out of scope per the brief.
+
+Workaround when running tests under a wrapped session:
+
+```bash
+uv run --with pytest python -m pytest scripts/tests/ -q > /tmp/pytest.out 2>&1
+# then Read /tmp/pytest.out to inspect the full output without compression
+```
+
+Redirect to a file and `Read` the file rather than relying on stdout — the file path is not subject to in-flight tool-output compression. Logged as a cross-repo issue in the PR description so the global hook can be hardened separately.
+
+## QMD warm cache (H1)
+
+`scripts/qmd_warm_cache.py` exposes `QmdWarmCache`, a session-scoped read-through cache for QMD collection listings and first-page query results. Cache hits return immediately; misses fall through to the live QMD CLI and seed the cache. TTL is 10 minutes, scoped per session key, persisted under `.claude/token-reduce-state/qmd-cache/`. Target p95 hit latency: <300ms (empirically sub-millisecond in tests).
+
 ## Output Brevity Profile (Companion)
 
 When the user asks for tighter responses, apply a caveman-inspired **lite** profile:
