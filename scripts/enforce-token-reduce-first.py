@@ -14,6 +14,7 @@ from command_rewrites import (
     is_catastrophic,
     suggest_rewrite,
 )
+from coverage_patterns import matches_any_broad_pattern
 from token_reduce_state import (
     broad_attempt_count,
     consume_block,
@@ -387,7 +388,11 @@ def main() -> int:
                 for pattern in BROAD_BASH_PATTERNS
             )
             rg_hit = any(is_exploratory_rg(line, repo) for line in lines)
-            if broad_hit or rg_hit:
+            # Track C: extra advisory patterns (unscoped rg, whole-dir cat,
+            # python glob.glob/os.walk, xargs cat). Fold into broad_hit so
+            # the warn-first/block-on-repeat policy applies uniformly.
+            coverage_hit = any(matches_any_broad_pattern(line) for line in lines)
+            if broad_hit or rg_hit or coverage_hit:
                 # B3 catastrophic patterns → always hard block
                 if any(is_catastrophic(line) for line in lines):
                     msg = format_block_message(
