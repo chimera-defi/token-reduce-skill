@@ -172,11 +172,11 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1028` | baseline |
-| `guidance_scoped_rg` | `221` | `78.5%` saved |
-| `qmd_files` | `241` | `76.6%` saved |
-| `token_reduce_paths_warm` | `245` | `76.2%` saved |
-| `token_reduce_snippet_warm` | `373` | `63.7%` saved |
+| `broad_inventory` | `1324` | baseline |
+| `guidance_scoped_rg` | `221` | `83.3%` saved |
+| `qmd_files` | `249` | `81.2%` saved |
+| `token_reduce_paths_warm` | `252` | `81.0%` saved |
+| `token_reduce_snippet_warm` | `381` | `71.2%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
@@ -271,6 +271,11 @@ Dependency checks:
 - keep telemetry disabled and do not enable `--learn` until memory writes are reviewed
 - measure adoption with `./scripts/token-reduce-manage.sh measure` and `review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings
 
+Two operating modes:
+
+- **passive proxy/wrap** (default): wrapping `claude`/`codex` lets Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads.
+- **active MCP `headroom_compress`** (>20k-token tool results): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes). The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as ready-to-run commands whenever Headroom is recommended.
+
 Default discovery still starts with token-reduce helpers. Headroom is for context pressure after the cheapest discovery and command-output paths are in place.
 
 ## Caveman Status
@@ -282,26 +287,18 @@ Default discovery still starts with token-reduce helpers. Headroom is for contex
 
 Default token-reduce routing/enforcement works with or without caveman.
 
-## Learn More
+## References
 
-- [references/INDEX.md](references/INDEX.md)
-- [references/companion-tools.md](references/companion-tools.md)
-- [references/delegate-skill-integration.md](references/delegate-skill-integration.md)
-- [references/feature-matrix.md](references/feature-matrix.md)
-- [references/tier-value-profile.md](references/tier-value-profile.md)
-- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md)
-- [references/token-reduction-guide.md](references/token-reduction-guide.md)
-- [references/composite-benchmark.md](references/composite-benchmark.md)
-- [references/profile-presets.md](references/profile-presets.md)
-- [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md)
-- [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
-- [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
-- [references/meta-learnings-2026-04-25.md](references/meta-learnings-2026-04-25.md)
-- [references/meta-learnings-2026-05-06.md](references/meta-learnings-2026-05-06.md)
-- [references/meta-learnings-2026-05-20.md](references/meta-learnings-2026-05-20.md)
-- [references/agent-setup.md](references/agent-setup.md)
-- [references/workspace-integration.md](references/workspace-integration.md)
-- [references/codex-handoff.md](references/codex-handoff.md)
-- [references/caveman-evaluation.md](references/caveman-evaluation.md)
-- [references/axi-evaluation.md](references/axi-evaluation.md)
-- [references/token-savior-evaluation.md](references/token-savior-evaluation.md)
+Full index: [references/INDEX.md](references/INDEX.md)
+
+Key references:
+
+- [references/token-reduction-guide.md](references/token-reduction-guide.md) — benchmark notes and integration details
+- [references/feature-matrix.md](references/feature-matrix.md) — complete feature/command/config/telemetry map
+- [references/tier-value-profile.md](references/tier-value-profile.md) — keep/conditional/excluded dependency decisions
+- [references/composite-benchmark.md](references/composite-benchmark.md) — per-strategy benchmark detail
+- [references/profile-presets.md](references/profile-presets.md) — routing profile definitions
+- [references/companion-tools.md](references/companion-tools.md) — companion evaluation framework
+- [references/delegate-skill-integration.md](references/delegate-skill-integration.md) — delegate router integration
+- [references/agent-setup.md](references/agent-setup.md) — per-agent setup notes
+- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md) — Headroom proxy/MCP pilot verdict

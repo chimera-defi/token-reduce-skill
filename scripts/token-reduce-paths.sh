@@ -49,7 +49,29 @@ now_ms() {
 
 START_MS="$(now_ms)"
 
+RANK_APPLIED=0
 if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY")"; then
+  # P2: single dispatch call replaces separate rank_paths + brain_hint spawns
+  if [[ -s "$SCRIPT_DIR/token_reduce_dispatch.py" ]]; then
+    EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
+    DISPATCH_ARGS=(--mode paths --query "$QUERY" --repo-root "$REPO_ROOT")
+    if [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -f "$EVENTS_FILE" ]]; then
+      DISPATCH_ARGS+=(--rank-args --events-file "$EVENTS_FILE")
+    fi
+    _DISPATCH_OUT="$(printf '%s\n' "$OUTPUT" | \
+      uv run python3 "$SCRIPT_DIR/token_reduce_dispatch.py" "${DISPATCH_ARGS[@]}")" && {
+      if [[ -n "$_DISPATCH_OUT" ]]; then
+        OUTPUT="$_DISPATCH_OUT"
+        RANK_APPLIED=1
+      fi
+    } || true
+  elif [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -s "$SCRIPT_DIR/rank_paths.py" ]]; then
+    EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
+    RANK_ARGS=(--query "$QUERY" --repo-root "$REPO_ROOT" --rerank-lines)
+    [[ -f "$EVENTS_FILE" ]] && RANK_ARGS+=(--events-file "$EVENTS_FILE")
+    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>/dev/null || true)"
+    [[ -n "$RANK_RESULT" ]] && { OUTPUT="$RANK_RESULT"; RANK_APPLIED=1; }
+  fi
   printf '%s\n' "$OUTPUT"
   LINES=$(printf '%s\n' "$OUTPUT" | sed '/^$/d' | wc -l | tr -d ' ')
   CHARS=$(printf '%s' "$OUTPUT" | wc -c | tr -d ' ')
@@ -76,7 +98,7 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
     --tool token_reduce_paths \
     --status ok \
     --query "$QUERY" \
-    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$BACKEND\",\"qmd_collection_action\":\"$QMD_COLLECTION_ACTION\",\"qmd_files_status\":\"$QMD_FILES_STATUS\",\"qmd_ensure_ms\":$QMD_ENSURE_MS,\"qmd_files_ms\":$QMD_FILES_MS,\"qmd_snippet_ms\":$QMD_SNIPPET_MS,\"fallback_ms\":$FALLBACK_MS,\"fallback_used\":$FALLBACK_USED,\"path_hint_short_circuit\":$PATH_HINT_SHORT_CIRCUIT,\"lines\":$LINES,\"chars\":$CHARS,\"latency_ms\":$LATENCY_MS,\"exit_code\":0,\"files_returned_count\":$FILES_RETURNED_COUNT,\"top_returned_paths\":$TOP_RETURNED_PATHS}" >/dev/null 2>&1 || true
+    --meta-json "{\"context\":\"$TELEMETRY_CONTEXT\",\"backend\":\"$BACKEND\",\"qmd_collection_action\":\"$QMD_COLLECTION_ACTION\",\"qmd_files_status\":\"$QMD_FILES_STATUS\",\"qmd_ensure_ms\":$QMD_ENSURE_MS,\"qmd_files_ms\":$QMD_FILES_MS,\"qmd_snippet_ms\":$QMD_SNIPPET_MS,\"fallback_ms\":$FALLBACK_MS,\"fallback_used\":$FALLBACK_USED,\"path_hint_short_circuit\":$PATH_HINT_SHORT_CIRCUIT,\"lines\":$LINES,\"chars\":$CHARS,\"latency_ms\":$LATENCY_MS,\"exit_code\":0,\"files_returned_count\":$FILES_RETURNED_COUNT,\"top_returned_paths\":$TOP_RETURNED_PATHS,\"rank_applied\":$RANK_APPLIED}" >/dev/null 2>&1 || true
   "$SCRIPT_DIR/token-reduce-state.sh" clear --all >/dev/null 2>&1 || true
   exit 0
 fi

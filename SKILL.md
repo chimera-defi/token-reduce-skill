@@ -35,6 +35,12 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 - Broad scans or full-file reads would likely waste context.
 - When maintaining this skill itself, the same narrow-discovery rules apply.
 
+## Setup (First Invocation)
+
+On first invocation in a new repo, if no config exists at `~/.claude/token-reduce-config.json`,
+run `token-reduce-manage.sh setup` (or `token-reduce-manage.sh setup --non-interactive` in CI)
+and relay the choices to the user via AskUserQuestion. Skip if config already exists.
+
 ## First Move
 
 - If file location is unknown, start with one standalone discovery command:
@@ -88,20 +94,39 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 
 Token-reduce remains the master router. Use helper-first discovery, scoped reads, QMD, RTK, and structural helpers before adding a proxy layer.
 
-Use Headroom only when `headroom --version` works, `headroom install status` or `/readyz` shows a healthy local proxy, telemetry is disabled, and the task has large tool payloads, repeated log/API/test outputs, or long-session context pressure.
+Use Headroom only when `headroom install status` or `/readyz` shows a healthy local proxy, telemetry is disabled, and the task has large tool payloads, repeated log/API/test outputs, or long-session context pressure. Do not use Headroom as the first move for unknown-path repo discovery. Do not enable `--learn` until memory writes are reviewed.
 
-Do not use Headroom as the first move for unknown-path repo discovery. Do not enable `--learn` until memory writes are reviewed against `MEMORY.md`, daily memory, and gbrain policy. If the OpenClaw installer emits obsolete plugin keys such as `startupTimeoutMs` or `gatewayProviderIds`, keep the manually verified config and do not rerun `headroom install apply --providers all`.
+Two modes — pick based on payload size:
 
-Preferred checks:
+- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% reduction on tool-result-heavy workloads.
+- **Active MCP compress** (>20k-token result): call `headroom_compress` directly on large blobs before reasoning over them.
 
-```bash
-headroom install status
-curl -fsS http://127.0.0.1:8787/readyz
-```
+Trigger cues — run the corresponding command verbatim:
 
-Read `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
+| You see | Run |
+|---------|-----|
+| Tool result >20k tokens | `headroom_compress` (MCP) on that result |
+| Healthcheck unclear | `headroom install status` |
+| Proxy may be down | `curl -fsS http://127.0.0.1:8787/readyz` |
+| Router nudged 3+ times, ignored | Run `headroom_compress` on largest pending result |
 
-Measure Headroom adoption with `scripts/token-reduce-manage.sh measure` and `scripts/token-reduce-manage.sh review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
+See `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
+
+## Subagent / gstack / Brain-First Hints
+
+The adaptive router emits a subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. See: `references/subagent-and-brain-integration.md`.
+
+## Structural backend (`token-savior`)
+
+Optional, exact-symbol only — do not auto-install. Run `uv tool install token-savior` only when you need `find-symbol` / `change-impact` on a known symbol; the path helper covers >90% of discovery without it. See: `references/token-savior-evaluation.md` and `references/tier-value-profile.md`.
+
+## Output-hook over-compression workaround
+
+If a global PostToolUse hook compresses `pytest` output, redirect to a file and `Read` it: `pytest ... > /tmp/pytest.out 2>&1`. See: `references/known-issues.md`.
+
+## QMD warm cache (H1)
+
+Session-scoped read-through cache for QMD collection listings and first-page results (`scripts/qmd_warm_cache.py`, 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`). See: `references/architecture.md`.
 
 ## Output Brevity Profile (Companion)
 
@@ -124,128 +149,13 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 - Repo-level instructions and hooks point at the same first-move workflow.
 - Owned-workspace changes that are more than trivial end on a feature branch with a PR for review and backup.
 
-## QMD
+## QMD / GBrain note
 
-```bash
-scripts/token-reduce-paths.sh topic words
-scripts/token-reduce-snippet.sh topic words
-scripts/token-reduce-adaptive.sh topic words
-```
+Semantic QMD and GBrain memory are optional. Stay on BM25 (`qmd search`) for cheap discovery; switch to `qmd embed` + `qmd vsearch` only when the user asks or BM25 misses. Use GBrain for durable project memory, QMD for current-repo discovery — they do not share vectors. Full setup notes in `references/feature-matrix.md`.
 
-If helpers are unavailable, use `qmd search "topic" -n 5 --files` or narrowly scoped `rg -n -g '<glob>' '<pattern>'`.
+## AI Delegate Call Reduction
 
-Semantic QMD is optional, not the default token-reduce path. For cheap discovery, stay on BM25 (`qmd search`) unless the user explicitly asks for QMD semantic setup or BM25 misses conceptual matches. When semantic QMD is requested, run `qmd embed` for the relevant collection, verify with `qmd status`, then smoke-test `qmd vsearch`/`qmd query`. QMD embeddings are local GGUF models via `node-llama-cpp` (QMD reports the active model, e.g. `embeddinggemma-300M`), not Ollama; GBrain's Ollama embeddings are a separate vector store. On CPU-only hosts, embedding can be slow, so prefer scoped batches such as `qmd embed -c <collection> --max-docs-per-batch 32 --max-batch-mb 8` and report progress. If QMD reports `Session expired`, Bun segfaults, or a command times out, it may still commit partial vectors; rerun with smaller batches and verify with `qmd status` plus a `qmd vsearch`/`qmd query` smoke test before claiming coverage.
+Route delegation through the `delegate-skill` router (never hand-pick a delegate or call raw wrappers). Six tactics — batch, reference don't quote, constrain output, pre-compress context, never `&`, build envelope with `--print-envelope` — typically cut delegate token cost 40-70%. See: `references/delegate-call-reduction.md` for the full routing table, examples, and rules.
 
-Use GBrain for durable project memory and cross-session decisions; use QMD/token-reduce for current-repo discovery. Do not assume the two systems share vectors: GBrain may use Ollama embeddings, while QMD uses its own local GGUF embedding index.
-
-Never start discovery with `find .`, `ls -R`, `grep -R`, `rg --files .`, broad `Glob`, or chained fallback shell logic.
-
-## Flow
-
-1. Check QMD once: `command -v qmd >/dev/null 2>&1 && qmd collection list 2>/dev/null | head -1`.
-2. Known keyword/path: scoped search, then read only needed ranges.
-3. Need an auto-routed kickoff: `scripts/token-reduce-adaptive.sh topic words`.
-4. Unknown path: `scripts/token-reduce-paths.sh topic words`.
-5. Need one excerpt: `scripts/token-reduce-snippet.sh topic words`.
-6. Exact symbol impact: `uv run python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`.
-7. More than five likely files or two failed searches: stop expanding and ask for narrower scope.
-8. Final response: cite only the files needed to explain the result.
-
-## Success
-
-- Discovery starts with helper/QMD/scoped `rg`.
-- Large files are read in slices.
-- Output is concise unless the user asks for depth.
-- Optional companions (`gh-axi`, `chrome-devtools-axi`, graph/review tools) are used only when installed and clearly cheaper.
-
-See `references/feature-matrix.md` for full command/config details.
-
-## AI Delegate Call Reduction (via the delegate-skill router)
-
-Delegate *selection* goes through the `delegate-skill` router — do not hand-pick a delegate or hardcode one wrapper. The router maps the task to the right backend and keeps the parent context small (only the result summary returns):
-
-| Task | Router picks | Wrapper |
-|------|--------------|---------|
-| Browser / UI / screenshot / sandbox | devin | `devin-delegate` |
-| Cheap research / review / summarize / draft | kimi | `kimi-delegate` |
-| Multi-file refactor / large codebase | grok | `grok-delegate` |
-| Local Codex write-mode implementation | spark | `/spark` |
-| Unknown scope | kimi to scope, then escalate | `kimi-delegate` |
-
-For owned workspace projects, default to the PR-backed delegation workflow:
-
-1. Keep the parent agent as orchestrator, integrator, and final verifier.
-2. Pick the delegate with the `delegate-skill` router, not by hand. See `delegate-skill/SKILL.md` for the full routing table and health checks.
-3. Always call the wrapper the router names (`devin-delegate`, `kimi-delegate`, `grok-delegate`, `/spark`) — never raw `devin`, raw `pi --provider kimi-coding`, or backgrounded delegate commands. Wrappers preserve envelope checks, fallback, and telemetry.
-4. Give every delegate the workspace path, scope, constraints, acceptance checks, and expected output. Prefer batched questions and file references over pasted code.
-5. For non-trivial owned-repo changes, stage only relevant files, run the repo's validation, push a feature branch, and open a PR so the work is backed up off the server.
-
-The call-reduction tips below apply to whichever wrapper the router selects (written here as `<delegate>-delegate`). Orchestrator-to-subagent calls have fixed overhead (envelope, fallback wiring, telemetry). Reduce by:
-
-### 1. Batch — 5 questions per call, not 1
-
-```bash
-# BAD: 5 calls × overhead
-<delegate>-delegate --task "Check zero-value guard in submit()"
-<delegate>-delegate --task "Check oracle replay protection"
-...
-
-# GOOD: 1 call, 5 questions, ~70% token savings
-<delegate>-delegate --task "Answer CLEAN or FINDING+file:line for each:
-Q1. StakingRouter.submit(): zero-value ETH guard?
-Q2. reportModuleBeaconBalance: replay protection?
-Q3-Q5. ..."
-```
-
-### 2. Reference, don't quote
-
-```bash
-# BAD (pastes 50 lines into prompt)
-<delegate>-delegate --task "Review this: [code block]"
-
-# GOOD (the delegate reads it itself — 30-70% cheaper)
-<delegate>-delegate --task "Read OracleAdapter.sol:120-135. Does _validateSlashGuard
-enforce a floor? CLEAN or FINDING."
-```
-
-### 3. Constrain output format
-
-Append to every task: `"Answer CLEAN or FINDING+file:line. No preamble."` — cuts response tokens 40-60%.
-
-### 4. Pre-compress context before delegating
-
-```bash
-./scripts/token-reduce-paths.sh "staking contracts" > /tmp/ctx.txt
-<delegate>-delegate --task "..." --context-file /tmp/ctx.txt
-```
-
-### 5. Never background with `&` — use Agent tool for parallelism
-
-`<delegate>-delegate ... 2>&1 &` writes to terminal FD, not the task output file.
-Use `Agent(description=..., prompt="Use <delegate>-delegate ...")` instead.
-
-### 6. Build the envelope with the wrapper to reduce in-model planning
-
-```bash
-# --print-envelope emits the structured plan; no per-skill script paths needed
-<delegate>-delegate --print-envelope --task "audit X" > /tmp/envelope.txt
-<delegate>-delegate --context-file /tmp/envelope.txt --task "execute the plan above"
-```
-
-Details: `references/meta-learnings-2026-05-31.md`
 ---
-Read `references/token-reduction-guide.md` for benchmark notes and integration details.
-Read `references/delegate-skill-integration.md` for how token-reduce integrates the delegate-skill router.
-Read `references/companion-tools.md` for how to evaluate future companion backends.
-Read `references/graphify-evaluation.md` for the graphify companion verdict.
-Read `references/caveman-evaluation.md` for the caveman companion verdict.
-Read `references/headroom-evaluation-2026-06-10.md` for the Headroom proxy/MCP pilot verdict.
-Read `references/axi-evaluation.md` for the AXI companion verdict.
-Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
-Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
-Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
-Read `references/meta-learnings-2026-04-19.md` for QMD indexing/routing synchronization lessons and latency/adoption follow-ups.
-Read `references/meta-learnings-2026-04-25.md` for telemetry-window interpretation and diagnostics normalization lessons.
-Read `references/meta-learnings-2026-05-06.md` for telemetry-driven instrumentation and propagation workflow lessons.
-Read `references/meta-learnings-2026-05-20.md` for docs fast-path routing and weekly maintenance automation lessons.
-Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.
+See `references/INDEX.md` for the full reference index.
