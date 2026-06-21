@@ -496,16 +496,30 @@ def _funnel_row(
     mentions: int,
     recommended: int,
     used: int,
+    sessions_total: int = 0,
 ) -> dict:
     conversion_pct = round((used * 100.0 / recommended), 1) if recommended else 0.0
-    estimated_savings_pct = round(used * _COMPANION_SAVINGS_PCT.get(companion, 0.0) / max(used, 1), 1) if used else 0.0
+    # Per-use savings is a benchmark constant from references/benchmarks/.
+    # We surface two things: (1) the per-use constant so the reader knows
+    # what one adoption is worth, and (2) the weighted-savings estimate:
+    # (used / sessions_total) * per_use_savings — the share of sessions
+    # plausibly benefiting at that per-use rate.
+    per_use_savings_pct = round(_COMPANION_SAVINGS_PCT.get(companion, 0.0), 1)
+    weighted_savings_pct = (
+        round(per_use_savings_pct * used / sessions_total, 1)
+        if used and sessions_total
+        else 0.0
+    )
     return {
         "companion": companion,
         "mentions": mentions,
         "recommended": recommended,
         "used": used,
         "conversion_pct": conversion_pct,
-        "estimated_savings_pct": estimated_savings_pct,
+        "per_use_savings_pct": per_use_savings_pct,
+        "weighted_savings_pct": weighted_savings_pct,
+        # Back-compat alias for any consumer still reading the old key.
+        "estimated_savings_pct": per_use_savings_pct,
     }
 
 
@@ -519,6 +533,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
     adoption = report.get("adoption", {}) or {}
     telemetry = report.get("telemetry", {}) or {}
     rec_events = telemetry.get("companion_recommendations", {}) or {}
+    sessions_total = int(adoption.get("session_count", 0) or 0)
 
     rows: list[dict] = []
     rows.append(
@@ -527,6 +542,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
             mentions=int(adoption.get("headroom_mentions", 0) or 0),
             recommended=int(rec_events.get("headroom_recommended_events", 0) or 0),
             used=int(adoption.get("headroom_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
         )
     )
     rows.append(
@@ -535,6 +551,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
             mentions=int(adoption.get("caveman_mentions", 0) or 0),
             recommended=int(adoption.get("caveman_mentions", 0) or 0),
             used=int(adoption.get("caveman_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
         )
     )
     rows.append(
@@ -543,6 +560,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
             mentions=int(adoption.get("context_mode_mentions", 0) or 0),
             recommended=int(rec_events.get("context_mode_recommended_events", 0) or 0),
             used=int(adoption.get("context_mode_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
         )
     )
     rows.append(
@@ -551,6 +569,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
             mentions=int(adoption.get("code_review_graph_mentions", 0) or 0),
             recommended=int(rec_events.get("code_review_graph_recommended_events", 0) or 0),
             used=int(adoption.get("code_review_graph_command_sessions", 0) or 0),
+            sessions_total=sessions_total,
         )
     )
     axi_used = int(adoption.get("axi_tool_sessions", 0) or 0)
@@ -560,6 +579,7 @@ def build_companion_funnels(report: dict) -> list[dict]:
             mentions=int(adoption.get("axi_mentions", 0) or 0),
             recommended=axi_used,
             used=axi_used,
+            sessions_total=sessions_total,
         )
     )
     return rows
@@ -570,13 +590,16 @@ def format_companion_funnels_markdown(report: dict) -> str:
     lines = [
         "## Companion conversion funnel",
         "",
-        "| Companion | Mentions | Recommended | Used | Conversion | Est. savings |",
-        "| --- | ---: | ---: | ---: | ---: | ---: |",
+        "_Per-use savings is the benchmark constant. Weighted savings = per-use × (used / total sessions)._",
+        "",
+        "| Companion | Mentions | Recommended | Used | Conversion | Per-use savings | Weighted savings |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in rows:
         lines.append(
             f"| {row['companion']} | {row['mentions']} | {row['recommended']} | "
-            f"{row['used']} | {row['conversion_pct']}% | {row['estimated_savings_pct']}% |"
+            f"{row['used']} | {row['conversion_pct']}% | {row['per_use_savings_pct']}% | "
+            f"{row['weighted_savings_pct']}% |"
         )
     return "\n".join(lines) + "\n"
 

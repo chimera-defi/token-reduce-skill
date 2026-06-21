@@ -44,12 +44,19 @@ OUTPUT_HEAVY_TERMS = {
     "transcript",
     "long-session",
     "long-sessions",
-    # Track D2 — widened trigger matrix
-    "dump",
-    "pytest",
-    "api",
-    "paste",
 }
+
+# Track D2 — widened trigger matrix via multi-word phrases. Bare tokens like
+# "api" or "dump" produced too many false positives on innocent queries
+# ("where is the api client defined"), so we require a co-occurring noun
+# that signals "large tool payload".
+OUTPUT_HEAVY_PHRASE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bapi\s+(response|payload|dump|output|result)s?\b", re.IGNORECASE),
+    re.compile(r"\bpytest\s+(output|log|results?|failures?|traceback)\b", re.IGNORECASE),
+    re.compile(r"\b(log|json|trace|stack|response|payload|console)\s+dumps?\b", re.IGNORECASE),
+    re.compile(r"\bpaste(d)?\s+(log|output|trace|response|payload|json)\b", re.IGNORECASE),
+    re.compile(r"\blarge\s+(tool|api)?\s*(output|payload|response|result)s?\b", re.IGNORECASE),
+)
 
 # Track D1 — actionable, copy-pasteable commands. Router emits these literal
 # strings instead of prose so the caller can run them without translation.
@@ -316,7 +323,9 @@ def decide(
 ) -> Decision:
     terms = query_terms(query)
     symbol = extract_symbol(query)
-    output_heavy = bool(terms & OUTPUT_HEAVY_TERMS)
+    output_heavy = bool(terms & OUTPUT_HEAVY_TERMS) or any(
+        pat.search(query) for pat in OUTPUT_HEAVY_PHRASE_PATTERNS
+    )
     impact_like = bool(terms & IMPACT_TERMS)
     snippet_hint = bool(terms & SNIPPET_HINT_TERMS)
 
@@ -495,6 +504,26 @@ def main() -> int:
 
     lines = len([line for line in stdout.splitlines() if line.strip()])
     chars = len(stdout)
+
+    # Track E1 — re-evaluate subagent recommendation with the actual candidate
+    # count from helper output. Path-only helper emits one path per non-comment
+    # line; if that crosses the threshold, surface the subagent snippet so the
+    # caller can fan out instead of stuffing N reads into the parent context.
+    candidate_lines = [
+        line for line in stdout.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    candidate_count = len(candidate_lines)
+    if (
+        candidate_count > SUBAGENT_CANDIDATE_THRESHOLD
+        and not decision.subagent_recommended
+    ):
+        snippet = _subagent_snippet(query)
+        print(
+            f"# token-reduce: candidate set is {candidate_count} (> "
+            f"{SUBAGENT_CANDIDATE_THRESHOLD}); delegate via {snippet}",
+            file=sys.stderr,
+        )
     record_event(
         root,
         event="helper_invocation",
