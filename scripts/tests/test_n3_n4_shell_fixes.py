@@ -79,14 +79,25 @@ def test_paths_sh_uses_uv_run_for_rank_paths() -> None:
 
 
 def test_paths_sh_uses_uv_run_for_brain_hint() -> None:
-    """N3: token-reduce-paths.sh must call `uv run python3` for brain_hint.py."""
+    """N3: brain_hint is invoked via uv run (either in paths.sh or dispatch.py)."""
     paths_sh = SCRIPTS_DIR / "token-reduce-paths.sh"
-    lines = paths_sh.read_text().splitlines()
-    brain_lines = [ln for ln in lines if "brain_hint.py" in ln and not ln.strip().startswith("#")]
-    assert brain_lines, "No brain_hint.py invocation found in token-reduce-paths.sh"
-    for ln in brain_lines:
-        assert "uv run" in ln, (
-            f"token-reduce-paths.sh invokes brain_hint.py without `uv run`: {ln!r}"
+    dispatch_py = SCRIPTS_DIR / "token_reduce_dispatch.py"
+    paths_content = paths_sh.read_text()
+    dispatch_content = dispatch_py.read_text() if dispatch_py.exists() else ""
+    # P2: dispatch.py took over brain_hint; paths.sh delegates to dispatch via uv run
+    has_dispatch = "token_reduce_dispatch.py" in paths_content and "uv run" in paths_content
+    has_brain_in_dispatch = "brain_hint" in dispatch_content
+    has_brain_direct = any(
+        "brain_hint.py" in ln and "uv run" in ln
+        for ln in paths_content.splitlines()
+        if not ln.strip().startswith("#")
+    )
+    assert has_dispatch or has_brain_direct, (
+        "paths.sh must either invoke dispatch.py via uv run or call brain_hint.py directly via uv run"
+    )
+    if has_dispatch:
+        assert has_brain_in_dispatch, (
+            "dispatch.py is used but doesn't invoke brain_hint — N3/P2 incomplete"
         )
 
 
@@ -107,31 +118,24 @@ def test_snippet_sh_uses_uv_run_for_brain_hint() -> None:
 # ---------------------------------------------------------------------------
 
 def test_rank_paths_failure_is_logged_to_telemetry(repo: Path, tmp_path: Path) -> None:
-    """N4: when rank_paths.py exits non-zero, paths.sh logs a telemetry error event."""
-    # Create a fake rank_paths.py that always fails
-    fake_rank = tmp_path / "rank_paths.py"
-    fake_rank.write_text(textwrap.dedent("""\
-        import sys
-        print("simulated rank failure", file=sys.stderr)
-        sys.exit(1)
-    """))
-
-    env = os.environ.copy()
-    env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
-    env["PYTHONPATH"] = str(SCRIPTS_DIR) + os.pathsep + env.get("PYTHONPATH", "")
-    # Override SCRIPT_DIR used by paths.sh to pick up our fake rank_paths.py
-    # We do this by temporarily symlinking/copying, or by overriding via env.
-    # Simplest: patch SCRIPT_DIR in env isn't possible; we use a wrapper approach.
-    # Instead, verify the telemetry-recording code path exists in paths.sh source.
+    """N4: rank_paths failure is logged to telemetry (either in paths.sh or dispatch.py)."""
     paths_sh = SCRIPTS_DIR / "token-reduce-paths.sh"
-    content = paths_sh.read_text()
+    dispatch_py = SCRIPTS_DIR / "token_reduce_dispatch.py"
+    paths_content = paths_sh.read_text()
+    dispatch_content = dispatch_py.read_text() if dispatch_py.exists() else ""
 
-    # Structural check: error branch must log to telemetry
-    assert "rank_paths_error" in content, (
-        "token-reduce-paths.sh must log rank_paths_error event to telemetry (N4 fix missing)"
+    # P2: telemetry logging moved to dispatch.py
+    has_error_in_dispatch = "rank_paths_error" in dispatch_content
+    has_error_in_paths = "rank_paths_error" in paths_content
+
+    assert has_error_in_dispatch or has_error_in_paths, (
+        "rank_paths error must be logged to telemetry in paths.sh or dispatch.py (N4 fix missing)"
     )
-    assert "brain_hint_error" in content, (
-        "token-reduce-paths.sh must log brain_hint_error event to telemetry (N4 fix missing)"
+    # brain_hint error logging
+    has_brain_error_in_dispatch = "brain_hint_error" in dispatch_content
+    has_brain_error_in_paths = "brain_hint_error" in paths_content
+    assert has_brain_error_in_dispatch or has_brain_error_in_paths, (
+        "brain_hint error must be logged to telemetry (N4 fix missing)"
     )
 
 
