@@ -477,6 +477,110 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     return findings
 
 
+# --------------------------------------------------------------------------- #
+# Track D4 — per-companion conversion funnel
+# --------------------------------------------------------------------------- #
+
+_COMPANION_SAVINGS_PCT = {
+    "headroom": 30.0,
+    "caveman": 40.0,
+    "context_mode": 50.0,
+    "code_review_graph": 60.0,
+    "axi": 15.0,
+}
+
+
+def _funnel_row(
+    companion: str,
+    *,
+    mentions: int,
+    recommended: int,
+    used: int,
+) -> dict:
+    conversion_pct = round((used * 100.0 / recommended), 1) if recommended else 0.0
+    estimated_savings_pct = round(used * _COMPANION_SAVINGS_PCT.get(companion, 0.0) / max(used, 1), 1) if used else 0.0
+    return {
+        "companion": companion,
+        "mentions": mentions,
+        "recommended": recommended,
+        "used": used,
+        "conversion_pct": conversion_pct,
+        "estimated_savings_pct": estimated_savings_pct,
+    }
+
+
+def build_companion_funnels(report: dict) -> list[dict]:
+    """Return mention -> recommended -> used -> savings rows per companion.
+
+    Mentions come from the adoption section (text scan), recommended from the
+    telemetry section (router events), used from explicit command-session
+    counts. Estimated savings are per-companion constants applied per use.
+    """
+    adoption = report.get("adoption", {}) or {}
+    telemetry = report.get("telemetry", {}) or {}
+    rec_events = telemetry.get("companion_recommendations", {}) or {}
+
+    rows: list[dict] = []
+    rows.append(
+        _funnel_row(
+            "headroom",
+            mentions=int(adoption.get("headroom_mentions", 0) or 0),
+            recommended=int(rec_events.get("headroom_recommended_events", 0) or 0),
+            used=int(adoption.get("headroom_command_sessions", 0) or 0),
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "caveman",
+            mentions=int(adoption.get("caveman_mentions", 0) or 0),
+            recommended=int(adoption.get("caveman_mentions", 0) or 0),
+            used=int(adoption.get("caveman_command_sessions", 0) or 0),
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "context_mode",
+            mentions=int(adoption.get("context_mode_mentions", 0) or 0),
+            recommended=int(rec_events.get("context_mode_recommended_events", 0) or 0),
+            used=int(adoption.get("context_mode_command_sessions", 0) or 0),
+        )
+    )
+    rows.append(
+        _funnel_row(
+            "code_review_graph",
+            mentions=int(adoption.get("code_review_graph_mentions", 0) or 0),
+            recommended=int(rec_events.get("code_review_graph_recommended_events", 0) or 0),
+            used=int(adoption.get("code_review_graph_command_sessions", 0) or 0),
+        )
+    )
+    axi_used = int(adoption.get("axi_tool_sessions", 0) or 0)
+    rows.append(
+        _funnel_row(
+            "axi",
+            mentions=int(adoption.get("axi_mentions", 0) or 0),
+            recommended=axi_used,
+            used=axi_used,
+        )
+    )
+    return rows
+
+
+def format_companion_funnels_markdown(report: dict) -> str:
+    rows = build_companion_funnels(report)
+    lines = [
+        "## Companion conversion funnel",
+        "",
+        "| Companion | Mentions | Recommended | Used | Conversion | Est. savings |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['companion']} | {row['mentions']} | {row['recommended']} | "
+            f"{row['used']} | {row['conversion_pct']}% | {row['estimated_savings_pct']}% |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
     headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
