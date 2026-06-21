@@ -94,38 +94,21 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 
 Token-reduce remains the master router. Use helper-first discovery, scoped reads, QMD, RTK, and structural helpers before adding a proxy layer.
 
-Use Headroom only when `headroom --version` works, `headroom install status` or `/readyz` shows a healthy local proxy, telemetry is disabled, and the task has large tool payloads, repeated log/API/test outputs, or long-session context pressure.
+Use Headroom only when `headroom install status` or `/readyz` shows a healthy local proxy, telemetry is disabled, and the task has large tool payloads, repeated log/API/test outputs, or long-session context pressure. Do not use Headroom as the first move for unknown-path repo discovery. Do not enable `--learn` until memory writes are reviewed.
 
-Do not use Headroom as the first move for unknown-path repo discovery. Do not enable `--learn` until memory writes are reviewed against `MEMORY.md`, daily memory, and gbrain policy. If the OpenClaw installer emits obsolete plugin keys such as `startupTimeoutMs` or `gatewayProviderIds`, keep the manually verified config and do not rerun `headroom install apply --providers all`.
+Two modes — pick based on payload size:
 
-Preferred checks:
-
-```bash
-headroom install status
-curl -fsS http://127.0.0.1:8787/readyz
-```
-
-There are two operating modes — pick the one that matches the payload size:
-
-- **Passive proxy/wrap** (default): wrap `claude` or `codex` and let Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads. Good for steady background pressure.
-- **Active MCP compress** (>20k-token tool result): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes) so they get summarized before they hit context. The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as copy-pasteable commands whenever it recommends Headroom, so the caller can run them without translation.
-
-### Trigger cues (copy-paste, no translation)
-
-If you see any of these patterns, run the corresponding command verbatim — no rewriting:
+- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% reduction on tool-result-heavy workloads.
+- **Active MCP compress** (>20k-token result): call `headroom_compress` directly on large blobs before reasoning over them.
 
 | You see | Run |
 |---------|-----|
-| Tool result >20k tokens (large API response, pytest output, log dump) | `headroom_compress` (MCP) on that result before reasoning over it |
+| Tool result >20k tokens | `headroom_compress` (MCP) on that result |
 | Healthcheck unclear | `headroom install status` |
 | Proxy may be down | `curl -fsS http://127.0.0.1:8787/readyz` |
-| Router already nudged but you ignored it 3+ times | Escalation kicks in (see `scripts/escalation.py`); run `headroom_compress` on the largest pending tool result |
+| Router nudged 3+ times, ignored | Run `headroom_compress` on largest pending result |
 
-The router emits these as literal commands in its rationale. Don't paraphrase — copy the exact string.
-
-Read `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
-
-Measure Headroom adoption with `scripts/token-reduce-manage.sh measure` and `scripts/token-reduce-manage.sh review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
+See `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
 
 ## Subagent / gstack / Brain-First Hints
 
@@ -173,18 +156,4 @@ Semantic QMD and GBrain memory are optional. Stay on BM25 (`qmd search`) for che
 Route delegation through the `delegate-skill` router (never hand-pick a delegate or call raw wrappers). Six tactics — batch, reference don't quote, constrain output, pre-compress context, never `&`, build envelope with `--print-envelope` — typically cut delegate token cost 40-70%. See: `references/delegate-call-reduction.md` for the full routing table, examples, and rules.
 
 ---
-Read `references/token-reduction-guide.md` for benchmark notes and integration details.
-Read `references/delegate-skill-integration.md` for how token-reduce integrates the delegate-skill router.
-Read `references/companion-tools.md` for how to evaluate future companion backends.
-Read `references/graphify-evaluation.md` for the graphify companion verdict.
-Read `references/caveman-evaluation.md` for the caveman companion verdict.
-Read `references/headroom-evaluation-2026-06-10.md` for the Headroom proxy/MCP pilot verdict.
-Read `references/axi-evaluation.md` for the AXI companion verdict.
-Read `references/prompt-stack-intake-2026-04-18.md` for the 10-dependency prompt-stack intake verdict and evidence.
-Read `references/feature-matrix.md` for the complete feature/command/config/telemetry map.
-Read `references/meta-learnings-2026-04-18.md` for validated integration lessons and guardrails.
-Read `references/meta-learnings-2026-04-19.md` for QMD indexing/routing synchronization lessons and latency/adoption follow-ups.
-Read `references/meta-learnings-2026-04-25.md` for telemetry-window interpretation and diagnostics normalization lessons.
-Read `references/meta-learnings-2026-05-06.md` for telemetry-driven instrumentation and propagation workflow lessons.
-Read `references/meta-learnings-2026-05-20.md` for docs fast-path routing and weekly maintenance automation lessons.
-Read `references/tier-value-profile.md` for keep/conditional/excluded dependency-tier decisions.
+See `references/INDEX.md` for the full reference index.
