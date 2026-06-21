@@ -96,12 +96,18 @@ def aggregate_by_source(items: list[dict]) -> dict[str, dict]:
     for bucket in by_source.values():
         helper_n = bucket["helper_sessions"] + bucket["mixed_sessions"]
         broad_n = bucket["broad_sessions"] + bucket["mixed_sessions"]
-        bucket["avg_helper_tokens"] = (
-            round(BENCHMARK_HELPER_TOKENS * 1.0, 1) if helper_n else 0.0
-        )
-        bucket["avg_broad_tokens"] = (
-            round(BENCHMARK_BROAD_TOKENS * 1.0, 1) if broad_n else 0.0
-        )
+        # These are *benchmark* constants applied per session — we don't have
+        # per-session token measurements yet, so labelling them "avg" was
+        # misleading. Keep the legacy keys as aliases for back-compat with
+        # any callers that already read them, but the canonical fields are
+        # the ``benchmark_*`` ones.
+        bench_helper = round(BENCHMARK_HELPER_TOKENS * 1.0, 1) if helper_n else 0.0
+        bench_broad = round(BENCHMARK_BROAD_TOKENS * 1.0, 1) if broad_n else 0.0
+        bucket["benchmark_helper_tokens"] = bench_helper
+        bucket["benchmark_broad_tokens"] = bench_broad
+        # Back-compat aliases (will be removed once review/markdown migrates).
+        bucket["avg_helper_tokens"] = bench_helper
+        bucket["avg_broad_tokens"] = bench_broad
     return dict(by_source)
 
 
@@ -117,14 +123,14 @@ def build_context_impact_markdown(items: list[dict]) -> str:
         "`references/benchmarks/local-benchmark.json` "
         f"(broad={BENCHMARK_BROAD_TOKENS}, helper={BENCHMARK_HELPER_TOKENS}).",
         "",
-        "| Source | Sessions | Helper | Broad | Mixed | Avg helper tokens | Avg broad tokens | Tokens saved | Tokens spent on broad |",
+        "| Source | Sessions | Helper | Broad | Mixed | Benchmark helper tokens | Benchmark broad tokens | Tokens saved | Tokens spent on broad |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for source in sorted(agg.keys()):
         b = agg[source]
         lines.append(
             f"| {source} | {b['sessions']} | {b['helper_sessions']} | {b['broad_sessions']} | "
-            f"{b['mixed_sessions']} | {b['avg_helper_tokens']} | {b['avg_broad_tokens']} | "
+            f"{b['mixed_sessions']} | {b['benchmark_helper_tokens']} | {b['benchmark_broad_tokens']} | "
             f"{b['total_estimated_tokens_saved']} | {b['total_estimated_tokens_spent_on_broad']} |"
         )
     return "\n".join(lines) + "\n"
