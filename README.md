@@ -20,20 +20,6 @@ It is a high-level token orchestration kit that:
 - wires tool hooks so wasteful calls are blocked before execution
 - integrates a dependency suite and operational benchmarking/review gates
 
-## What's New (2026-06-21)
-
-PR #41 (Tracks A–L) added the following modules and behaviors. Entry points are listed for each so you can jump straight to the code.
-
-- **`scripts/rank_paths.py`** — query-aware re-ranker for path-only helper output. Applied automatically in `scripts/token-reduce-paths.sh` (toggle off with `TOKEN_REDUCE_DISABLE_RANK=1`). Reads `artifacts/token-reduction/events.jsonl` to bias toward paths that previously satisfied the same query.
-- **`scripts/cost_ledger.py`** — per-source token-savings ledger consumed by `review_token_reduction.py` and the operational benchmark report. F2 back-compat aliases (`avg_helper_tokens`, `avg_broad_tokens`) are annotated `# DELETE-BY: 2026-09-21`.
-- **`scripts/escalation.py`** — closed-loop escalation kicks in when the router has been ignored ≥3 times in a session. Used by `enforce-token-reduce-first.py` and `token_reduce_adaptive.py`.
-- **`scripts/coverage_patterns.py`** — advisory broad-pattern detection (unscoped `rg`, whole-dir `cat`, python `glob.glob`/`os.walk`, `xargs cat`). Folded into the enforce hook's warn-first/block-on-repeat policy.
-- **`scripts/qmd_warm_cache.py`** — session-scoped read-through cache for QMD collection listings and first-page results. 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`.
-- **`scripts/brain_hint.py`** — standalone `qmd`/`gbrain` discovery hint helper. Kept import-light (no `token_reduce_adaptive` import) so shell helpers pay no cold-start tax.
-- **`scripts/command_rewrites.py`** — rewrite suggestions and `is_catastrophic` / `estimate_output_tokens` classifiers powering the enforce hook's block messages.
-
-Enforcement gate is now **warn-first / block-on-repeat** (Track B): the first broad attempt in a session emits a `hook_warn` event and passes through; the second blocks. Catastrophic patterns (root-filesystem `find /`, full `rg --files .`) always hard-block on the first attempt.
-
 ## Dependency Suite (Feature)
 
 `token-reduce` treats dependency integration as a first-class feature.
@@ -187,10 +173,10 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
 | `broad_inventory` | `1225` | baseline |
-| `guidance_scoped_rg` | `221` | `78.5%` saved |
-| `qmd_files` | `226` | `76.6%` saved |
-| `token_reduce_paths_warm` | `228` | `76.2%` saved |
-| `token_reduce_snippet_warm` | `354` | `63.7%` saved |
+| `guidance_scoped_rg` | `221` | `82.0%` saved |
+| `qmd_files` | `226` | `81.6%` saved |
+| `token_reduce_paths_warm` | `228` | `81.4%` saved |
+| `token_reduce_snippet_warm` | `354` | `71.1%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
@@ -301,26 +287,18 @@ Default discovery still starts with token-reduce helpers. Headroom is for contex
 
 Default token-reduce routing/enforcement works with or without caveman.
 
-## Learn More
+## References
 
-- [references/INDEX.md](references/INDEX.md)
-- [references/companion-tools.md](references/companion-tools.md)
-- [references/delegate-skill-integration.md](references/delegate-skill-integration.md)
-- [references/feature-matrix.md](references/feature-matrix.md)
-- [references/tier-value-profile.md](references/tier-value-profile.md)
-- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md)
-- [references/token-reduction-guide.md](references/token-reduction-guide.md)
-- [references/composite-benchmark.md](references/composite-benchmark.md)
-- [references/profile-presets.md](references/profile-presets.md)
-- [references/prompt-stack-intake-2026-04-18.md](references/prompt-stack-intake-2026-04-18.md)
-- [references/meta-learnings-2026-04-18.md](references/meta-learnings-2026-04-18.md)
-- [references/meta-learnings-2026-04-19.md](references/meta-learnings-2026-04-19.md)
-- [references/meta-learnings-2026-04-25.md](references/meta-learnings-2026-04-25.md)
-- [references/meta-learnings-2026-05-06.md](references/meta-learnings-2026-05-06.md)
-- [references/meta-learnings-2026-05-20.md](references/meta-learnings-2026-05-20.md)
-- [references/agent-setup.md](references/agent-setup.md)
-- [references/workspace-integration.md](references/workspace-integration.md)
-- [references/codex-handoff.md](references/codex-handoff.md)
-- [references/caveman-evaluation.md](references/caveman-evaluation.md)
-- [references/axi-evaluation.md](references/axi-evaluation.md)
-- [references/token-savior-evaluation.md](references/token-savior-evaluation.md)
+Full index: [references/INDEX.md](references/INDEX.md)
+
+Key references:
+
+- [references/token-reduction-guide.md](references/token-reduction-guide.md) — benchmark notes and integration details
+- [references/feature-matrix.md](references/feature-matrix.md) — complete feature/command/config/telemetry map
+- [references/tier-value-profile.md](references/tier-value-profile.md) — keep/conditional/excluded dependency decisions
+- [references/composite-benchmark.md](references/composite-benchmark.md) — per-strategy benchmark detail
+- [references/profile-presets.md](references/profile-presets.md) — routing profile definitions
+- [references/companion-tools.md](references/companion-tools.md) — companion evaluation framework
+- [references/delegate-skill-integration.md](references/delegate-skill-integration.md) — delegate router integration
+- [references/agent-setup.md](references/agent-setup.md) — per-agent setup notes
+- [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md) — Headroom proxy/MCP pilot verdict
