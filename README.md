@@ -20,6 +20,20 @@ It is a high-level token orchestration kit that:
 - wires tool hooks so wasteful calls are blocked before execution
 - integrates a dependency suite and operational benchmarking/review gates
 
+## What's New (2026-06-21)
+
+PR #41 (Tracks A–L) added the following modules and behaviors. Entry points are listed for each so you can jump straight to the code.
+
+- **`scripts/rank_paths.py`** — query-aware re-ranker for path-only helper output. Applied automatically in `scripts/token-reduce-paths.sh` (toggle off with `TOKEN_REDUCE_DISABLE_RANK=1`). Reads `artifacts/token-reduction/events.jsonl` to bias toward paths that previously satisfied the same query.
+- **`scripts/cost_ledger.py`** — per-source token-savings ledger consumed by `review_token_reduction.py` and the operational benchmark report. F2 back-compat aliases (`avg_helper_tokens`, `avg_broad_tokens`) are annotated `# DELETE-BY: 2026-09-21`.
+- **`scripts/escalation.py`** — closed-loop escalation kicks in when the router has been ignored ≥3 times in a session. Used by `enforce-token-reduce-first.py` and `token_reduce_adaptive.py`.
+- **`scripts/coverage_patterns.py`** — advisory broad-pattern detection (unscoped `rg`, whole-dir `cat`, python `glob.glob`/`os.walk`, `xargs cat`). Folded into the enforce hook's warn-first/block-on-repeat policy.
+- **`scripts/qmd_warm_cache.py`** — session-scoped read-through cache for QMD collection listings and first-page results. 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`.
+- **`scripts/brain_hint.py`** — standalone `qmd`/`gbrain` discovery hint helper. Kept import-light (no `token_reduce_adaptive` import) so shell helpers pay no cold-start tax.
+- **`scripts/command_rewrites.py`** — rewrite suggestions and `is_catastrophic` / `estimate_output_tokens` classifiers powering the enforce hook's block messages.
+
+Enforcement gate is now **warn-first / block-on-repeat** (Track B): the first broad attempt in a session emits a `hook_warn` event and passes through; the second blocks. Catastrophic patterns (root-filesystem `find /`, full `rg --files .`) always hard-block on the first attempt.
+
 ## Dependency Suite (Feature)
 
 `token-reduce` treats dependency integration as a first-class feature.
