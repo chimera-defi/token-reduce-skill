@@ -187,41 +187,9 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 - Repo-level instructions and hooks point at the same first-move workflow.
 - Owned-workspace changes that are more than trivial end on a feature branch with a PR for review and backup.
 
-## QMD
+## QMD / GBrain note
 
-```bash
-scripts/token-reduce-paths.sh topic words
-scripts/token-reduce-snippet.sh topic words
-scripts/token-reduce-adaptive.sh topic words
-```
-
-If helpers are unavailable, use `qmd search "topic" -n 5 --files` or narrowly scoped `rg -n -g '<glob>' '<pattern>'`.
-
-Semantic QMD is optional, not the default token-reduce path. For cheap discovery, stay on BM25 (`qmd search`) unless the user explicitly asks for QMD semantic setup or BM25 misses conceptual matches. When semantic QMD is requested, run `qmd embed` for the relevant collection, verify with `qmd status`, then smoke-test `qmd vsearch`/`qmd query`. QMD embeddings are local GGUF models via `node-llama-cpp` (QMD reports the active model, e.g. `embeddinggemma-300M`), not Ollama; GBrain's Ollama embeddings are a separate vector store. On CPU-only hosts, embedding can be slow, so prefer scoped batches such as `qmd embed -c <collection> --max-docs-per-batch 32 --max-batch-mb 8` and report progress. If QMD reports `Session expired`, Bun segfaults, or a command times out, it may still commit partial vectors; rerun with smaller batches and verify with `qmd status` plus a `qmd vsearch`/`qmd query` smoke test before claiming coverage.
-
-Use GBrain for durable project memory and cross-session decisions; use QMD/token-reduce for current-repo discovery. Do not assume the two systems share vectors: GBrain may use Ollama embeddings, while QMD uses its own local GGUF embedding index.
-
-Never start discovery with `find .`, `ls -R`, `grep -R`, `rg --files .`, broad `Glob`, or chained fallback shell logic.
-
-## Flow
-
-1. Check QMD once: `command -v qmd >/dev/null 2>&1 && qmd collection list 2>/dev/null | head -1`.
-2. Known keyword/path: scoped search, then read only needed ranges.
-3. Need an auto-routed kickoff: `scripts/token-reduce-adaptive.sh topic words`.
-4. Unknown path: `scripts/token-reduce-paths.sh topic words`.
-5. Need one excerpt: `scripts/token-reduce-snippet.sh topic words`.
-6. Exact symbol impact: `uv run python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`.
-7. More than five likely files or two failed searches: stop expanding and ask for narrower scope.
-8. Final response: cite only the files needed to explain the result.
-
-## Success
-
-- Discovery starts with helper/QMD/scoped `rg`.
-- Large files are read in slices.
-- Output is concise unless the user asks for depth.
-- Optional companions (`gh-axi`, `chrome-devtools-axi`, graph/review tools) are used only when installed and clearly cheaper.
-
-See `references/feature-matrix.md` for full command/config details.
+Semantic QMD and GBrain memory are optional. Stay on BM25 (`qmd search`) for cheap discovery; switch to `qmd embed` + `qmd vsearch` only when the user asks or BM25 misses. Use GBrain for durable project memory, QMD for current-repo discovery — they do not share vectors. Full setup notes in `references/feature-matrix.md`.
 
 ## AI Delegate Call Reduction (via the delegate-skill router)
 
