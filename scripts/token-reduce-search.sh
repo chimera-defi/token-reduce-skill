@@ -259,7 +259,7 @@ collection_fingerprint() {
 
   listed="$(
     cd "$REPO_ROOT" &&
-      rg --files "${globs[@]}" . 2>/dev/null | sort || true
+      rg --files "${globs[@]}" . 2>>"${DIAG_FILE:-/dev/null}" | sort || true
   )"
   if [[ -z "$listed" ]]; then
     printf '%s' "empty"
@@ -398,9 +398,9 @@ path_hits() {
   local pattern
   pattern="$(path_pattern)"
   if [[ -n "$GLOB" ]]; then
-    rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
+    rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>>"${DIAG_FILE:-/dev/null}" | rg -i -e "$pattern" | filter_candidates | head -20 || true
   else
-    rg --files "${DEFAULT_EXCLUDES[@]}" . 2>/dev/null | rg -i -e "$pattern" | filter_candidates | head -20 || true
+    rg --files "${DEFAULT_EXCLUDES[@]}" . 2>>"${DIAG_FILE:-/dev/null}" | rg -i -e "$pattern" | filter_candidates | head -20 || true
   fi
 }
 
@@ -408,9 +408,9 @@ doc_path_hits() {
   local pattern all preferred
   pattern="$(path_pattern)"
   if [[ -n "$GLOB" ]]; then
-    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>/dev/null | rg -i -e "$pattern" || true)"
+    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" -g "$GLOB" . 2>>"${DIAG_FILE:-/dev/null}" | rg -i -e "$pattern" || true)"
   else
-    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" . 2>/dev/null | rg -i -e "$pattern" || true)"
+    all="$(rg --files "${DEFAULT_EXCLUDES[@]}" . 2>>"${DIAG_FILE:-/dev/null}" | rg -i -e "$pattern" || true)"
   fi
   if [[ -z "$all" ]]; then
     return 0

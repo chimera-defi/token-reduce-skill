@@ -479,6 +479,10 @@ def main() -> int:
     availability = collect_availability()
     behavior = load_behavior_profile(root, days=policy.behavior_days)
     file_count = count_repo_files(root)
+    # N5: detect gstack-session-spawn availability
+    gstack_available = (
+        Path.home() / ".claude" / "skills" / "gstack-session-spawn"
+    ).exists() or bool(shutil.which("new-session"))
     decision = decide(
         query,
         behavior=behavior,
@@ -486,6 +490,7 @@ def main() -> int:
         policy=policy,
         root=root,
         repo_file_count=file_count,
+        gstack_skill_available=gstack_available,
     )
 
     payload = asdict(decision)
@@ -550,6 +555,13 @@ def main() -> int:
 
     if args.emit_json:
         print(json.dumps(payload, indent=2))
+    # N7: surface rationale and headroom commands to stderr in normal mode
+    for line in decision.rationale:
+        print(f"# token-reduce: {line}", file=sys.stderr)
+    if decision.headroom_recommended:
+        print("# token-reduce: headroom commands:", file=sys.stderr)
+        for cmd in decision.headroom_commands:
+            print(f"  {cmd}", file=sys.stderr)
     if exit_code == 0:
         # Clear pending first-move state on successful adaptive helper kickoff.
         clear_pending(root)
