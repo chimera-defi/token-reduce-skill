@@ -52,7 +52,17 @@ START_MS="$(now_ms)"
 if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-search.sh" --snippets "$QUERY")"; then
   printf '%s\n' "$OUTPUT"
   if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
-    BRAIN_HINT="$(python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>/dev/null || true)"
+    _BRAIN_ERR="$(mktemp 2>/dev/null || true)"
+    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}" || true)"
+    _BRAIN_RC=$?
+    if [[ $_BRAIN_RC -ne 0 && -s "${_BRAIN_ERR:-}" ]]; then
+      printf 'token-reduce: brain_hint failed (rc=%s): %s\n' "$_BRAIN_RC" "$(cat "$_BRAIN_ERR")" >&2
+      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+        --event brain_hint_error --source helper --tool token_reduce_snippet \
+        --status error --query "$QUERY" \
+        --meta-json "{\"exit_code\":$_BRAIN_RC}" >/dev/null 2>&1 || true
+    fi
+    [[ -f "${_BRAIN_ERR:-}" ]] && rm -f "$_BRAIN_ERR"
     if [[ -n "$BRAIN_HINT" ]]; then
       # Print to stderr so it doesn't get mixed into the snippet body
       # the caller will consume. Phrased as a follow-up suggestion.
