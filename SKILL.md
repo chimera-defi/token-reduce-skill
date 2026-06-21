@@ -131,16 +131,7 @@ Optional, exact-symbol only — do not auto-install. Run `uv tool install token-
 
 ## Output-hook over-compression workaround
 
-Some sessions run a global `~/.claude/hooks` PostToolUse hook that compresses tool output and accidentally mangles `pytest` summaries ("No tests collected" or truncated pass/fail lines). This repo has no PostToolUse hook of its own — the offending hook lives outside the repo and is intentionally out of scope per the brief.
-
-Workaround when running tests under a wrapped session:
-
-```bash
-uv run --with pytest python -m pytest scripts/tests/ -q > /tmp/pytest.out 2>&1
-# then Read /tmp/pytest.out to inspect the full output without compression
-```
-
-Redirect to a file and `Read` the file rather than relying on stdout — the file path is not subject to in-flight tool-output compression. Logged as a cross-repo issue in the PR description so the global hook can be hardened separately.
+If a global PostToolUse hook compresses `pytest` output, redirect to a file and `Read` it: `pytest ... > /tmp/pytest.out 2>&1`. See: `references/known-issues.md`.
 
 ## QMD warm cache (H1)
 
