@@ -362,7 +362,14 @@ def main() -> int:
         if pending:
             if tool_name == "Bash":
                 command = tool_input.get("command", "") or ""
-                if HELPER_COMMAND_RE.search(command.split("\n")[0]):
+                first_line = command.split("\n")[0]
+                if HELPER_COMMAND_RE.search(first_line):
+                    # N2 fix: check continuation lines for broad patterns before allowing
+                    rest_lines = [l.strip() for l in command.split("\n")[1:] if l.strip() and l.strip() != "\\"]
+                    if any(
+                        re.search(p, line) for line in rest_lines for p in BROAD_BASH_PATTERNS
+                    ) or any(is_exploratory_rg(line, repo) for line in rest_lines):
+                        return block(helper_required_reason(), data)
                     return 0
                 return block(helper_required_reason(), data)
             if tool_name in {"Glob", "Grep", "Read"}:
@@ -377,8 +384,12 @@ def main() -> int:
         if tool_name == "Bash":
             command = tool_input.get("command", "") or ""
             first_line = command.split("\n")[0]
-            # Safe orchestrators: may carry broad-looking strings as arguments
-            if _SAFE_TOOL_RE.match(first_line):
+            # Safe orchestrators: may carry broad-looking strings as arguments.
+            # N1 fix: python3 -c/-m must fall through to coverage checks; only
+            # plain `python3 script.py` is safe.
+            if re.match(r"^\s*python3?\s+(-c|-m)\b", first_line):
+                pass  # fall through to broad-pattern checks below
+            elif _SAFE_TOOL_RE.match(first_line):
                 return 0
             # Check all lines — broad scans may be on continuation lines
             lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]

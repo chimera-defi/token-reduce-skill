@@ -75,15 +75,27 @@ def repo(tmp_path: Path) -> Path:
 # N1: python3 -c / -m bypass
 # ---------------------------------------------------------------------------
 
-def test_python3_c_with_os_walk_is_blocked(repo: Path) -> None:
-    """N1: python3 -c 'import os; os.walk(\".\")' must NOT bypass safe-tool check."""
-    result = _run_hook(
-        _bash_payload('python3 -c "import os; [_ for _ in os.walk(\'.\')]"'),
-        repo,
+def test_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
+    """N1: python3 -c with os.walk must NOT bypass safe-tool check.
+
+    First attempt: warn-and-allow (rc=0 with telemetry).
+    Second attempt: hard block (rc=2) — proving it went through coverage checks.
+    """
+    session_id = "sess-n1-python3-c"
+    cmd = 'python3 -c "import os; [_ for _ in os.walk(\'.\')]"'
+
+    # First attempt: warn-and-allow (coverage hit, not bypassed)
+    r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r1.returncode == 0, (
+        f"first python3 -c with os.walk should warn-and-allow; got rc={r1.returncode} "
+        f"stderr={r1.stderr!r}"
     )
-    assert result.returncode == 2, (
-        f"python3 -c with os.walk should be blocked; got rc={result.returncode} "
-        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+
+    # Second attempt: block (proves it did NOT take the safe-tool bypass path)
+    r2 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r2.returncode == 2, (
+        f"repeat python3 -c with os.walk should be blocked; got rc={r2.returncode} "
+        f"stdout={r2.stdout!r}"
     )
 
 
