@@ -106,6 +106,9 @@ def aggregate_by_source(items: list[dict]) -> dict[str, dict]:
         bucket["benchmark_helper_tokens"] = bench_helper
         bucket["benchmark_broad_tokens"] = bench_broad
         # Back-compat aliases (will be removed once review/markdown migrates).
+        # DELETE-BY: 2026-09-21
+        #   avg_helper_tokens -> use benchmark_helper_tokens
+        #   avg_broad_tokens  -> use benchmark_broad_tokens
         bucket["avg_helper_tokens"] = bench_helper
         bucket["avg_broad_tokens"] = bench_broad
     return dict(by_source)

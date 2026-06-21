@@ -519,6 +519,8 @@ def _funnel_row(
         "per_use_savings_pct": per_use_savings_pct,
         "weighted_savings_pct": weighted_savings_pct,
         # Back-compat alias for any consumer still reading the old key.
+        # DELETE-BY: 2026-09-21
+        #   estimated_savings_pct -> use per_use_savings_pct (or weighted_savings_pct)
         "estimated_savings_pct": per_use_savings_pct,
     }
 
