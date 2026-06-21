@@ -186,11 +186,11 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1028` | baseline |
+| `broad_inventory` | `1225` | baseline |
 | `guidance_scoped_rg` | `221` | `78.5%` saved |
-| `qmd_files` | `241` | `76.6%` saved |
-| `token_reduce_paths_warm` | `245` | `76.2%` saved |
-| `token_reduce_snippet_warm` | `373` | `63.7%` saved |
+| `qmd_files` | `226` | `76.6%` saved |
+| `token_reduce_paths_warm` | `228` | `76.2%` saved |
+| `token_reduce_snippet_warm` | `354` | `63.7%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
