@@ -135,7 +135,7 @@ If a global PostToolUse hook compresses `pytest` output, redirect to a file and 
 
 ## QMD warm cache (H1)
 
-`scripts/qmd_warm_cache.py` exposes `QmdWarmCache`, a session-scoped read-through cache for QMD collection listings and first-page query results. Cache hits return immediately; misses fall through to the live QMD CLI and seed the cache. TTL is 10 minutes, scoped per session key, persisted under `.claude/token-reduce-state/qmd-cache/`. Target p95 hit latency: <300ms (empirically sub-millisecond in tests).
+Session-scoped read-through cache for QMD collection listings and first-page results (`scripts/qmd_warm_cache.py`, 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`). See: `references/architecture.md`.
 
 ## Output Brevity Profile (Companion)
 
