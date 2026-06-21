@@ -117,6 +117,21 @@ def test_python3_m_pytest_is_allowed(repo: Path) -> None:
     )
 
 
+def test_python311_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
+    """N1: versioned python (python3.11 -c) with os.walk must NOT bypass safe-tool check."""
+    session_id = "sess-n1-python311-c"
+    cmd = 'python3.11 -c "import os; [_ for _ in os.walk(\'.\')]"'
+
+    r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r1.returncode == 0, (
+        f"first python3.11 -c with os.walk should warn-and-allow; got rc={r1.returncode}"
+    )
+    r2 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r2.returncode == 2, (
+        f"repeat python3.11 -c with os.walk should be blocked; got rc={r2.returncode}"
+    )
+
+
 def test_python3_m_with_broad_pattern_is_blocked(repo: Path) -> None:
     """N1: `python3 -m` falls through to coverage checks; broad pattern inside blocks."""
     result = _run_hook(

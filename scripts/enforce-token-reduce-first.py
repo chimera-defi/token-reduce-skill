@@ -41,7 +41,7 @@ BROAD_BASH_PATTERNS = [
 # Commands that are safe orchestrators — they may have broad-looking args in --body/--message,
 # but are never themselves filesystem scanners.
 _SAFE_TOOL_RE = re.compile(
-    r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python3?|ruby|perl|cargo|go\s+run)\b"
+    r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python(?:\d+(?:\.\d+)?)?|ruby|perl|cargo|go\s+run)\b"
 )
 HELPER_COMMAND_RE = re.compile(
     r"token-reduce-(?:adaptive|paths|snippet|structural)(?:\.(?:sh|py))?\b|qmd\s+search\b"
@@ -387,7 +387,7 @@ def main() -> int:
             # Safe orchestrators: may carry broad-looking strings as arguments.
             # N1 fix: python3 -c/-m must fall through to coverage checks; only
             # plain `python3 script.py` is safe.
-            if re.match(r"^\s*python3?\s+(-c|-m)\b", first_line):
+            if re.match(r"^\s*python(?:\d+(?:\.\d+)?)?\s+(-c|-m)\b", first_line):
                 pass  # fall through to broad-pattern checks below
             elif _SAFE_TOOL_RE.match(first_line):
                 return 0

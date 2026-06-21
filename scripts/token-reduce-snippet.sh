@@ -53,8 +53,8 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   printf '%s\n' "$OUTPUT"
   if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
     _BRAIN_ERR="$(mktemp 2>/dev/null || true)"
-    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}" || true)"
-    _BRAIN_RC=$?
+    _BRAIN_RC=0
+    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}")" || _BRAIN_RC=$?
     if [[ $_BRAIN_RC -ne 0 && -s "${_BRAIN_ERR:-}" ]]; then
       printf 'token-reduce: brain_hint failed (rc=%s): %s\n' "$_BRAIN_RC" "$(cat "$_BRAIN_ERR")" >&2
       uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \

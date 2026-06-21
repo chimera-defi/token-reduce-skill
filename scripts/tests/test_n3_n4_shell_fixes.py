@@ -149,3 +149,29 @@ def test_brain_hint_error_logged_in_snippet_sh() -> None:
     assert "2>/dev/null || true" not in content or "brain_hint" not in content.split("2>/dev/null || true")[0].split("\n")[-1], (
         "token-reduce-snippet.sh still uses 2>/dev/null for brain_hint (N4 fix missing)"
     )
+
+
+def test_snippet_sh_brain_rc_can_capture_nonzero() -> None:
+    """N4 behavioral: snippet.sh must NOT use `|| true` inside $() for brain_hint.
+
+    The pattern `BRAIN_HINT=$(cmd || true)` forces rc=0 even on failure, making
+    the error-telemetry branch unreachable. The fix moves `|| _BRAIN_RC=$?` outside.
+    """
+    snippet_sh = SCRIPTS_DIR / "token-reduce-snippet.sh"
+    content = snippet_sh.read_text()
+    lines = content.splitlines()
+    brain_hint_assign_lines = [
+        ln for ln in lines
+        if "brain_hint.py" in ln and "BRAIN_HINT=" in ln
+    ]
+    for ln in brain_hint_assign_lines:
+        # The bad pattern: `|| true` inside the command substitution $()
+        # Extract content inside $(...) if present
+        inside_subshell = ln
+        if "$(" in ln:
+            start = ln.index("$(") + 2
+            # find matching close paren (simple heuristic)
+            inside_subshell = ln[start:]
+        assert "|| true" not in inside_subshell, (
+            f"snippet.sh has `|| true` inside $() for brain_hint — N4 fix regressed: {ln!r}"
+        )
