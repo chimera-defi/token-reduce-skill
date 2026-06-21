@@ -57,7 +57,17 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
     if [[ -f "$EVENTS_FILE" ]]; then
       RANK_ARGS+=(--events-file "$EVENTS_FILE")
     fi
-    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>/dev/null || true)"
+    _RANK_ERR="$(mktemp 2>/dev/null || true)"
+    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>"${_RANK_ERR:-/dev/null}" || true)"
+    _RANK_RC=$?
+    if [[ $_RANK_RC -ne 0 && -s "${_RANK_ERR:-}" ]]; then
+      printf 'token-reduce: rank_paths failed (rc=%s): %s\n' "$_RANK_RC" "$(cat "$_RANK_ERR")" >&2
+      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+        --event rank_paths_error --source helper --tool token_reduce_paths \
+        --status error --query "$QUERY" \
+        --meta-json "{\"exit_code\":$_RANK_RC}" >/dev/null 2>&1 || true
+    fi
+    [[ -f "${_RANK_ERR:-}" ]] && rm -f "$_RANK_ERR"
     if [[ -n "$RANK_RESULT" ]]; then
       OUTPUT="$RANK_RESULT"
       RANK_APPLIED=1
@@ -65,7 +75,17 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   fi
   printf '%s\n' "$OUTPUT"
   if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
-    BRAIN_HINT="$(python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>/dev/null || true)"
+    _BRAIN_ERR="$(mktemp 2>/dev/null || true)"
+    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}" || true)"
+    _BRAIN_RC=$?
+    if [[ $_BRAIN_RC -ne 0 && -s "${_BRAIN_ERR:-}" ]]; then
+      printf 'token-reduce: brain_hint failed (rc=%s): %s\n' "$_BRAIN_RC" "$(cat "$_BRAIN_ERR")" >&2
+      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+        --event brain_hint_error --source helper --tool token_reduce_paths \
+        --status error --query "$QUERY" \
+        --meta-json "{\"exit_code\":$_BRAIN_RC}" >/dev/null 2>&1 || true
+    fi
+    [[ -f "${_BRAIN_ERR:-}" ]] && rm -f "$_BRAIN_ERR"
     if [[ -n "$BRAIN_HINT" ]]; then
       # Print to stderr so it doesn't get interleaved with the path list
       # the caller will pipe/process. Phrased as a follow-up suggestion.
