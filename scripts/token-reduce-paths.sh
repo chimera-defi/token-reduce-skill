@@ -51,47 +51,28 @@ START_MS="$(now_ms)"
 
 RANK_APPLIED=0
 if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY")"; then
-  if [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -s "$SCRIPT_DIR/rank_paths.py" ]]; then
+  # P2: single dispatch call replaces separate rank_paths + brain_hint spawns
+  if [[ -s "$SCRIPT_DIR/token_reduce_dispatch.py" ]]; then
+    EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
+    DISPATCH_ARGS=(--mode paths --query "$QUERY" --repo-root "$REPO_ROOT")
+    if [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -f "$EVENTS_FILE" ]]; then
+      DISPATCH_ARGS+=(--rank-args --events-file "$EVENTS_FILE")
+    fi
+    _DISPATCH_OUT="$(printf '%s\n' "$OUTPUT" | \
+      uv run python3 "$SCRIPT_DIR/token_reduce_dispatch.py" "${DISPATCH_ARGS[@]}")" && {
+      if [[ -n "$_DISPATCH_OUT" ]]; then
+        OUTPUT="$_DISPATCH_OUT"
+        RANK_APPLIED=1
+      fi
+    } || true
+  elif [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -s "$SCRIPT_DIR/rank_paths.py" ]]; then
     EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
     RANK_ARGS=(--query "$QUERY" --repo-root "$REPO_ROOT" --rerank-lines)
-    if [[ -f "$EVENTS_FILE" ]]; then
-      RANK_ARGS+=(--events-file "$EVENTS_FILE")
-    fi
-    _RANK_ERR="$(mktemp 2>/dev/null || true)"
-    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>"${_RANK_ERR:-/dev/null}" || true)"
-    _RANK_RC=$?
-    if [[ $_RANK_RC -ne 0 && -s "${_RANK_ERR:-}" ]]; then
-      printf 'token-reduce: rank_paths failed (rc=%s): %s\n' "$_RANK_RC" "$(cat "$_RANK_ERR")" >&2
-      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
-        --event rank_paths_error --source helper --tool token_reduce_paths \
-        --status error --query "$QUERY" \
-        --meta-json "{\"exit_code\":$_RANK_RC}" >/dev/null 2>&1 || true
-    fi
-    [[ -f "${_RANK_ERR:-}" ]] && rm -f "$_RANK_ERR"
-    if [[ -n "$RANK_RESULT" ]]; then
-      OUTPUT="$RANK_RESULT"
-      RANK_APPLIED=1
-    fi
+    [[ -f "$EVENTS_FILE" ]] && RANK_ARGS+=(--events-file "$EVENTS_FILE")
+    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>/dev/null || true)"
+    [[ -n "$RANK_RESULT" ]] && { OUTPUT="$RANK_RESULT"; RANK_APPLIED=1; }
   fi
   printf '%s\n' "$OUTPUT"
-  if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
-    _BRAIN_ERR="$(mktemp 2>/dev/null || true)"
-    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}" || true)"
-    _BRAIN_RC=$?
-    if [[ $_BRAIN_RC -ne 0 && -s "${_BRAIN_ERR:-}" ]]; then
-      printf 'token-reduce: brain_hint failed (rc=%s): %s\n' "$_BRAIN_RC" "$(cat "$_BRAIN_ERR")" >&2
-      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
-        --event brain_hint_error --source helper --tool token_reduce_paths \
-        --status error --query "$QUERY" \
-        --meta-json "{\"exit_code\":$_BRAIN_RC}" >/dev/null 2>&1 || true
-    fi
-    [[ -f "${_BRAIN_ERR:-}" ]] && rm -f "$_BRAIN_ERR"
-    if [[ -n "$BRAIN_HINT" ]]; then
-      # Print to stderr so it doesn't get interleaved with the path list
-      # the caller will pipe/process. Phrased as a follow-up suggestion.
-      printf 'token-reduce: also try `%s` for semantic memory hits\n' "$BRAIN_HINT" >&2
-    fi
-  fi
   LINES=$(printf '%s\n' "$OUTPUT" | sed '/^$/d' | wc -l | tr -d ' ')
   CHARS=$(printf '%s' "$OUTPUT" | wc -c | tr -d ' ')
   END_MS="$(now_ms)"
