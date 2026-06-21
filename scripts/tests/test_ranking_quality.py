@@ -127,7 +127,7 @@ def recency_repo(tmp_path: Path) -> Path:
 
 def test_git_recency_score_fresh_outranks_old(recency_repo: Path) -> None:
     # now=2026-06-21
-    now = 1750464000  # 2026-06-21T00:00:00Z
+    now = 1782000000  # 2026-06-21T00:00:00Z
     fresh = git_recency_score("fresh.py", repo_root=recency_repo, now_epoch=now)
     old = git_recency_score("old.py", repo_root=recency_repo, now_epoch=now)
     assert fresh > old
@@ -136,7 +136,7 @@ def test_git_recency_score_fresh_outranks_old(recency_repo: Path) -> None:
 
 def test_git_recency_score_clamps_after_max_age(recency_repo: Path) -> None:
     # Same repo but evaluate as if far future — older than 90d window.
-    future = 1750464000 + 86_400 * 365  # +1y
+    future = 1782000000 + 86_400 * 365  # +1y
     old = git_recency_score("old.py", repo_root=recency_repo, now_epoch=future)
     # log-decay clamps the floor near zero (not negative)
     assert old <= 0.05
@@ -147,7 +147,7 @@ def test_git_recency_score_unknown_file_returns_zero(recency_repo: Path) -> None
     assert git_recency_score(
         "does_not_exist.py",
         repo_root=recency_repo,
-        now_epoch=1750464000,
+        now_epoch=1782000000,
     ) == 0.0
 
 
@@ -359,7 +359,7 @@ def test_rank_paths_definition_beats_mention_and_tests(
         "measure_token_reduction helper",
         candidates,
         repo_root=integration_repo,
-        now_epoch=1750464000,  # 2026-06-21
+        now_epoch=1782000000,  # 2026-06-21
     )
     assert isinstance(ranked, list)
     assert ranked[0] == "scripts/measure_token_reduction.py"
@@ -385,7 +385,7 @@ def test_rank_paths_click_through_overrides_close_call(
         "measure_token_reduction helper",
         candidates,
         repo_root=integration_repo,
-        now_epoch=1750464000,
+        now_epoch=1782000000,
         click_through_priors=priors,
     )
     assert ranked[0] == "docs/notes.md"
@@ -399,7 +399,7 @@ def test_rank_paths_returns_path_score_for_debug(
         "measure_token_reduction",
         candidates,
         repo_root=integration_repo,
-        now_epoch=1750464000,
+        now_epoch=1782000000,
         return_scores=True,
     )
     assert all(isinstance(item, PathScore) for item in detailed)
