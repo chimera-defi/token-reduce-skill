@@ -104,6 +104,19 @@ There are two operating modes — pick the one that matches the payload size:
 - **Passive proxy/wrap** (default): wrap `claude` or `codex` and let Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads. Good for steady background pressure.
 - **Active MCP compress** (>20k-token tool result): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes) so they get summarized before they hit context. The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as copy-pasteable commands whenever it recommends Headroom, so the caller can run them without translation.
 
+### Trigger cues (copy-paste, no translation)
+
+If you see any of these patterns, run the corresponding command verbatim — no rewriting:
+
+| You see | Run |
+|---------|-----|
+| Tool result >20k tokens (large API response, pytest output, log dump) | `headroom_compress` (MCP) on that result before reasoning over it |
+| Healthcheck unclear | `headroom install status` |
+| Proxy may be down | `curl -fsS http://127.0.0.1:8787/readyz` |
+| Router already nudged but you ignored it 3+ times | Escalation kicks in (see `scripts/escalation.py`); run `headroom_compress` on the largest pending tool result |
+
+The router emits these as literal commands in its rationale. Don't paraphrase — copy the exact string.
+
 Read `references/headroom-evaluation-2026-06-10.md` for evidence and rollback caveats.
 
 Measure Headroom adoption with `scripts/token-reduce-manage.sh measure` and `scripts/token-reduce-manage.sh review`; reports include `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
