@@ -9,10 +9,7 @@ N4: When rank_paths or brain_hint fails, the error must be logged to telemetry
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
-import textwrap
 from pathlib import Path
 
 import pytest
