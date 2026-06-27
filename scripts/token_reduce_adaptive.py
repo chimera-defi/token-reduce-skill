@@ -220,14 +220,17 @@ class RoutingPolicy:
 
 def repo_root() -> Path:
     base = Path(os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
-    proc = subprocess.run(
-        ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    root = (proc.stdout or "").strip()
-    return Path(root).resolve() if root else base.resolve()
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        root = (proc.stdout or "").strip()
+        return Path(root).resolve() if root else base.resolve()
+    except FileNotFoundError:
+        return base.resolve()
 
 
 def script_dir() -> Path:
@@ -235,21 +238,32 @@ def script_dir() -> Path:
 
 
 def count_repo_files(root: Path) -> int:
-    proc = subprocess.run(
-        ["git", "-C", str(root), "ls-files"],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if proc.returncode == 0 and proc.stdout:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "ls-files"],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        proc = None
+
+    if proc is not None and proc.returncode == 0 and proc.stdout:
         return len([line for line in proc.stdout.splitlines() if line.strip()])
-    fallback = subprocess.run(
-        ["rg", "--files", str(root)],
-        check=False,
-        text=True,
-        capture_output=True,
-    )
-    if fallback.returncode == 0:
+
+    try:
+        fallback = subprocess.run(
+            ["rg", "--files", str(root)],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        fallback = None
+
+    if fallback is not None and fallback.returncode == 0:
         return len([line for line in fallback.stdout.splitlines() if line.strip()])
     return 0
 
