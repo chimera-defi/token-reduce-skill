@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Interactive setup wizard for token-reduce skill.
 
-Detects available tools, prompts user for preferences, and saves
-~/.claude/token-reduce-config.json.  Supports --non-interactive for CI.
+Detects available tools, prompts user for preferences, and saves the shared
+config path from token_reduce_config.py. Supports --non-interactive for CI.
 """
 from __future__ import annotations
 
