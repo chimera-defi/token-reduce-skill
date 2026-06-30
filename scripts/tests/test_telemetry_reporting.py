@@ -9,6 +9,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from composite_token_telemetry import realized_outcomes_summary
+from measure_token_reduction import compact_console_result
 from token_reduce_telemetry import summarize_events
 
 
@@ -94,3 +95,17 @@ def test_realized_outcomes_discount_potential_by_runtime_factors() -> None:
     assert realized["realized_savings_conservative_pct"] <= realized["realized_savings_estimate_pct"]
     assert realized["realized_savings_optimistic_pct"] >= realized["realized_savings_estimate_pct"]
     assert "low_confidence_sample" in realized["honesty"]["flags"]
+
+
+def test_compact_console_result_omits_raw_session_metrics() -> None:
+    result = {
+        "session_count": 2,
+        "raw_session_metrics": [{"source": "codex"}, {"source": "claude"}],
+        "adoption": {},
+    }
+
+    compact = compact_console_result(result)
+
+    assert "raw_session_metrics" not in compact
+    assert compact["raw_session_metrics_omitted"] == 2
+    assert compact["session_count"] == 2

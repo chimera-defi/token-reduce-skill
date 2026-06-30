@@ -8,9 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # instant (relies on git state from the SessionStart hook fetch). Silent when
 # up to date; prints a one-line notification when behind.
 _maybe_update_check() {
-  local cfg="$SCRIPT_DIR/../.claude/token-reduce-config.json"
+  local cfg=""
   local enabled="true"
-  if [[ -f "$cfg" ]] && command -v uv >/dev/null 2>&1; then
+  if command -v uv >/dev/null 2>&1; then
+    cfg="$(uv run "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
+  fi
+  if [[ -n "$cfg" && -f "$cfg" ]] && command -v uv >/dev/null 2>&1; then
     enabled=$(uv run python -c "
 import json, sys
 try:
@@ -240,7 +243,6 @@ case "$cmd" in
     ;;
   delegate-health)
     # O2: check installed/missing for each configured delegate and companion
-    _CONFIG="${HOME}/.claude/token-reduce-config.json"
     printf 'Delegates:\n'
     for _delegate in devin kimi grok spark; do
       _cmd="${_delegate}-delegate"

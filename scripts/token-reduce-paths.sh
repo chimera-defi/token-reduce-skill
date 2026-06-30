@@ -56,13 +56,13 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
     EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
     DISPATCH_ARGS=(--mode paths --query "$QUERY" --repo-root "$REPO_ROOT")
     if [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -f "$EVENTS_FILE" ]]; then
-      DISPATCH_ARGS+=(--rank-args --events-file "$EVENTS_FILE")
+      DISPATCH_ARGS+=(--events-file "$EVENTS_FILE")
     fi
     _DISPATCH_OUT="$(printf '%s\n' "$OUTPUT" | \
       uv run python3 "$SCRIPT_DIR/token_reduce_dispatch.py" "${DISPATCH_ARGS[@]}")" && {
       if [[ -n "$_DISPATCH_OUT" ]]; then
         OUTPUT="$_DISPATCH_OUT"
-        RANK_APPLIED=1
+        [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" ]] && RANK_APPLIED=1
       fi
     } || true
   elif [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" && -s "$SCRIPT_DIR/rank_paths.py" ]]; then
