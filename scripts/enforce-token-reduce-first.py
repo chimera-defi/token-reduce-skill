@@ -43,6 +43,7 @@ BROAD_BASH_PATTERNS = [
 _SAFE_TOOL_RE = re.compile(
     r"^\s*(gh|git|npm|bun|node|uv|curl|wget|python(?:\d+(?:\.\d+)?)?|ruby|perl|cargo|go\s+run)\b"
 )
+_PYTHON_MODULE_OR_COMMAND_RE = re.compile(r"^\s*python(?:\d+(?:\.\d+)?)?\s+(-c|-m)\b")
 HELPER_COMMAND_RE = re.compile(
     r"token-reduce-(?:adaptive|paths|snippet|structural)(?:\.(?:sh|py))?\b|qmd\s+search\b"
 )
@@ -271,6 +272,58 @@ def is_exploratory_rg(command: str, repo: Path) -> bool:
     return False
 
 
+def uv_run_inner_command(command: str) -> str:
+    """Return the command wrapped by `uv run`, or empty when not applicable."""
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return ""
+    if len(tokens) < 3 or tokens[0] != "uv" or tokens[1] != "run":
+        return ""
+
+    # Skip common uv-run flags before the actual command. Keep this conservative:
+    # unknown flags with values are skipped one token at a time until we find a
+    # command-looking token such as python, pytest, or a script path.
+    options_with_value = {
+        "--with",
+        "--with-editable",
+        "--from",
+        "--project",
+        "--directory",
+        "--env-file",
+        "--index-url",
+        "--extra-index-url",
+        "--python",
+    }
+    i = 2
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "--":
+            i += 1
+            break
+        if token in options_with_value:
+            i += 2
+            continue
+        if token.startswith("--") and "=" in token:
+            i += 1
+            continue
+        if token.startswith("-"):
+            i += 1
+            continue
+        break
+    return shlex.join(tokens[i:]) if i < len(tokens) else ""
+
+
+def uv_run_needs_scan(command: str) -> bool:
+    """True when a safe-looking uv launcher wraps a command we must inspect."""
+    inner = uv_run_inner_command(command)
+    if not inner:
+        return False
+    if _PYTHON_MODULE_OR_COMMAND_RE.match(inner):
+        return True
+    return matches_any_broad_pattern(inner)
+
+
 def helper_required_reason() -> str:
     hint = discovery_hint()
     return (
@@ -387,12 +440,15 @@ def main() -> int:
             # Safe orchestrators: may carry broad-looking strings as arguments.
             # N1 fix: python3 -c/-m must fall through to coverage checks; only
             # plain `python3 script.py` is safe.
-            if re.match(r"^\s*python(?:\d+(?:\.\d+)?)?\s+(-c|-m)\b", first_line):
+            if _PYTHON_MODULE_OR_COMMAND_RE.match(first_line) or uv_run_needs_scan(first_line):
                 pass  # fall through to broad-pattern checks below
             elif _SAFE_TOOL_RE.match(first_line):
                 return 0
             # Check all lines — broad scans may be on continuation lines
             lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
+            lines.extend(
+                inner for inner in (uv_run_inner_command(line) for line in list(lines)) if inner
+            )
             broad_hit = any(
                 re.search(pattern, line)
                 for line in lines

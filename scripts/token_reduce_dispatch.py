@@ -6,7 +6,7 @@ one subprocess call — eliminates 3 separate `uv run python3` spawns.
 
 Usage (from paths.sh):
   search_results | uv run python3 scripts/token_reduce_dispatch.py \
-      --mode paths --query "..." [--repo-root DIR] [--rank-args ARG...]
+      --mode paths --query "..." [--repo-root DIR] [--events-file PATH]
 """
 from __future__ import annotations
 
@@ -82,13 +82,20 @@ def main() -> int:
     parser.add_argument("--mode", choices=["paths", "snippet"], required=True)
     parser.add_argument("--query", required=True)
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
+    parser.add_argument("--events-file", default=None)
+    parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--rank-args", nargs="*", default=[])
     args = parser.parse_args()
 
     search_results = sys.stdin.read()
+    rank_args = list(args.rank_args)
+    if args.events_file:
+        rank_args.extend(["--events-file", args.events_file])
+    if args.limit:
+        rank_args.extend(["--limit", str(args.limit)])
 
     if args.mode == "paths":
-        output = _run_rank(search_results, args.query, args.repo_root, args.rank_args)
+        output = _run_rank(search_results, args.query, args.repo_root, rank_args)
         _run_brain_hint(args.query, args.repo_root)
     else:
         output = search_results

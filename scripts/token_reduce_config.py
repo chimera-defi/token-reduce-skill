@@ -157,12 +157,15 @@ def _list_tools(config: dict[str, Any]) -> None:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="token-reduce config CLI")
+    parser.add_argument("--path", action="store_true", help="Print the active config path")
     parser.add_argument("--list-tools", action="store_true", help="List delegates/companions")
     parser.add_argument("--get", metavar="KEY", help="Get a config value by dotted key")
     parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"), help="Set a config value")
     args = parser.parse_args()
     cfg = load_config()
-    if args.list_tools:
+    if args.path:
+        print(config_path())
+    elif args.list_tools:
         _list_tools(cfg)
     elif args.get:
         parts = args.get.split(".")
