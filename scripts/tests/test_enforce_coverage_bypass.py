@@ -99,6 +99,24 @@ def test_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
     )
 
 
+def test_uv_run_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
+    """Agents are instructed to use uv run, so uv-wrapped python -c must be inspected."""
+    session_id = "sess-n1-uv-run-python3-c"
+    cmd = 'uv run python3 -c "import os; [_ for _ in os.walk(\'.\')]"'
+
+    r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r1.returncode == 0, (
+        f"first uv run python3 -c with os.walk should warn-and-allow; got rc={r1.returncode} "
+        f"stderr={r1.stderr!r}"
+    )
+
+    r2 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+    assert r2.returncode == 2, (
+        f"repeat uv run python3 -c with os.walk should be blocked; got rc={r2.returncode} "
+        f"stdout={r2.stdout!r}"
+    )
+
+
 def test_python3_script_is_allowed(repo: Path) -> None:
     """N1: plain `python3 some_script.py` is a safe tool invocation — allow."""
     result = _run_hook(_bash_payload("python3 scripts/benchmark.py"), repo)
@@ -113,6 +131,15 @@ def test_python3_m_pytest_is_allowed(repo: Path) -> None:
     result = _run_hook(_bash_payload("python3 -m pytest scripts/tests/ -q"), repo)
     assert result.returncode == 0, (
         f"python3 -m pytest should be allowed; got rc={result.returncode} "
+        f"stdout={result.stdout!r}"
+    )
+
+
+def test_uv_run_python3_m_pytest_is_allowed(repo: Path) -> None:
+    """uv-wrapped pytest remains a normal safe command when it has no broad pattern."""
+    result = _run_hook(_bash_payload("uv run python3 -m pytest scripts/tests/ -q"), repo)
+    assert result.returncode == 0, (
+        f"uv run python3 -m pytest should be allowed; got rc={result.returncode} "
         f"stdout={result.stdout!r}"
     )
 

@@ -608,18 +608,36 @@ def measure(scope: str, repo_root: str) -> dict:
     }
 
 
+def compact_console_result(result: dict) -> dict:
+    """Return a bounded measurement payload for stdout.
+
+    Full raw_session_metrics can be thousands of lines for global scope; keep it
+    in the artifact but omit it from console output so telemetry review does not
+    create the context bloat this skill is meant to prevent.
+    """
+    compact = {k: v for k, v in result.items() if k != "raw_session_metrics"}
+    compact["raw_session_metrics_omitted"] = len(result.get("raw_session_metrics") or [])
+    return compact
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scope", choices=["repo", "global"], default="repo")
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument(
+        "--verbose-json",
+        action="store_true",
+        help="Print full JSON to stdout, including raw_session_metrics.",
+    )
     args = parser.parse_args()
 
     result = measure(args.scope, args.repo_root)
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n")
-    print(json.dumps(result, indent=2))
+    console_result = result if args.verbose_json else compact_console_result(result)
+    print(json.dumps(console_result, indent=2))
     return 0
 
 

@@ -37,7 +37,8 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 
 ## Setup (First Invocation)
 
-On first invocation in a new repo, if no config exists at `~/.claude/token-reduce-config.json`,
+On first invocation in a new repo, if no config exists at the path reported by
+`uv run scripts/token_reduce_config.py --path` (override with `TOKEN_REDUCE_CONFIG_PATH`),
 run `token-reduce-manage.sh setup` (or `token-reduce-manage.sh setup --non-interactive` in CI)
 and relay the choices to the user via AskUserQuestion. Skip if config already exists.
 
