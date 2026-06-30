@@ -81,6 +81,8 @@ def post_json(
         return False, f"http {exc.code}"
     except urllib.error.URLError as exc:
         return False, str(exc.reason)
+    except (OSError, TimeoutError) as exc:
+        return False, f"connection error: {exc}"
 
 
 def build_remote_payload(
