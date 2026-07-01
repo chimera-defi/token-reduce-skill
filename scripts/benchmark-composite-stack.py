@@ -300,17 +300,27 @@ def main() -> int:
         ),
         (
             "composite_stack",
-            ["token-reduce-paths", "token-reduce-structural", "rtk"],
+            # token-reduce-structural (token-savior) and rtk are optional;
+            # fall back to rg so the strategy runs on any machine.
+            ["token-reduce-paths", "rg"],
             [
                 ("fuzzy_discovery", "token-reduce-paths hook enforcement system | head -40", []),
                 (
                     "exact_symbol",
-                    "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80",
+                    (
+                        "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80"
+                        if shutil.which("token-reduce-structural")
+                        else 'rg -n "prompt_requires_helper" scripts/*.py | head -40'
+                    ),
                     ["prompt_requires_helper", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
-                    "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    (
+                        'rtk grep -n -i "token reduction" README.md SKILL.md references/*.md | head -80'
+                        if shutil.which("rtk")
+                        else 'rg -n -i "token reduction" README.md SKILL.md references/*.md | head -80'
+                    ),
                     ["Token Reduction Guide"],
                 ),
             ],
