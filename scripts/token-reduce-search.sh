@@ -156,7 +156,7 @@ symbol_like_pattern() {
   local token
   local tokens=()
 
-  while IFS= read -r token; do
+  while IFS= read -r token || [[ -n "$token" ]]; do
     [[ "$token" == *"_"* ]] || continue
     [[ -n "$token" ]] || continue
     tokens+=("$token")
@@ -188,7 +188,7 @@ path_pattern() {
   fi
 
   local tokens=()
-  while IFS= read -r token; do
+  while IFS= read -r token || [[ -n "$token" ]]; do
     case "$token" in
       ""|find|path|paths|repo|this|that|only|return|script|scripts|hook|python|workflow|broad|exploratory|scans|blocks|block|minimum|context|possible|the)
         continue
@@ -222,7 +222,7 @@ content_pattern() {
   fi
 
   local tokens=()
-  while IFS= read -r token; do
+  while IFS= read -r token || [[ -n "$token" ]]; do
     case "$token" in
       ""|find|path|paths|repo|this|that|only|return|min*|context|possible|the|use|using|token|reduction|workflow)
         continue
