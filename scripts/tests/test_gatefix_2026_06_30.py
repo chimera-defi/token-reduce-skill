@@ -228,7 +228,11 @@ def test_composite_stack_available_without_token_savior(
 def test_composite_stack_exact_symbol_falls_back_to_rg(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Behavioral: exact_symbol step must use rg when token-reduce-structural absent."""
+    """Behavioral: composite_stack exact_symbol step must use rg when token-reduce-structural absent.
+
+    Reads the step commands from the JSON output (StepResult.command is persisted),
+    so the check is isolated to composite_stack's own steps.
+    """
     bcs = _load_bcs()
 
     monkeypatch.setattr(bcs, "OUTPUT_PATH", tmp_path / "out.json")
@@ -244,10 +248,7 @@ def test_composite_stack_exact_symbol_falls_back_to_rg(
 
     monkeypatch.setattr(bcs.shutil, "which", patched_which)
 
-    captured_commands: list[str] = []
-
-    def capturing_run_cmd(command: str, expected_substrings: list) -> object:
-        captured_commands.append(command)
+    def fake_run_cmd(command: str, expected_substrings: list) -> object:
         return bcs.StepResult(
             label="",
             command=command,
@@ -261,19 +262,36 @@ def test_composite_stack_exact_symbol_falls_back_to_rg(
             stdout_preview="mocked",
         )
 
-    monkeypatch.setattr(bcs, "run_cmd", capturing_run_cmd)
+    monkeypatch.setattr(bcs, "run_cmd", fake_run_cmd)
     monkeypatch.setattr(bcs, "ensure_qmd_collection", lambda: None)
 
     bcs.main()
 
-    composite_cmds = [
-        c for c in captured_commands
-        if "prompt_requires_helper" in c or "token reduction" in c.lower()
-    ]
-    for cmd in composite_cmds:
+    result = json.loads((tmp_path / "out.json").read_text())
+    composite = next((b for b in result["benchmarks"] if b["name"] == "composite_stack"), None)
+    assert composite is not None, "composite_stack missing from output"
+    assert composite["available"], "composite_stack must be available"
+
+    step_cmds = [s["command"] for s in composite.get("steps", [])]
+
+    # exact_symbol step — must not invoke token-reduce-structural (it's absent)
+    exact_cmds = [c for c in step_cmds if "prompt_requires_helper" in c]
+    assert exact_cmds, f"exact_symbol step not found in composite_stack steps: {step_cmds}"
+    for cmd in exact_cmds:
         assert "token-reduce-structural" not in cmd, (
-            f"exact_symbol step still uses token-reduce-structural when it is absent: {cmd!r}"
+            f"exact_symbol still calls token-reduce-structural when absent: {cmd!r}"
         )
         assert "rg" in cmd, (
-            f"expected rg fallback in exact_symbol step but got: {cmd!r}"
+            f"expected rg fallback for exact_symbol, got: {cmd!r}"
+        )
+
+    # output_scan step — must not invoke rtk (it's absent)
+    scan_cmds = [c for c in step_cmds if "token reduction" in c.lower()]
+    assert scan_cmds, f"output_scan step not found in composite_stack steps: {step_cmds}"
+    for cmd in scan_cmds:
+        assert not cmd.startswith("rtk "), (
+            f"output_scan still calls rtk when absent: {cmd!r}"
+        )
+        assert "rg" in cmd, (
+            f"expected rg fallback for output_scan, got: {cmd!r}"
         )
