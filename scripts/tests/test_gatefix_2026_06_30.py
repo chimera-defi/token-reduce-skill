@@ -194,6 +194,8 @@ def test_composite_stack_available_without_token_savior(
         return orig_which(tool)
 
     monkeypatch.setattr(bcs.shutil, "which", patched_which)
+    # _token_savior_functional() uses importlib.util.find_spec, not shutil.which
+    monkeypatch.setattr(bcs, "_token_savior_functional", lambda: False)
 
     def fake_run_cmd(command: str, expected_substrings: list) -> object:
         return bcs.StepResult(
@@ -247,6 +249,8 @@ def test_composite_stack_exact_symbol_falls_back_to_rg(
         return orig_which(tool)
 
     monkeypatch.setattr(bcs.shutil, "which", patched_which)
+    # _token_savior_functional() uses importlib, not shutil.which
+    monkeypatch.setattr(bcs, "_token_savior_functional", lambda: False)
 
     def fake_run_cmd(command: str, expected_substrings: list) -> object:
         return bcs.StepResult(
