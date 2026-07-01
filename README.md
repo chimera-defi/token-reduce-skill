@@ -182,12 +182,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1599` | baseline | `ok` |
-| `qmd_only` | `680` | `57.5%` saved | `ok` |
-| `token_reduce_only` | `389` | `75.7%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `86.7%` saved | `quality-fail` |
-| `rtk_only` | `788` | `50.7%` saved | `ok` |
-| `composite_stack` | `338` | `78.9%` saved | `quality-fail` |
+| `broad_shell` | `1936` | baseline | `ok` |
+| `qmd_only` | `673` | `65.2%` saved | `ok` |
+| `token_reduce_only` | `484` | `75.0%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `89.0%` saved | `quality-fail` |
+| `rtk_only` | `855` | `55.8%` saved | `ok` |
+| `composite_stack` | `438` | `77.4%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 

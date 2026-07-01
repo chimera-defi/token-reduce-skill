@@ -7,6 +7,7 @@ Run with:
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -131,6 +132,20 @@ def availability(requirements: list[str]) -> tuple[bool, str]:
     if missing:
         return False, f"missing tools: {', '.join(missing)}"
     return True, ""
+
+
+def _token_savior_functional() -> bool:
+    """Return True only when token_savior Python package is importable.
+
+    shutil.which("token-reduce-structural") can be truthy even when the wrapper
+    exists but the underlying token_savior package is not installed, causing the
+    command to exit with an error and produce no output.  Checking the import
+    spec is fast (no module execution) and accurately reflects runtime ability.
+    """
+    try:
+        return importlib.util.find_spec("token_savior.project_indexer") is not None
+    except (ModuleNotFoundError, ValueError):
+        return False
 
 
 def run_strategy(
@@ -309,8 +324,8 @@ def main() -> int:
                     "exact_symbol",
                     (
                         "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80"
-                        if shutil.which("token-reduce-structural")
-                        else 'rg -n "prompt_requires_helper" scripts/*.py | head -40'
+                        if _token_savior_functional()
+                        else 'rg -n "def prompt_requires_helper" scripts/*.py | head -5'
                     ),
                     ["prompt_requires_helper", "scripts/token_reduce_state.py"],
                 ),

@@ -101,11 +101,11 @@ Numbers from `references/benchmarks/local-benchmark.json` (this repo, QMD warm):
 
 | Approach | Tokens | vs broad inventory |
 |----------|--------|-------------------|
-| `rg --files .` broad inventory | `1225` | baseline |
-| `rg -n -i -g '*.md' "topic" .` scoped | `221` | `82.0%` saved |
-| `qmd search` (file-list only) | `226` | `81.6%` saved |
-| `token-reduce-paths.sh` (QMD warm) | `228` | `81.4%` saved |
-| `token-reduce-snippet.sh` (QMD warm) | `354` | `71.1%` saved |
+| `rg --files .` broad inventory | `1324` | baseline |
+| `rg -n -i -g '*.md' "topic" .` scoped | `221` | `83.3%` saved |
+| `qmd search` (file-list only) | `249` | `81.2%` saved |
+| `token-reduce-paths.sh` (QMD warm) | `252` | `81.0%` saved |
+| `token-reduce-snippet.sh` (QMD warm) | `381` | `71.2%` saved |
 
 Full composite-stack benchmark (vs broad shell): `78.3%` saved, quality-fail.
 See `references/benchmarks/composite-benchmark.json` for per-strategy detail.
