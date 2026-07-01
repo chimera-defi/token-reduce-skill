@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-20T09:35:08.785896+00:00",
+  "generated_at": "2026-07-01T04:48:37.226986+00:00",
   "active_profile": "unknown",
   "tasks": [
     {
@@ -30,89 +30,89 @@
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 286,
-      "bytes": 227,
-      "lines": 6,
-      "tokens": 51,
-      "quality_pass": false,
-      "quality_note": "missing: token_reduce_state.py",
-      "stdout_preview": "./scripts/token-reduce-structural.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-search.sh\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/token-reduce-update-check.py\n./scripts/install_workspace_skill.py"
+      "duration_ms": 382,
+      "bytes": 201,
+      "lines": 5,
+      "tokens": 54,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./scripts/token_reduce_state.py\n./scripts/remind-token-reduce.py\n./scripts/tests/test_gatefix_2026_06_30.py\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/tests/test_rg_exploratory_parsing.py"
     },
     {
       "task": "exact_symbol",
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"find symbol prompt_requires_helper\" | head -80",
       "exit_code": 0,
-      "duration_ms": 325,
-      "bytes": 227,
-      "lines": 6,
-      "tokens": 51,
-      "quality_pass": false,
-      "quality_note": "missing: token_reduce_state.py",
-      "stdout_preview": "./scripts/token-reduce-structural.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-search.sh\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/token-reduce-update-check.py\n./scripts/install_workspace_skill.py"
+      "duration_ms": 424,
+      "bytes": 201,
+      "lines": 5,
+      "tokens": 54,
+      "quality_pass": true,
+      "quality_note": "ok",
+      "stdout_preview": "./scripts/token_reduce_state.py\n./scripts/remind-token-reduce.py\n./scripts/tests/test_gatefix_2026_06_30.py\n./scripts/tests/test_token_reduce_adaptive.py\n./scripts/tests/test_rg_exploratory_parsing.py"
     },
     {
       "task": "hook_discovery",
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 238,
-      "bytes": 512,
-      "lines": 14,
-      "tokens": 125,
+      "duration_ms": 517,
+      "bytes": 730,
+      "lines": 20,
+      "tokens": 173,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "./scripts/setup.sh\n./scripts/composite_token_telemetry.py\n./scripts/review_token_reduction.py\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_state.py\n./scripts/token_reduce_telemetry.py\n./scripts/token-reduce-manage.sh\n./scripts/token-reduce-telemetry-sync.py"
+      "stdout_preview": "./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh\n./scripts/token_reduce_config.py\n./scripts/review_token_reduction.py\n./scripts/token_reduce_state.py"
     },
     {
       "task": "hook_discovery",
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"hook enforcement system\" | head -80",
       "exit_code": 0,
-      "duration_ms": 295,
-      "bytes": 512,
-      "lines": 14,
-      "tokens": 125,
+      "duration_ms": 587,
+      "bytes": 730,
+      "lines": 20,
+      "tokens": 173,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "./scripts/setup.sh\n./scripts/composite_token_telemetry.py\n./scripts/review_token_reduction.py\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_state.py\n./scripts/token_reduce_telemetry.py\n./scripts/token-reduce-manage.sh\n./scripts/token-reduce-telemetry-sync.py"
+      "stdout_preview": "./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh\n./scripts/token_reduce_config.py\n./scripts/review_token_reduction.py\n./scripts/token_reduce_state.py"
     },
     {
       "task": "token_reduction_docs",
       "strategy": "baseline_paths",
       "command": "./scripts/token-reduce-paths.sh \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 213,
-      "bytes": 134,
-      "lines": 3,
-      "tokens": 31,
+      "duration_ms": 339,
+      "bytes": 174,
+      "lines": 4,
+      "tokens": 40,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "./references/token-reduction-guide.md\n./references/token-savior-evaluation.md\n./references/benchmarks/token-optimizer-mcp-intake.json"
+      "stdout_preview": "./references/delegate-call-reduction.md\n./references/token-savior-evaluation.md\n./references/token-reduction-guide.md\n./references/benchmarks/token-optimizer-mcp-intake.json"
     },
     {
       "task": "token_reduction_docs",
       "strategy": "adaptive_tier",
       "command": "./scripts/token-reduce-adaptive.sh --behavior-days 0 \"token reduction guide\" | head -80",
       "exit_code": 0,
-      "duration_ms": 278,
-      "bytes": 134,
-      "lines": 3,
-      "tokens": 31,
+      "duration_ms": 415,
+      "bytes": 174,
+      "lines": 4,
+      "tokens": 40,
       "quality_pass": true,
       "quality_note": "ok",
-      "stdout_preview": "./references/token-reduction-guide.md\n./references/token-savior-evaluation.md\n./references/benchmarks/token-optimizer-mcp-intake.json"
+      "stdout_preview": "./references/delegate-call-reduction.md\n./references/token-savior-evaluation.md\n./references/token-reduction-guide.md\n./references/benchmarks/token-optimizer-mcp-intake.json"
     }
   ],
   "summary": {
-    "baseline_tokens": 207,
-    "adaptive_tokens": 207,
+    "baseline_tokens": 267,
+    "adaptive_tokens": 267,
     "adaptive_savings_vs_baseline_pct": 0.0,
-    "baseline_quality_pass": false,
-    "adaptive_quality_pass": false
+    "baseline_quality_pass": true,
+    "adaptive_quality_pass": true
   },
   "verdict": {
-    "promote_adaptive_default": false,
+    "promote_adaptive_default": true,
     "reason": "Adaptive default is safe when quality is preserved and token overhead stays within 2.0% of baseline path-only discovery.",
     "promotion_tolerance_pct": 2.0
   }
