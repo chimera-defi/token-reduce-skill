@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-05T20:36:12.767162+00:00",
+  "generated_at": "2026-07-05T21:47:13.866163+00:00",
   "cwd": "/home/agents/workspace/token-reduce-skill/.worktrees/main",
   "qmd_collection": "repo-6cc136950dbf",
   "benchmarks": [
@@ -11,10 +11,10 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 24,
-      "bytes": 8033,
-      "lines": 167,
-      "tokens": 1958,
+      "duration_ms": 28,
+      "bytes": 8073,
+      "lines": 168,
+      "tokens": 1967,
       "quality_pass": true,
       "savings_vs_broad_pct": 0.0,
       "steps": [
@@ -22,19 +22,19 @@
           "label": "fuzzy_discovery",
           "command": "rg --files . | head -200",
           "exit_code": 0,
-          "duration_ms": 8,
-          "bytes": 5290,
-          "lines": 144,
-          "tokens": 1358,
+          "duration_ms": 10,
+          "bytes": 5330,
+          "lines": 145,
+          "tokens": 1367,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "./README.md\n./scripts/token-reduce-search.sh\n./scripts/benchmark-code-review-graph-intake.py\n./scripts/benchmark-companion-tools.py\n./scripts/activate-token-reduce-stack.sh\n./mcp/server.mjs"
+          "stdout_preview": "./README.md\n./scripts/coverage_patterns.py\n./scripts/benchmark-token-reduce.py\n./scripts/token-reduce-adaptive.sh\n./scripts/token_reduce_config.py\n./scripts/composite_token_telemetry.py"
         },
         {
           "label": "exact_symbol",
           "command": "rg -n \"prompt_requires_helper\" scripts/*.py | head -40",
           "exit_code": 0,
-          "duration_ms": 7,
+          "duration_ms": 9,
           "bytes": 1826,
           "lines": 15,
           "tokens": 387,
@@ -52,7 +52,7 @@
           "tokens": 213,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
+          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
         }
       ]
     },
@@ -65,48 +65,48 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 460,
+      "duration_ms": 472,
       "bytes": 2132,
       "lines": 24,
-      "tokens": 678,
+      "tokens": 677,
       "quality_pass": true,
-      "savings_vs_broad_pct": 65.4,
+      "savings_vs_broad_pct": 65.6,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "qmd search \"hook enforcement system\" -n 8 --files -c repo-6cc136950dbf",
           "exit_code": 0,
-          "duration_ms": 219,
+          "duration_ms": 203,
           "bytes": 603,
           "lines": 8,
-          "tokens": 231,
+          "tokens": 230,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "#2a90cf,0.94,qmd://repo-6cc136950dbf/references/benchmarks/adaptive-tier-benchmark.json\n#4eb0c6,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-companion-tools.py\n#f44f69,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-composite-stack.py\n#2a6339,0.93,qmd://repo-6cc136950dbf/references/token-savior-evaluation.md\n#8f68cb,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-hook-speed.py\n#0ca6c8,0.93,qmd://repo-6cc136950dbf/references/architecture.md"
+          "stdout_preview": "#45bb42,0.94,qmd://repo-6cc136950dbf/references/benchmarks/adaptive-tier-benchmark.json\n#4eb0c6,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-companion-tools.py\n#2a6339,0.93,qmd://repo-6cc136950dbf/references/token-savior-evaluation.md\n#8f68cb,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-hook-speed.py\n#d34381,0.93,qmd://repo-6cc136950dbf/scripts/benchmark-composite-stack.py\n#51a75a,0.93,qmd://repo-6cc136950dbf/references/architecture.md"
         },
         {
           "label": "exact_symbol",
           "command": "qmd search \"prompt requires helper token reduce state\" -n 8 --files -c repo-6cc136950dbf",
           "exit_code": 0,
-          "duration_ms": 232,
+          "duration_ms": 256,
           "bytes": 612,
           "lines": 8,
           "tokens": 234,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "#0560b4,0.95,qmd://repo-6cc136950dbf/references/benchmarks/composite-benchmark.json\n#f44f69,0.95,qmd://repo-6cc136950dbf/scripts/benchmark-composite-stack.py\n#7413d2,0.95,qmd://repo-6cc136950dbf/scripts/token_reduce_state.py\n#00b881,0.95,qmd://repo-6cc136950dbf/scripts/tests/test_rg_exploratory_parsing.py\n#2a90cf,0.95,qmd://repo-6cc136950dbf/references/benchmarks/adaptive-tier-benchmark.json\n#4eb0c6,0.95,qmd://repo-6cc136950dbf/scripts/benchmark-companion-tools.py"
+          "stdout_preview": "#1e95b0,0.95,qmd://repo-6cc136950dbf/references/benchmarks/composite-benchmark.json\n#d34381,0.95,qmd://repo-6cc136950dbf/scripts/benchmark-composite-stack.py\n#d0f83b,0.95,qmd://repo-6cc136950dbf/scripts/token_reduce_state.py\n#00b881,0.95,qmd://repo-6cc136950dbf/scripts/tests/test_rg_exploratory_parsing.py\n#45bb42,0.95,qmd://repo-6cc136950dbf/references/benchmarks/adaptive-tier-benchmark.json\n#4eb0c6,0.95,qmd://repo-6cc136950dbf/scripts/benchmark-companion-tools.py"
         },
         {
           "label": "output_scan",
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 9,
+          "duration_ms": 13,
           "bytes": 917,
           "lines": 8,
           "tokens": 213,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
+          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
         }
       ]
     },
@@ -119,30 +119,30 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 920,
+      "duration_ms": 979,
       "bytes": 1848,
       "lines": 33,
       "tokens": 440,
       "quality_pass": true,
-      "savings_vs_broad_pct": 77.5,
+      "savings_vs_broad_pct": 77.6,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "token-reduce-paths hook enforcement system | head -40",
           "exit_code": 0,
-          "duration_ms": 565,
+          "duration_ms": 619,
           "bytes": 730,
           "lines": 20,
           "tokens": 173,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token_reduce_config.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh"
+          "stdout_preview": "./scripts/review_token_reduction.py\n./scripts/token-reduce-manage.sh\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token_reduce_config.py"
         },
         {
           "label": "exact_symbol",
           "command": "token-reduce-paths find symbol prompt_requires_helper | head -40",
           "exit_code": 0,
-          "duration_ms": 347,
+          "duration_ms": 352,
           "bytes": 201,
           "lines": 5,
           "tokens": 54,
@@ -173,18 +173,18 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 140,
+      "duration_ms": 135,
       "bytes": 917,
       "lines": 8,
       "tokens": 213,
       "quality_pass": false,
-      "savings_vs_broad_pct": 89.1,
+      "savings_vs_broad_pct": 89.2,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "token-reduce-structural --project-root . search \"hook enforcement system\" | head -80",
           "exit_code": 0,
-          "duration_ms": 62,
+          "duration_ms": 67,
           "bytes": 0,
           "lines": 0,
           "tokens": 0,
@@ -196,7 +196,7 @@
           "label": "exact_symbol",
           "command": "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80",
           "exit_code": 0,
-          "duration_ms": 69,
+          "duration_ms": 61,
           "bytes": 0,
           "lines": 0,
           "tokens": 0,
@@ -208,13 +208,13 @@
           "label": "output_scan",
           "command": "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 9,
+          "duration_ms": 7,
           "bytes": 917,
           "lines": 8,
           "tokens": 213,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
+          "stdout_preview": "SKILL.md:22:# Token Reduction Skill\nSKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\nreferences/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\nreferences/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\nreferences/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\nreferences/token-reduction-guide.md:1:# Token Reduction Guide"
         }
       ]
     },
@@ -226,18 +226,18 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 138,
+      "duration_ms": 153,
       "bytes": 3513,
       "lines": 30,
       "tokens": 867,
       "quality_pass": true,
-      "savings_vs_broad_pct": 55.7,
+      "savings_vs_broad_pct": 55.9,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "rtk find . -name '*.md' | head -40",
           "exit_code": 0,
-          "duration_ms": 28,
+          "duration_ms": 49,
           "bytes": 1028,
           "lines": 5,
           "tokens": 290,
@@ -249,7 +249,7 @@
           "label": "exact_symbol",
           "command": "rtk grep -n \"prompt_requires_helper\" scripts/*.py | head -40",
           "exit_code": 0,
-          "duration_ms": 33,
+          "duration_ms": 28,
           "bytes": 1568,
           "lines": 17,
           "tokens": 364,
@@ -261,7 +261,7 @@
           "label": "output_scan",
           "command": "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 77,
+          "duration_ms": 76,
           "bytes": 917,
           "lines": 8,
           "tokens": 213,
@@ -280,30 +280,30 @@
       "available": true,
       "skipped_reason": "",
       "exit_code": 0,
-      "duration_ms": 608,
+      "duration_ms": 600,
       "bytes": 1860,
       "lines": 30,
       "tokens": 434,
       "quality_pass": true,
-      "savings_vs_broad_pct": 77.8,
+      "savings_vs_broad_pct": 77.9,
       "steps": [
         {
           "label": "fuzzy_discovery",
           "command": "token-reduce-paths hook enforcement system | head -40",
           "exit_code": 0,
-          "duration_ms": 486,
+          "duration_ms": 501,
           "bytes": 730,
           "lines": 20,
           "tokens": 173,
           "quality_pass": true,
           "quality_note": "ok",
-          "stdout_preview": "./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token_reduce_config.py\n./scripts/token-reduce-telemetry-sync.py\n./scripts/token-reduce-manage.sh"
+          "stdout_preview": "./scripts/review_token_reduction.py\n./scripts/token-reduce-manage.sh\n./scripts/enforce-token-reduce-first.py\n./scripts/token_reduce_setup_wizard.py\n./scripts/token_reduce_adaptive.py\n./scripts/token_reduce_config.py"
         },
         {
           "label": "exact_symbol",
           "command": "rg -n \"def prompt_requires_helper\" scripts/*.py | head -5",
           "exit_code": 0,
-          "duration_ms": 8,
+          "duration_ms": 7,
           "bytes": 213,
           "lines": 2,
           "tokens": 48,
@@ -315,7 +315,7 @@
           "label": "output_scan",
           "command": "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
           "exit_code": 0,
-          "duration_ms": 114,
+          "duration_ms": 92,
           "bytes": 917,
           "lines": 8,
           "tokens": 213,
@@ -326,7 +326,7 @@
       ]
     }
   ],
-  "table": "| Strategy | Tokens | Savings vs broad | Duration | Status |\n|----------|--------|------------------|----------|--------|\n| `broad_shell` | `1958` | `0.0%` | `24 ms` | ok |\n| `qmd_only` | `678` | `65.4%` | `460 ms` | ok |\n| `token_reduce_only` | `440` | `77.5%` | `920 ms` | ok |\n| `token_savior_only` | `213` | `89.1%` | `140 ms` | quality-fail |\n| `rtk_only` | `867` | `55.7%` | `138 ms` | ok |\n| `composite_stack` | `434` | `77.8%` | `608 ms` | ok |",
+  "table": "| Strategy | Tokens | Savings vs broad | Duration | Status |\n|----------|--------|------------------|----------|--------|\n| `broad_shell` | `1967` | `0.0%` | `28 ms` | ok |\n| `qmd_only` | `677` | `65.6%` | `472 ms` | ok |\n| `token_reduce_only` | `440` | `77.6%` | `979 ms` | ok |\n| `token_savior_only` | `213` | `89.2%` | `135 ms` | quality-fail |\n| `rtk_only` | `867` | `55.9%` | `153 ms` | ok |\n| `composite_stack` | `434` | `77.9%` | `600 ms` | ok |",
   "composite_vs_single": {
     "composite_tokens": 434,
     "composite_quality_pass": true,

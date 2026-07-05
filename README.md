@@ -183,12 +183,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1958` | baseline | `ok` |
-| `qmd_only` | `678` | `65.4%` saved | `ok` |
-| `token_reduce_only` | `440` | `77.5%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `89.1%` saved | `quality-fail` |
-| `rtk_only` | `867` | `55.7%` saved | `ok` |
-| `composite_stack` | `434` | `77.8%` saved | `quality-fail` |
+| `broad_shell` | `1967` | baseline | `ok` |
+| `qmd_only` | `677` | `65.6%` saved | `ok` |
+| `token_reduce_only` | `440` | `77.6%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `89.2%` saved | `quality-fail` |
+| `rtk_only` | `867` | `55.9%` saved | `ok` |
+| `composite_stack` | `434` | `77.9%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
@@ -272,6 +272,7 @@ Dependency checks:
 - use Caliper's `/caliper` command to launch its local Control Tower dashboard/API
 - inspect token-reduce's normalized view with `./scripts/token-reduce-manage.sh caliper-summary --url <caliper-url>`
 - include spend-aware recommendations in self-review with `./scripts/token-reduce-manage.sh review --with-caliper --caliper-url <caliper-url>`
+- rely on the normalized `aggregate.complete` / `aggregate.polls` fields to verify Caliper's incremental aggregate scan finished before trusting spend hotspots
 - keep token-reduce as the first-move discovery/router; Caliper is for periodic meta-review, not path discovery
 - treat Caliper costs as estimates, not invoice records
 - do not auto-write Caliper's personalized cost-discipline skill without explicit user consent
