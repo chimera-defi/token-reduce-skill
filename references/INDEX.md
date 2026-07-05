@@ -40,6 +40,8 @@ Use this index to keep maintenance repeatable and avoid drift.
   - `references/companion-tools.md`
 - Headroom proxy/MCP pilot:
   - `references/headroom-evaluation-2026-06-10.md`
+- Cost Caliper spend/session telemetry companion:
+  - `references/caliper-evaluation-2026-07-03.md`
 - Freshness checks:
   - `./scripts/token-reduce-manage.sh deps-check`
   - `./scripts/token-reduce-manage.sh deps-check-conditional`

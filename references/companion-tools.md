@@ -2,6 +2,7 @@
 
 Use this when evaluating additions like structural indexers, alternate search backends, new MCP servers, or agent-native CLI companions.
 Also use it for response-style, memory-compression, proxy, or MCP companions (for example caveman or Headroom).
+Use the same path for spend/session observability companions such as Cost Caliper.
 
 ## Rule
 
@@ -54,6 +55,7 @@ Do not integrate a companion tool on intuition alone.
 - If the tool is clearly better only for large tool-result or long-session context pressure, integrate it as an optional proxy/MCP companion with health checks and rollback guidance.
 - If the tool is clearly better only for specific operational surfaces (for example GitHub/browser), integrate it as an optional interface companion and keep core discovery defaults unchanged.
 - If the tool adds planner/delegation orchestration (for example the `delegate-skill` router), keep it as a standalone repo and integrate by link/script, not by embedding source into token-reduce.
+- If the tool only adds spend/session observability (for example Cost Caliper), keep it optional and feed normalized metrics into `review` rather than default routing.
 - If it degrades broad topic discovery or adds heavy runtime/install cost, do not make it the default first move.
 - If it cannot beat token-reduce on real repo tasks, document the result and reject it.
 
@@ -65,3 +67,4 @@ Future additions should enter through the same benchmark-and-adapter path:
 - docs and validation third
 
 Current Headroom verdict: see `references/headroom-evaluation-2026-06-10.md`.
+Current Cost Caliper verdict: see `references/caliper-evaluation-2026-07-03.md`.

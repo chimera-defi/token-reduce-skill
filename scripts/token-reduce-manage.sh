@@ -51,6 +51,7 @@ commands:
   benchmark-context-mode-intake  Validate and benchmark context-mode companion intake
   benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
   benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
+  caliper-summary  Summarize a running Cost Caliper Control Tower API
   release-gate  Run benchmark suite + keep/drop verdict for major change sets
   checkpoint  Run the full checkpoint suite and write audit artifacts
   test-adaptive  Run unit tests for adaptive tier routing decisions
@@ -126,6 +127,9 @@ case "$cmd" in
     fi
     exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
     ;;
+  caliper-summary)
+    exec uv run "$SCRIPT_DIR/caliper_summary.py" "$@"
+    ;;
   release-gate)
     exec "$SCRIPT_DIR/release-gate.sh" "$@"
     ;;
@@ -170,10 +174,10 @@ case "$cmd" in
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope global
     ;;
   review)
-    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo
+    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo "$@"
     ;;
   review-global)
-    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
+    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global "$@"
     ;;
   validate)
     uv run "$SCRIPT_DIR/validate_skill_package.py"
