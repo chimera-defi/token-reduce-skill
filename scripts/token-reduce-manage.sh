@@ -222,14 +222,51 @@ case "$cmd" in
     OUT_DIR="$ROOT/artifacts/token-reduction"
     DATE_STAMP="$(date +%Y-%m-%d)"
     WORKSPACE_AUDIT="$OUT_DIR/workspace-audit-$DATE_STAMP.json"
+    CALIPER_JSON="$OUT_DIR/caliper-summary-$DATE_STAMP.json"
+    CALIPER_MD="$OUT_DIR/caliper-summary-$DATE_STAMP.md"
     mkdir -p "$OUT_DIR"
+    CFG_PATH="$(uv run "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
+    WORKSPACE_ROOT="/home/agents/workspace"
+    WORKSPACE_DAYS="30"
+    TELEMETRY_SYNC_TIMEOUT="45"
+    CALIPER_ENABLED="true"
+    CALIPER_SELF_IMPROVE="true"
+    CALIPER_URL="${CALIPER_URL:-http://127.0.0.1:49123}"
+    if [[ -n "$CFG_PATH" && -f "$CFG_PATH" ]]; then
+      WORKSPACE_ROOT="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_root') or '/home/agents/workspace')" 2>/dev/null || echo "$WORKSPACE_ROOT")"
+      WORKSPACE_DAYS="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_days') or 30)" 2>/dev/null || echo "$WORKSPACE_DAYS")"
+      TELEMETRY_SYNC_TIMEOUT="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('self_improve_sync_timeout_seconds') or 45)" 2>/dev/null || echo "$TELEMETRY_SYNC_TIMEOUT")"
+      CALIPER_ENABLED="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('enabled', True) else 'false')" 2>/dev/null || echo "$CALIPER_ENABLED")"
+      CALIPER_SELF_IMPROVE="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('self_improve', True) else 'false')" 2>/dev/null || echo "$CALIPER_SELF_IMPROVE")"
+      CALIPER_URL="$(uv run python -c "import json, os; c=json.load(open('$CFG_PATH')); print(os.environ.get('CALIPER_URL') or c.get('companions', {}).get('caliper', {}).get('url') or 'http://127.0.0.1:49123')" 2>/dev/null || echo "$CALIPER_URL")"
+    fi
+    if [[ ! -d "$WORKSPACE_ROOT" ]]; then
+      WORKSPACE_ROOT="/home/agents/workspace"
+    fi
 
     env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
     uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" || true
     "$SCRIPT_DIR/baseline-measurement.sh" --scope global
-    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global
-    uv run "$SCRIPT_DIR/audit_workspace_skills.py" --days 30 --output "$WORKSPACE_AUDIT" >/dev/null
-    uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" || true
+    CALIPER_REVIEW_ARGS=()
+    if [[ "$CALIPER_ENABLED" == "true" && "$CALIPER_SELF_IMPROVE" == "true" ]]; then
+      if uv run "$SCRIPT_DIR/caliper_summary.py" \
+        --url "$CALIPER_URL" \
+        --output-json "$CALIPER_JSON" \
+        --output-md "$CALIPER_MD" >/dev/null; then
+        CALIPER_REVIEW_ARGS=(--caliper-summary-json "$CALIPER_JSON")
+        echo "caliper summary snapshot: $CALIPER_JSON"
+      else
+        echo "caliper summary unavailable at $CALIPER_URL; continuing without spend telemetry" >&2
+      fi
+    fi
+    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global "${CALIPER_REVIEW_ARGS[@]}"
+    uv run "$SCRIPT_DIR/audit_workspace_skills.py" \
+      --workspace-root "$WORKSPACE_ROOT" \
+      --days "$WORKSPACE_DAYS" \
+      --output "$WORKSPACE_AUDIT" >/dev/null
+    if ! timeout "${TELEMETRY_SYNC_TIMEOUT}s" uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py"; then
+      echo "telemetry sync skipped or timed out after ${TELEMETRY_SYNC_TIMEOUT}s; continuing" >&2
+    fi
     uv run "$SCRIPT_DIR/rolling_baseline_report.py" \
       --output-json "$OUT_DIR/rolling-baseline-$DATE_STAMP.json" \
       --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" >/dev/null

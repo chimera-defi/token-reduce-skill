@@ -33,6 +33,15 @@ def health_score(report: dict) -> float:
     return round((compliance * 0.45) + (helper * 0.4) + (telemetry_component * 0.15), 1)
 
 
+def load_caliper_summary(path: str) -> dict:
+    """Load a precomputed Caliper summary artifact."""
+    with Path(path).open(encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict):
+        raise ValueError("Caliper summary JSON must contain an object")
+    return payload
+
+
 def build_findings(report: dict) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     session_count = int(report.get("session_count", 0))
@@ -708,6 +717,7 @@ def main() -> int:
     parser.add_argument("--output-md")
     parser.add_argument("--with-caliper", action="store_true", help="Include a running Cost Caliper Control Tower API summary")
     parser.add_argument("--caliper-url", help="Cost Caliper Control Tower base URL; defaults to CALIPER_URL or localhost:49123")
+    parser.add_argument("--caliper-summary-json", help="Reuse a precomputed Caliper summary JSON artifact")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -715,11 +725,14 @@ def main() -> int:
     findings = build_findings(report)
     caliper_summary = None
     caliper_error = None
-    if args.with_caliper:
+    if args.with_caliper or args.caliper_summary_json:
         try:
-            caliper_summary = fetch_summary(args.caliper_url)
+            if args.caliper_summary_json:
+                caliper_summary = load_caliper_summary(args.caliper_summary_json)
+            else:
+                caliper_summary = fetch_summary(args.caliper_url)
             findings.extend(build_spend_findings(caliper_summary))
-        except CaliperUnavailable as exc:
+        except (CaliperUnavailable, OSError, ValueError, json.JSONDecodeError) as exc:
             caliper_error = str(exc)
             findings.append(
                 {
@@ -751,7 +764,7 @@ def main() -> int:
         },
         "findings": findings,
         "caliper": {
-            "enabled": bool(args.with_caliper),
+            "enabled": bool(args.with_caliper or args.caliper_summary_json),
             "available": caliper_summary is not None,
             "error": caliper_error,
             "summary": caliper_summary,

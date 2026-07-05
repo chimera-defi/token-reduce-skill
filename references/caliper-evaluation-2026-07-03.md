@@ -68,17 +68,28 @@ Shipped integration:
 - `scripts/caliper_summary.py`: reads a running local Control Tower API and emits normalized JSON/Markdown
 - `./scripts/token-reduce-manage.sh caliper-summary`: command wrapper for the summarizer
 - `./scripts/token-reduce-manage.sh review --with-caliper`: adds spend-aware findings to self-review
+- `./scripts/token-reduce-manage.sh self-improve`: writes Caliper summary artifacts and includes Caliper-backed global review when the configured local API is reachable
 
 The summarizer starts aggregate reads with `restart=1&budgetMs=4000`, then polls `/v1/aggregate?budgetMs=4000` until Caliper returns `done: true` or the local `--max-polls` cap is reached. The normalized payload includes `aggregate.complete`, `aggregate.polls`, and `aggregate.progress` so incomplete scans are visible.
+
+During `self-improve`, token-reduce writes the Caliper summary once and passes the JSON artifact to review with `--caliper-summary-json`; it does not run a second aggregate scan for the same maintenance pass.
 
 Primary use:
 
 ```bash
 ./scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
 ./scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.0.1:49123
+./scripts/token-reduce-manage.sh self-improve
 ```
 
 If Caliper is not running, `review --with-caliper` reports a setup finding and continues with normal token-reduce telemetry.
+If Caliper is not running during `self-improve`, token-reduce prints a nonblocking skip and continues the maintenance loop.
+
+Config knobs:
+
+- `companions.caliper.enabled`
+- `companions.caliper.url`
+- `companions.caliper.self_improve`
 
 ## How It Improves Token-Reduce
 
