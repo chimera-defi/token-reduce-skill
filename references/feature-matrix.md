@@ -95,4 +95,5 @@ The current telemetry is sufficient to evaluate tier usefulness and compliance o
 - adaptive decision details (`tier`, recommendation flags, behavior ratios, latency, chars/lines)
 - companion adoption details, including `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and Headroom recommendation conversion findings
 - optional Caliper spend/session details when `review --with-caliper` is used against a running local Control Tower API
+- optional Caliper self-improve artifacts (`caliper-summary-*.json/.md`) when `companions.caliper.self_improve` is enabled and the local API is reachable
 - exclusion of synthetic benchmark/test events from runtime summaries by default

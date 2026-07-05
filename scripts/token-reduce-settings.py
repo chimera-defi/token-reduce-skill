@@ -52,12 +52,19 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
 
 def redact_config(config: dict[str, Any]) -> dict[str, Any]:
     redacted = deepcopy(config)
-    telemetry = redacted.get("telemetry")
-    if isinstance(telemetry, dict):
-        for key in ("api_key", "signing_secret"):
-            value = telemetry.get(key)
-            if isinstance(value, str) and value:
-                telemetry[key] = "***redacted***"
+    for section_name in ("telemetry", "companions"):
+        section = redacted.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        stack = [section]
+        while stack:
+            current = stack.pop()
+            for key, value in current.items():
+                if isinstance(value, dict):
+                    stack.append(value)
+                    continue
+                if key in {"api_key", "signing_secret", "token", "secret"} and isinstance(value, str) and value:
+                    current[key] = "***redacted***"
     return redacted
 
 

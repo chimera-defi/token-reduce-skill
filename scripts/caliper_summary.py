@@ -145,8 +145,8 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
     totals = aggregate.get("totals", {}) if isinstance(aggregate.get("totals"), dict) else {}
     token_bucket = totals.get("tokens", {}) if isinstance(totals.get("tokens"), dict) else {}
 
-    by_repo = _normalize_named_rows(aggregate.get("byRepo"), "repo")
-    by_tier = _normalize_named_rows(aggregate.get("byTier"), "tier")
+    by_repo = _normalize_named_rows(aggregate.get("byRepo", aggregate.get("byFolder")), "repo")
+    by_tier = _normalize_named_rows(aggregate.get("byTier", aggregate.get("byModel")), "tier")
     by_day = _normalize_named_rows(aggregate.get("byDay"), "day")
 
     cache_write_tokens = _int(
@@ -178,9 +178,12 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
             "progress": aggregate.get("progress") if isinstance(aggregate.get("progress"), dict) else {},
         },
         "summary": {
-            "estimated_cost_usd": round(_float(totals.get("costUsd", totals.get("cost_usd"))), 6),
-            "sessions": _int(totals.get("sessions", totals.get("sessionCount", 0))),
-            "folders": _int(totals.get("folders", totals.get("repoCount", 0))),
+            "estimated_cost_usd": round(
+                _float(totals.get("costUsd", totals.get("cost_usd", aggregate.get("totalCost")))),
+                6,
+            ),
+            "sessions": _int(totals.get("sessions", totals.get("sessionCount", aggregate.get("sessions", 0)))),
+            "folders": _int(totals.get("folders", totals.get("repoCount", aggregate.get("folders", 0)))),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_write_tokens": cache_write_tokens,

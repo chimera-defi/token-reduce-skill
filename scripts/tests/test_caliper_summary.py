@@ -71,6 +71,34 @@ def test_normalize_reads_current_caliper_nested_token_buckets() -> None:
     assert summary["summary"]["cache_read_token_pct"] == 5.4
 
 
+def test_normalize_accepts_legacy_top_level_cost_aliases() -> None:
+    summary = caliper_summary.normalize_caliper_summary(
+        {
+            "health": {"ok": True},
+            "aggregate": {
+                "done": True,
+                "totalCost": 240.043,
+                "sessions": 13,
+                "folders": 3,
+                "totals": {
+                    "tokens": {"in": 100000, "out": 25000, "cacheWr": 50000, "cacheRd": 5000},
+                },
+                "byFolder": [{"folder": "token-reduce-skill", "cost": 120.5, "sessions": 7}],
+                "byModel": [{"model": "opus", "cost": 168.9297}],
+            },
+        },
+        "http://127.0.0.1:49123",
+    )
+
+    assert summary["summary"]["estimated_cost_usd"] == 240.043
+    assert summary["summary"]["sessions"] == 13
+    assert summary["summary"]["folders"] == 3
+    assert summary["by_repo"][0]["name"] == "token-reduce-skill"
+    assert summary["by_repo"][0]["cost_usd"] == 120.5
+    assert summary["by_tier"][0]["name"] == "opus"
+    assert summary["by_tier"][0]["cost_usd"] == 168.9297
+
+
 def test_spend_findings_warn_when_aggregate_is_incomplete() -> None:
     findings = caliper_summary.build_spend_findings(
         {
