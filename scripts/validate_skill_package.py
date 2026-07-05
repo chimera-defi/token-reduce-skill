@@ -18,6 +18,7 @@ REQUIRED_ATTRIBUTION_LINKS = {
     "caveman": r"\[`?caveman`?\]\(https://github\.com/JuliusBrussee/caveman\)",
     "AXI": r"\[AXI\]\(https://github\.com/kunchenguid/axi\)",
     "headroom": r"\[`?headroom`?\]\(https://github\.com/chopratejas/headroom\)",
+    "Cost Caliper": r"\[Cost Caliper\]\(https://github\.com/Cost-Caliper/caliper\)",
 }
 
 

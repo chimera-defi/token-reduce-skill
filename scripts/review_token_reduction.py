@@ -6,6 +6,12 @@ import argparse
 import json
 from pathlib import Path
 
+from caliper_summary import (
+    CaliperUnavailable,
+    build_spend_findings,
+    fetch_summary,
+    render_markdown as render_caliper_markdown,
+)
 from measure_token_reduction import measure
 
 
@@ -606,7 +612,7 @@ def format_companion_funnels_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
+def render_markdown(report: dict, findings: list[dict[str, str]], caliper_summary: dict | None = None) -> str:
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
     headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
     headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0) or 0)
@@ -679,6 +685,10 @@ def render_markdown(report: dict, findings: list[dict[str, str]]) -> str:
     if raw_sessions:
         from cost_ledger import build_context_impact_markdown
         lines.extend(["", build_context_impact_markdown(raw_sessions)])
+    if caliper_summary:
+        lines.extend(["", "## Caliper Spend Telemetry", ""])
+        caliper_lines = render_caliper_markdown(caliper_summary).splitlines()
+        lines.extend(line for line in caliper_lines[2:] if line != "# Caliper Spend Summary")
     lines.extend(["", "## Prioritized Findings", ""])
     for finding in findings:
         lines.extend(
@@ -696,11 +706,29 @@ def main() -> int:
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--output-json")
     parser.add_argument("--output-md")
+    parser.add_argument("--with-caliper", action="store_true", help="Include a running Cost Caliper Control Tower API summary")
+    parser.add_argument("--caliper-url", help="Cost Caliper Control Tower base URL; defaults to CALIPER_URL or localhost:49123")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     report = measure(args.scope, args.repo_root)
     findings = build_findings(report)
+    caliper_summary = None
+    caliper_error = None
+    if args.with_caliper:
+        try:
+            caliper_summary = fetch_summary(args.caliper_url)
+            findings.extend(build_spend_findings(caliper_summary))
+        except CaliperUnavailable as exc:
+            caliper_error = str(exc)
+            findings.append(
+                {
+                    "priority": "low",
+                    "area": "caliper_unavailable",
+                    "finding": "Caliper spend telemetry was requested but the local Caliper API was unavailable.",
+                    "recommendation": "Start Caliper with `/caliper` or pass `--caliper-url`/`CALIPER_URL`, then rerun review with `--with-caliper`.",
+                }
+            )
     payload = {
         "measured_at": report["measured_at"],
         "scope": report["scope"],
@@ -722,12 +750,18 @@ def main() -> int:
             "telemetry_excluded_event_count": report["telemetry"].get("excluded_event_count", 0),
         },
         "findings": findings,
+        "caliper": {
+            "enabled": bool(args.with_caliper),
+            "available": caliper_summary is not None,
+            "error": caliper_error,
+            "summary": caliper_summary,
+        },
         "report": report,
     }
 
     if args.output_json:
         Path(args.output_json).write_text(json.dumps(payload, indent=2) + "\n")
-    markdown = render_markdown(report, findings)
+    markdown = render_markdown(report, findings, caliper_summary)
     if args.output_md:
         Path(args.output_md).write_text(markdown)
 
