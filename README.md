@@ -38,6 +38,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
 - [`headroom`](https://github.com/chopratejas/headroom) as an optional pilot proxy/MCP layer for large tool-result and long-session context pressure; token-reduce remains the master router
+- [Cost Caliper](https://github.com/Cost-Caliper/caliper) as an optional Claude Code spend/session telemetry companion; token-reduce consumes its local Control Tower API only when explicitly requested
 - [`code-review-graph`](https://github.com/tirth8205/code-review-graph) for large-repo structural review tasks
 - [`caveman`](https://github.com/JuliusBrussee/caveman) for optional terse output and memory-file compression
 
@@ -172,22 +173,22 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1324` | baseline |
+| `broad_inventory` | `1348` | baseline |
 | `guidance_scoped_rg` | `221` | `83.3%` saved |
-| `qmd_files` | `249` | `81.2%` saved |
-| `token_reduce_paths_warm` | `252` | `81.0%` saved |
-| `token_reduce_snippet_warm` | `381` | `71.2%` saved |
+| `qmd_files` | `243` | `81.2%` saved |
+| `token_reduce_paths_warm` | `247` | `81.0%` saved |
+| `token_reduce_snippet_warm` | `375` | `71.2%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1936` | baseline | `ok` |
-| `qmd_only` | `673` | `65.2%` saved | `ok` |
-| `token_reduce_only` | `484` | `75.0%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `89.0%` saved | `quality-fail` |
-| `rtk_only` | `855` | `55.8%` saved | `ok` |
-| `composite_stack` | `438` | `77.4%` saved | `quality-fail` |
+| `broad_shell` | `1967` | baseline | `ok` |
+| `qmd_only` | `677` | `65.6%` saved | `ok` |
+| `token_reduce_only` | `440` | `77.6%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `89.2%` saved | `quality-fail` |
+| `rtk_only` | `890` | `54.8%` saved | `ok` |
+| `composite_stack` | `434` | `77.9%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
@@ -239,6 +240,8 @@ It gates on:
 ./scripts/token-reduce-manage.sh validate
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh review --with-caliper
+./scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh doctor
 ```
@@ -261,6 +264,23 @@ Dependency checks:
 
 - core only: `deps-check`, `deps-update`
 - conditional companions: `deps-check-conditional`, `deps-update-conditional`
+
+## Cost Caliper Status
+
+[Cost Caliper](https://github.com/Cost-Caliper/caliper) is integrated as an optional telemetry companion for Claude Code spend/session forensics.
+
+- use Caliper's `/caliper` command to launch its local Control Tower dashboard/API
+- inspect token-reduce's normalized view with `./scripts/token-reduce-manage.sh caliper-summary --url <caliper-url>`
+- include spend-aware recommendations in self-review with `./scripts/token-reduce-manage.sh review --with-caliper --caliper-url <caliper-url>`
+- run `./scripts/token-reduce-manage.sh self-improve` to include Caliper automatically when the configured local API is reachable
+- `self-improve` writes `caliper-summary-*.json/.md` once and reuses the JSON artifact for review instead of rescanning Caliper
+- rely on the normalized `aggregate.complete` / `aggregate.polls` fields to verify Caliper's incremental aggregate scan finished before trusting spend hotspots
+- keep token-reduce as the first-move discovery/router; Caliper is for periodic meta-review, not path discovery
+- treat Caliper costs as estimates, not invoice records
+- do not auto-write Caliper's personalized cost-discipline skill without explicit user consent
+
+When Caliper is not running, `review --with-caliper` reports a setup finding and continues with normal token-reduce telemetry.
+When Caliper is not running during `self-improve`, token-reduce records the skip and continues the rest of the maintenance loop.
 
 ## Headroom Status
 
@@ -302,3 +322,4 @@ Key references:
 - [references/delegate-skill-integration.md](references/delegate-skill-integration.md) — delegate router integration
 - [references/agent-setup.md](references/agent-setup.md) — per-agent setup notes
 - [references/headroom-evaluation-2026-06-10.md](references/headroom-evaluation-2026-06-10.md) — Headroom proxy/MCP pilot verdict
+- [references/caliper-evaluation-2026-07-03.md](references/caliper-evaluation-2026-07-03.md) — Cost Caliper telemetry companion verdict

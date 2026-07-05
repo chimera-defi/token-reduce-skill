@@ -26,3 +26,14 @@ Measure adoption with:
 ```
 
 The adoption report includes `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
+
+## Cost Caliper Companion
+
+Use Cost Caliper only for periodic spend/session meta-review, not discovery. Start its local dashboard/API with Caliper's `/caliper` command, then inspect token-reduce's normalized view:
+
+```bash
+./scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
+./scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.0.1:49123
+```
+
+Use Caliper findings to identify expensive repos/sessions, expensive model-tier mix, cache write/read imbalance, and places where Headroom or delegate batching should be used more aggressively. Treat Caliper costs as estimates and do not auto-write persistent cost-discipline guidance without explicit user consent.

@@ -1,6 +1,6 @@
 {
   "name": "token-reduce-mcp",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "description": "Skill, plugin, and MCP server for reducing total token burn across AI coding tasks.",
   "type": "module",
   "bin": {
