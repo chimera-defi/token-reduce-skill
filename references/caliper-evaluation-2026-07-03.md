@@ -69,6 +69,8 @@ Shipped integration:
 - `./scripts/token-reduce-manage.sh caliper-summary`: command wrapper for the summarizer
 - `./scripts/token-reduce-manage.sh review --with-caliper`: adds spend-aware findings to self-review
 
+The summarizer starts aggregate reads with `restart=1&budgetMs=4000`, then polls `/v1/aggregate?budgetMs=4000` until Caliper returns `done: true` or the local `--max-polls` cap is reached. The normalized payload includes `aggregate.complete`, `aggregate.polls`, and `aggregate.progress` so incomplete scans are visible.
+
 Primary use:
 
 ```bash

@@ -10,10 +10,13 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 from typing import Any
 
 
 DEFAULT_CALIPER_URL = "http://127.0.0.1:49123"
+DEFAULT_AGGREGATE_BUDGET_MS = 4000
+DEFAULT_AGGREGATE_MAX_POLLS = 50
 
 
 class CaliperUnavailable(RuntimeError):
@@ -51,11 +54,51 @@ def _fetch_json(url: str, timeout: float) -> dict[str, Any]:
     return data
 
 
-def fetch_caliper_payload(base_url: str, timeout: float = 2.0) -> dict[str, Any]:
+def _aggregate_url(base_url: str, *, restart: bool, budget_ms: int) -> str:
+    params: dict[str, str] = {"budgetMs": str(budget_ms)}
+    if restart:
+        params["restart"] = "1"
+    return f"{base_url.rstrip('/')}/v1/aggregate?{urlencode(params)}"
+
+
+def fetch_complete_aggregate(
+    base_url: str,
+    *,
+    timeout: float = 2.0,
+    budget_ms: int = DEFAULT_AGGREGATE_BUDGET_MS,
+    max_polls: int = DEFAULT_AGGREGATE_MAX_POLLS,
+) -> dict[str, Any]:
+    """Fetch Caliper aggregate data, polling until the incremental scan is done."""
+    polls = 0
+    aggregate: dict[str, Any] = {}
+    for poll_index in range(max(1, max_polls)):
+        polls += 1
+        aggregate = _fetch_json(
+            _aggregate_url(base_url, restart=poll_index == 0, budget_ms=budget_ms),
+            timeout,
+        )
+        if aggregate.get("done", True):
+            break
+    aggregate["_token_reduce_polls"] = polls
+    aggregate["_token_reduce_complete"] = bool(aggregate.get("done", True))
+    return aggregate
+
+
+def fetch_caliper_payload(
+    base_url: str,
+    timeout: float = 2.0,
+    budget_ms: int = DEFAULT_AGGREGATE_BUDGET_MS,
+    max_polls: int = DEFAULT_AGGREGATE_MAX_POLLS,
+) -> dict[str, Any]:
     base = base_url.rstrip("/")
     return {
         "health": _fetch_json(f"{base}/v1/health", timeout),
-        "aggregate": _fetch_json(f"{base}/v1/aggregate", timeout),
+        "aggregate": fetch_complete_aggregate(
+            base,
+            timeout=timeout,
+            budget_ms=budget_ms,
+            max_polls=max_polls,
+        ),
     }
 
 
@@ -100,17 +143,23 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
     aggregate = payload.get("aggregate", {})
     health = payload.get("health", {})
     totals = aggregate.get("totals", {}) if isinstance(aggregate.get("totals"), dict) else {}
+    token_bucket = totals.get("tokens", {}) if isinstance(totals.get("tokens"), dict) else {}
 
     by_repo = _normalize_named_rows(aggregate.get("byRepo"), "repo")
     by_tier = _normalize_named_rows(aggregate.get("byTier"), "tier")
     by_day = _normalize_named_rows(aggregate.get("byDay"), "day")
 
     cache_write_tokens = _int(
-        totals.get("cacheCreationInputTokens", totals.get("cacheWriteTokens", totals.get("cache_write_tokens", 0)))
+        token_bucket.get(
+            "cacheWr",
+            totals.get("cacheCreationInputTokens", totals.get("cacheWriteTokens", totals.get("cache_write_tokens", 0))),
+        )
     )
-    cache_read_tokens = _int(totals.get("cacheReadInputTokens", totals.get("cacheReadTokens", 0)))
-    input_tokens = _int(totals.get("inputTokens", totals.get("input_tokens", 0)))
-    output_tokens = _int(totals.get("outputTokens", totals.get("output_tokens", 0)))
+    cache_read_tokens = _int(
+        token_bucket.get("cacheRd", totals.get("cacheReadInputTokens", totals.get("cacheReadTokens", 0)))
+    )
+    input_tokens = _int(token_bucket.get("in", totals.get("inputTokens", totals.get("input_tokens", 0))))
+    output_tokens = _int(token_bucket.get("out", totals.get("outputTokens", totals.get("output_tokens", 0))))
     token_total = max(1, input_tokens + output_tokens + cache_write_tokens + cache_read_tokens)
 
     return {
@@ -122,6 +171,11 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
             "version": str(health.get("version", health.get("lensVersion", "unknown"))),
             "workflow_count": _int(health.get("workflowCount", health.get("workflows", 0))),
             "cassette_count": _int(health.get("cassetteCount", health.get("cassettes", 0))),
+        },
+        "aggregate": {
+            "complete": bool(aggregate.get("_token_reduce_complete", aggregate.get("done", True))),
+            "polls": _int(aggregate.get("_token_reduce_polls", 1), 1),
+            "progress": aggregate.get("progress") if isinstance(aggregate.get("progress"), dict) else {},
         },
         "summary": {
             "estimated_cost_usd": round(_float(totals.get("costUsd", totals.get("cost_usd"))), 6),
@@ -141,20 +195,42 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
     }
 
 
-def fetch_summary(base_url: str | None = None, timeout: float = 2.0) -> dict[str, Any]:
+def fetch_summary(
+    base_url: str | None = None,
+    timeout: float = 2.0,
+    budget_ms: int = DEFAULT_AGGREGATE_BUDGET_MS,
+    max_polls: int = DEFAULT_AGGREGATE_MAX_POLLS,
+) -> dict[str, Any]:
     source_url = base_url or os.environ.get("CALIPER_URL") or DEFAULT_CALIPER_URL
-    return normalize_caliper_summary(fetch_caliper_payload(source_url, timeout), source_url)
+    return normalize_caliper_summary(
+        fetch_caliper_payload(source_url, timeout, budget_ms, max_polls),
+        source_url,
+    )
 
 
 def build_spend_findings(summary: dict[str, Any]) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     data = summary.get("summary", {})
+    aggregate = summary.get("aggregate", {}) if isinstance(summary.get("aggregate"), dict) else {}
     estimated_cost = _float(data.get("estimated_cost_usd"))
     sessions = _int(data.get("sessions"))
     cache_write_pct = _float(data.get("cache_write_token_pct"))
     cache_read_pct = _float(data.get("cache_read_token_pct"))
     by_tier = summary.get("by_tier", [])
     by_repo = summary.get("by_repo", [])
+
+    if aggregate and not aggregate.get("complete", True):
+        findings.append(
+            {
+                "priority": "high",
+                "area": "caliper_aggregate_incomplete",
+                "finding": (
+                    f"Caliper aggregate did not finish after {_int(aggregate.get('polls'), 0)} poll(s); "
+                    "spend totals and hotspot findings may be partial."
+                ),
+                "recommendation": "Rerun with a larger `--max-polls` or verify the Caliper Control Tower scan can complete before using spend data for routing decisions.",
+            }
+        )
 
     if sessions > 0 and estimated_cost > 0:
         avg_cost = estimated_cost / sessions
@@ -215,6 +291,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "",
         f"- Source: `{summary.get('source_url', '')}`",
         f"- API health: `{summary.get('api_health', {}).get('ok', False)}`",
+        f"- Aggregate complete: `{summary.get('aggregate', {}).get('complete', False)}` after `{_int(summary.get('aggregate', {}).get('polls'), 0)}` poll(s)",
         f"- Estimated cost: `${_float(data.get('estimated_cost_usd')):.4f}`",
         f"- Sessions: `{_int(data.get('sessions'))}`",
         f"- Repos/folders: `{_int(data.get('folders'))}`",
@@ -248,13 +325,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=os.environ.get("CALIPER_URL", DEFAULT_CALIPER_URL))
     parser.add_argument("--timeout", type=float, default=2.0)
+    parser.add_argument("--budget-ms", type=int, default=DEFAULT_AGGREGATE_BUDGET_MS)
+    parser.add_argument("--max-polls", type=int, default=DEFAULT_AGGREGATE_MAX_POLLS)
     parser.add_argument("--output-json")
     parser.add_argument("--output-md")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     try:
-        summary = fetch_summary(args.url, args.timeout)
+        summary = fetch_summary(args.url, args.timeout, args.budget_ms, args.max_polls)
     except CaliperUnavailable as exc:
         print(f"Caliper unavailable: {exc}", file=sys.stderr)
         return 2

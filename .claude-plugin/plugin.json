@@ -1,6 +1,6 @@
 {
   "name": "token-reduce",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reduce wasted context in Claude Code so sessions last longer and stay focused.",
   "author": {
     "name": "Claudy Won",

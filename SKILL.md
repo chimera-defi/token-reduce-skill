@@ -10,7 +10,7 @@ triggers:
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.1"
+  version: "5.6.2"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -140,6 +140,8 @@ scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.
 ```
 
 Use Caliper output to identify expensive repos, model-tier mix, cache write/read economics, and sessions that should be reviewed for helper-first discovery, Headroom use, and delegate batching.
+
+`caliper-summary` restarts Caliper's incremental aggregate scan, polls until `done` is true or `--max-polls` is reached, and reports whether the aggregate is complete before deriving spend findings.
 
 Do not use Caliper as the first move for unknown-path discovery. Do not make it a required dependency. Treat costs as estimates. Do not allow Caliper or token-reduce to auto-write persistent cost-discipline guidance without explicit user consent.
 
