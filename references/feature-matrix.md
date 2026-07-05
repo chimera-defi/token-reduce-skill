@@ -56,6 +56,7 @@ The 2026-04-18 savings figures in the Core Controls table above were measured be
 | token-savior | Exact symbol / impact lookup | optional | known symbol + dependency/blast-radius questions | `references/token-savior-evaluation.md` |
 | context-mode | Output sandboxing/summarization | optional recommendation | huge logs/tests/payload sessions | `references/prompt-stack-intake-2026-04-18.md` |
 | headroom | Proxy/MCP context compression | optional recommendation | large tool-result payloads and long-session context pressure after helper-first discovery | `references/headroom-evaluation-2026-06-10.md` |
+| Cost Caliper | Claude Code spend/session telemetry | optional review input | periodic meta-review of expensive sessions, model-tier mix, and cache economics | `references/caliper-evaluation-2026-07-03.md` |
 | code-review-graph | Repo structural graph review | optional recommendation | large dependency-heavy repos | `references/prompt-stack-intake-2026-04-18.md` |
 | caveman | Response and memory compression companion | optional | explicit user brevity request | `references/caveman-evaluation.md` |
 | AXI (`gh-axi`, `chrome-devtools-axi`) | Lower-turn GitHub/browser execution | optional | GitHub/browser-heavy flows | `references/axi-evaluation.md` |
@@ -69,6 +70,7 @@ The 2026-04-18 savings figures in the Core Controls table above were measured be
 | `./scripts/token-reduce-manage.sh benchmark-adaptive` | adaptive vs baseline-tier comparison | `references/benchmarks/adaptive-tier-benchmark.json` |
 | `./scripts/token-reduce-manage.sh benchmark-composite` | quality-gated composite stack benchmark | `references/benchmarks/composite-benchmark.json` |
 | `./scripts/token-reduce-manage.sh benchmark-profiles` | profile-level savings/quality benchmark | `references/benchmarks/profile-presets-benchmark.json` |
+| `./scripts/token-reduce-manage.sh caliper-summary` | summarize a running Cost Caliper Control Tower API | terminal Markdown/JSON + optional artifacts |
 | `./scripts/token-reduce-manage.sh deps-check` | core dependency health (qmd + rtk) | terminal summary + JSON |
 | `./scripts/token-reduce-manage.sh deps-check-conditional` | conditional companion health (AXI/context-mode/headroom/code-review-graph) | terminal summary + JSON |
 | `./scripts/token-reduce-manage.sh release-gate` | benchmark + README benchmark-row sync + runtime-reliability keep/drop verdict for major change sets | terminal JSON verdict (`release_gate_pass`) |
@@ -92,4 +94,6 @@ The current telemetry is sufficient to evaluate tier usefulness and compliance o
 - first-move compliance and helper adoption (`measure` / `review`)
 - adaptive decision details (`tier`, recommendation flags, behavior ratios, latency, chars/lines)
 - companion adoption details, including `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and Headroom recommendation conversion findings
+- optional Caliper spend/session details when `review --with-caliper` is used against a running local Control Tower API
+- optional Caliper self-improve artifacts (`caliper-summary-*.json/.md`) when `companions.caliper.self_improve` is enabled and the local API is reachable
 - exclusion of synthetic benchmark/test events from runtime summaries by default

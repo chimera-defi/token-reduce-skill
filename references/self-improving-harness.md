@@ -23,10 +23,11 @@ Default config:
     "endpoint": "",
     "api_key": "",
     "signing_secret": "",
-    "workspace_root": "/root/.openclaw/workspace/dev",
+    "workspace_root": "/home/agents/workspace",
     "workspace_days": 14,
     "workspace_include_source_repo": false,
-    "upload_timeout_seconds": 10
+    "upload_timeout_seconds": 10,
+    "self_improve_sync_timeout_seconds": 45
   },
   "benchmark": {
     "max_age_days": 14
@@ -46,6 +47,13 @@ Default config:
     "enable_context_mode_recommendations": true,
     "enable_headroom_recommendations": true,
     "enable_code_review_graph_recommendations": true
+  },
+  "companions": {
+    "caliper": {
+      "enabled": true,
+      "url": "http://127.0.0.1:49123",
+      "self_improve": true
+    }
   }
 }
 ```
@@ -132,11 +140,19 @@ Adaptive gate uses a bounded default tolerance (`-2.0%`) to absorb benchmark noi
 - composite benchmark (tagged as `benchmark` context; excluded from runtime telemetry summaries)
 - dependency freshness check
 - global measure + review refresh
+- optional Caliper spend snapshot + Caliper-backed global review when the local Control Tower API is reachable
 - workspace audit snapshot (`artifacts/token-reduction/workspace-audit-YYYY-MM-DD.json`)
-- telemetry sync
+- bounded telemetry sync (`telemetry.self_improve_sync_timeout_seconds`, default 45s)
 - rolling baseline trend report (`artifacts/token-reduction/rolling-baseline-YYYY-MM-DD.{json,md}`)
 - update check
 
 ```bash
 ./scripts/token-reduce-manage.sh self-improve
 ```
+
+Caliper artifacts, when available:
+
+- `artifacts/token-reduction/caliper-summary-YYYY-MM-DD.json`
+- `artifacts/token-reduction/caliper-summary-YYYY-MM-DD.md`
+
+If Caliper is not running, the command prints a nonblocking skip message and continues without spend telemetry.

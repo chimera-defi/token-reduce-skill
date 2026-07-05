@@ -10,7 +10,7 @@ triggers:
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.1"
+  version: "5.6.3"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -73,6 +73,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent; recommends context-mode, Headroom, or code-review-graph when matching companions are installed | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
+| Cost Caliper companion (optional) | Adds Claude Code spend/session/model-tier/cache telemetry to token-reduce review output | Periodic meta-review of expensive sessions, not first-move discovery |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
 
 ## Process
@@ -129,6 +130,23 @@ If a global PostToolUse hook compresses `pytest` output, redirect to a file and 
 
 Session-scoped read-through cache for QMD collection listings and first-page results (`scripts/qmd_warm_cache.py`, 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`). See: `references/architecture.md`.
 
+## Cost Caliper Companion (Optional)
+
+Cost Caliper is a local Claude Code spend/session telemetry companion. Token-reduce can read a running Caliper Control Tower API for periodic meta-review:
+
+```bash
+scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
+scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.0.1:49123
+```
+
+Use Caliper output to identify expensive repos, model-tier mix, cache write/read economics, and sessions that should be reviewed for helper-first discovery, Headroom use, and delegate batching.
+
+`caliper-summary` restarts Caliper's incremental aggregate scan, polls until `done` is true or `--max-polls` is reached, and reports whether the aggregate is complete before deriving spend findings.
+
+`token-reduce-manage.sh self-improve` includes Caliper automatically when `companions.caliper.enabled` and `companions.caliper.self_improve` are true and the local Control Tower API is reachable. Missing Caliper remains nonblocking.
+
+Do not use Caliper as the first move for unknown-path discovery. Do not make it a required dependency. Treat costs as estimates. Do not allow Caliper or token-reduce to auto-write persistent cost-discipline guidance without explicit user consent.
+
 ## Output Brevity Profile (Companion)
 
 When the user asks for tighter responses, apply a caveman-inspired **lite** profile:
@@ -160,3 +178,4 @@ Route delegation through the `delegate-skill` router (never hand-pick a delegate
 
 ---
 See `references/INDEX.md` for the full reference index.
+See `references/caliper-evaluation-2026-07-03.md` for the Cost Caliper telemetry companion verdict.

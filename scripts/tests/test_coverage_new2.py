@@ -90,6 +90,7 @@ def _make_valid_readme() -> str:
         "[RTK](https://github.com/rtk-ai/rtk), "
         "[`caveman`](https://github.com/JuliusBrussee/caveman), "
         "[`headroom`](https://github.com/chopratejas/headroom), "
+        "[Cost Caliper](https://github.com/Cost-Caliper/caliper), "
         "and [AXI](https://github.com/kunchenguid/axi).\n"
     )
 
