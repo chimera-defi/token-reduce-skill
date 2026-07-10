@@ -70,14 +70,8 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     telemetry_events = int(report["telemetry"]["event_count"])
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
     headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
-    headroom_conversion_pct = (
-        round((headroom_command_sessions * 100.0 / headroom_recommended_events), 1)
-        if headroom_recommended_events
-        else 0.0
-    )
     telemetry_windows = report.get("telemetry_windows", {})
     window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
-    _window_14d = telemetry_windows.get("14d", {}) if isinstance(telemetry_windows, dict) else {}
     efficiency = report["telemetry"].get("efficiency", {})
     logging = report["telemetry"].get("logging", {})
     helper_error_rate = float(efficiency.get("helper_error_rate_pct", 0.0))
