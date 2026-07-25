@@ -79,16 +79,35 @@ def qmd_mask() -> str:
     return os.environ.get("TOKEN_REDUCE_QMD_MASK", mask_default)
 
 
+BENCH_CMD_TIMEOUT = int(os.environ.get("BENCH_CMD_TIMEOUT", "120"))
+
+
 def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
     started = time.perf_counter()
-    proc = subprocess.run(
-        ["bash", "-lc", command],
-        cwd=ROOT,
-        check=False,
-        capture_output=True,
-        text=True,
-        env=BENCH_ENV,
-    )
+    try:
+        proc = subprocess.run(
+            ["bash", "-lc", command],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=BENCH_CMD_TIMEOUT,
+            env=BENCH_ENV,
+        )
+    except subprocess.TimeoutExpired:
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        return StepResult(
+            label="",
+            command=command,
+            exit_code=124,
+            duration_ms=duration_ms,
+            bytes=0,
+            lines=0,
+            tokens=0,
+            quality_pass=False,
+            quality_note=f"timed out after {BENCH_CMD_TIMEOUT}s",
+            stdout_preview="",
+        )
     duration_ms = int((time.perf_counter() - started) * 1000)
     stdout = proc.stdout or ""
     preview = "\n".join(stdout.splitlines()[:6])
