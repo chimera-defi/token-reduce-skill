@@ -30,8 +30,9 @@ def repo_root() -> Path:
             check=True,
             capture_output=True,
             text=True,
+            timeout=5,
         ).stdout.strip()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return script_dir.parents[1]
     return Path(root)
 
