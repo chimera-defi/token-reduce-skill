@@ -24,13 +24,17 @@ def repo_root() -> Path:
 
 
 def git_head(root: Path) -> str:
-    proc = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "HEAD"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return (proc.stdout or "").strip() or "unknown"
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return (proc.stdout or "").strip() or "unknown"
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return "unknown"
 
 
 def host_fingerprint() -> str:
