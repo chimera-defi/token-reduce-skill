@@ -77,6 +77,7 @@ commands:
   workspace-auto-update  Fast-forward + force-relink workspace + version/commit drift audit
   self-improve  Run benchmark + telemetry + review + update check
   workspace-audit  Audit skill install and doc adoption across sibling repos
+  improve-adoption  Build workspace helper-usage SLO report and prioritized interventions
   workspace-install  Install skill links and token-reduce routing guidance across sibling repos
   setup         Interactive setup wizard (auto-detect delegates/companions, save config)
   delegate-health  Check installed/missing status for each configured delegate and companion
@@ -226,6 +227,8 @@ case "$cmd" in
     OUT_DIR="$ROOT/artifacts/token-reduction"
     DATE_STAMP="$(date +%Y-%m-%d)"
     WORKSPACE_AUDIT="$OUT_DIR/workspace-audit-$DATE_STAMP.json"
+    ADOPTION_REPORT_JSON="$OUT_DIR/adoption-improvement-$DATE_STAMP.json"
+    ADOPTION_REPORT_MD="$OUT_DIR/adoption-improvement-$DATE_STAMP.md"
     CALIPER_JSON="$OUT_DIR/caliper-summary-$DATE_STAMP.json"
     CALIPER_MD="$OUT_DIR/caliper-summary-$DATE_STAMP.md"
     mkdir -p "$OUT_DIR"
@@ -268,6 +271,10 @@ case "$cmd" in
       --workspace-root "$WORKSPACE_ROOT" \
       --days "$WORKSPACE_DAYS" \
       --output "$WORKSPACE_AUDIT" >/dev/null
+    uv run "$SCRIPT_DIR/adoption_report.py" \
+      --audit-json "$WORKSPACE_AUDIT" \
+      --output-json "$ADOPTION_REPORT_JSON" \
+      --output-md "$ADOPTION_REPORT_MD" >/dev/null
     if ! timeout "${TELEMETRY_SYNC_TIMEOUT}s" uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py"; then
       echo "telemetry sync skipped or timed out after ${TELEMETRY_SYNC_TIMEOUT}s; continuing" >&2
     fi
@@ -276,9 +283,22 @@ case "$cmd" in
       --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" >/dev/null
     uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify
     echo "workspace audit snapshot: $WORKSPACE_AUDIT"
+    echo "adoption improvement report: $ADOPTION_REPORT_MD"
     ;;
   workspace-audit)
     exec uv run "$SCRIPT_DIR/audit_workspace_skills.py" "$@"
+    ;;
+  improve-adoption)
+    ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
+    OUT_DIR="$ROOT/artifacts/token-reduction"
+    DATE_STAMP="$(date +%Y-%m-%d)"
+    mkdir -p "$OUT_DIR"
+    OUTPUT_JSON="$OUT_DIR/adoption-improvement-$DATE_STAMP.json"
+    OUTPUT_MD="$OUT_DIR/adoption-improvement-$DATE_STAMP.md"
+    exec uv run "$SCRIPT_DIR/adoption_report.py" \
+      --output-json "$OUTPUT_JSON" \
+      --output-md "$OUTPUT_MD" \
+      "$@"
     ;;
   workspace-install)
     exec uv run "$SCRIPT_DIR/install_workspace_skill.py" "$@"

@@ -57,6 +57,7 @@ The detailed six-layer cut still applies and is sometimes the more useful slice:
 | Host enforcement | Blocks broad discovery patterns and pushes the host back to the helper flow | `scripts/remind-token-reduce.py`, `scripts/enforce-token-reduce-first.py`, `scripts/command_rewrites.py`, `scripts/coverage_patterns.py`, `scripts/escalation.py`, `.claude/settings.json` |
 | Integration surfaces | Make the same workflow usable from different hosts | `.claude-plugin/`, `mcp/server.mjs`, `agents/openai.yaml` |
 | Conditional companions | Add opt-in compression, execution, and structural helpers after the first-move workflow is satisfied | `scripts/token-reduce-dependency-health.py`, `references/feature-matrix.md`, `references/headroom-evaluation-2026-06-10.md` |
+| Adoption improvement | Turns workspace audit telemetry into SLOs and per-repo action queues | `scripts/audit_workspace_skills.py`, `scripts/adoption_report.py`, `artifacts/token-reduction/adoption-improvement-*.md` |
 
 ### New modules from PR #41 (Tracks A–H + L)
 
@@ -150,9 +151,12 @@ The repo now has a direct telemetry and self-review loop:
 - session measurement tracks Headroom mentions and command usage so low adoption is visible
 - composite telemetry adds RTK inputs (`gain`, `discover`, `session`, `hook-audit`) plus install/hook wiring checks
 - `review_token_reduction.py` converts the latest evidence into prioritized next fixes
+- `adoption_report.py` converts workspace audit output into active-repo helper-usage SLOs and ranked repo interventions
 - `cost_playbook.py` maps current telemetry/config/Caliper/dependency health to a Databricks-style cost governance scorecard
 
 That means the skill can do more than claim savings. It can inspect whether it is actually being used, where routing is weak, and which improvements should be made next.
+
+The adoption loop is intentionally warning-only. A clean install/doc audit does not prove usage. The report therefore separates deployment drift from behavior gaps such as active repos with sessions but no helper calls, telemetry-only helper calls, and missing host-session attribution.
 
 ## Cost Governance Boundary
 
