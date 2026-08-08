@@ -150,8 +150,31 @@ The repo now has a direct telemetry and self-review loop:
 - session measurement tracks Headroom mentions and command usage so low adoption is visible
 - composite telemetry adds RTK inputs (`gain`, `discover`, `session`, `hook-audit`) plus install/hook wiring checks
 - `review_token_reduction.py` converts the latest evidence into prioritized next fixes
+- `cost_playbook.py` maps current telemetry/config/Caliper/dependency health to a Databricks-style cost governance scorecard
 
 That means the skill can do more than claim savings. It can inspect whether it is actually being used, where routing is weak, and which improvements should be made next.
+
+## Cost Governance Boundary
+
+`token-reduce` now reports warning-only coverage against the Databricks AI coding cost playbook, but it is still not a full AI Gateway.
+
+Strong coverage:
+
+- token overhead reduction
+- helper-first discovery enforcement
+- local adoption/compliance telemetry
+- Caliper-backed spend review when available
+- companion/delegate recommendations
+
+Explicit gaps:
+
+- no request-level model router
+- no central model allow-list or model menu
+- no automatic model downshift
+- no hard spend caps or suspension controls
+- no unified spend dashboard across Claude, Codex, and delegates yet
+
+Budget tripwires in this repo are advisory by design. They emit warnings and recommended actions before any stronger control plane is attempted.
 
 ## Read Next
 

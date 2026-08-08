@@ -12,7 +12,14 @@ from caliper_summary import (
     fetch_summary,
     render_markdown as render_caliper_markdown,
 )
+from cost_playbook import (
+    build_dependency_health,
+    build_playbook_findings,
+    build_playbook_scorecard,
+    render_scorecard_markdown,
+)
 from measure_token_reduction import measure
+from token_reduce_config import load_config
 
 
 def health_score(report: dict) -> float:
@@ -621,7 +628,12 @@ def format_companion_funnels_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_markdown(report: dict, findings: list[dict[str, str]], caliper_summary: dict | None = None) -> str:
+def render_markdown(
+    report: dict,
+    findings: list[dict[str, str]],
+    caliper_summary: dict | None = None,
+    dependency_health: dict | None = None,
+) -> str:
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
     headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
     headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0) or 0)
@@ -698,6 +710,13 @@ def render_markdown(report: dict, findings: list[dict[str, str]], caliper_summar
         lines.extend(["", "## Caliper Spend Telemetry", ""])
         caliper_lines = render_caliper_markdown(caliper_summary).splitlines()
         lines.extend(line for line in caliper_lines[2:] if line != "# Caliper Spend Summary")
+    scorecard = build_playbook_scorecard(
+        report,
+        config=load_config(),
+        caliper_summary=caliper_summary,
+        dependency_health=dependency_health,
+    )
+    lines.extend(["", render_scorecard_markdown(scorecard)])
     lines.extend(["", "## Prioritized Findings", ""])
     for finding in findings:
         lines.extend(
@@ -718,6 +737,7 @@ def main() -> int:
     parser.add_argument("--with-caliper", action="store_true", help="Include a running Cost Caliper Control Tower API summary")
     parser.add_argument("--caliper-url", help="Cost Caliper Control Tower base URL; defaults to CALIPER_URL or localhost:49123")
     parser.add_argument("--caliper-summary-json", help="Reuse a precomputed Caliper summary JSON artifact")
+    parser.add_argument("--check-deps", action="store_true", help="Include optional companion dependency readiness in cost-playbook findings")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -742,6 +762,14 @@ def main() -> int:
                     "recommendation": "Start Caliper with `/caliper` or pass `--caliper-url`/`CALIPER_URL`, then rerun review with `--with-caliper`.",
                 }
             )
+    dependency_health = build_dependency_health(include_conditional=True) if args.check_deps else None
+    playbook_scorecard = build_playbook_scorecard(
+        report,
+        config=load_config(),
+        caliper_summary=caliper_summary,
+        dependency_health=dependency_health,
+    )
+    findings.extend(build_playbook_findings(playbook_scorecard))
     payload = {
         "measured_at": report["measured_at"],
         "scope": report["scope"],
@@ -769,12 +797,14 @@ def main() -> int:
             "error": caliper_error,
             "summary": caliper_summary,
         },
+        "cost_playbook": playbook_scorecard,
+        "dependency_health": dependency_health,
         "report": report,
     }
 
     if args.output_json:
         Path(args.output_json).write_text(json.dumps(payload, indent=2) + "\n")
-    markdown = render_markdown(report, findings, caliper_summary)
+    markdown = render_markdown(report, findings, caliper_summary, dependency_health)
     if args.output_md:
         Path(args.output_md).write_text(markdown)
 
