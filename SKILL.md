@@ -10,7 +10,7 @@ triggers:
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.4"
+  version: "5.6.5"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -74,6 +74,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
 | Cost Caliper companion (optional) | Adds Claude Code spend/session/model-tier/cache telemetry to token-reduce review output | Periodic meta-review of expensive sessions, not first-move discovery |
+| Adoption improvement loop | Tracks active-repo helper usage SLOs and prioritized repo interventions from workspace telemetry | When helper usage appears weak despite install/docs compliance |
 | Databricks cost playbook scorecard | Warning-only coverage report for model efficiency, routing, visibility, budgets, token overhead, and gateway gaps | When reviewing AI coding cost governance across repos or tools |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
 
@@ -147,6 +148,23 @@ Use Caliper output to identify expensive repos, model-tier mix, cache write/read
 `token-reduce-manage.sh self-improve` includes Caliper automatically when `companions.caliper.enabled` and `companions.caliper.self_improve` are true and the local Control Tower API is reachable. Missing Caliper remains nonblocking.
 
 Do not use Caliper as the first move for unknown-path discovery. Do not make it a required dependency. Treat costs as estimates. Do not allow Caliper or token-reduce to auto-write persistent cost-discipline guidance without explicit user consent.
+
+## Adoption Improvement Loop
+
+When users ask whether Claude/Codex are actually using token-reduce, run:
+
+```bash
+scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
+```
+
+This reads workspace audit/session/helper telemetry and writes:
+
+- `artifacts/token-reduction/adoption-improvement-YYYY-MM-DD.json`
+- `artifacts/token-reduction/adoption-improvement-YYYY-MM-DD.md`
+
+Default SLOs are warning-only: 90% of active repos should show helper usage in the trailing window, and 25% of workspace repos should show any helper usage. The report distinguishes install/docs drift from behavior gaps, especially active repos with sessions but zero helper calls. Use those repo names as the next intervention queue before adding new dependencies.
+
+`self-improve` also writes this report after `workspace-audit`. Headroom adoption remains separate: review output tracks recommendations, command usage, and conversion so "recommended but never used" is visible.
 
 ## Databricks Cost Playbook Scorecard
 

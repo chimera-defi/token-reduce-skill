@@ -151,7 +151,10 @@ Enable opt-in telemetry summaries and update checks:
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh release-gate
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh deps-check
 ./tools/token-reduce-skill/scripts/token-reduce-manage.sh deps-check-conditional
+./tools/token-reduce-skill/scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
 ```
+
+Use `improve-adoption` when recent Claude/Codex sessions are not showing helper usage. It writes helper-usage SLOs and repo-level interventions from workspace telemetry.
 
 ## MCP tools (if using MCP)
 
