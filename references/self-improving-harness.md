@@ -54,6 +54,18 @@ Default config:
       "url": "http://127.0.0.1:49123",
       "self_improve": true
     }
+  },
+  "budgets": {
+    "enabled": false,
+    "daily_warning_usd": 20,
+    "session_warning_usd": 5,
+    "repo_warning_usd": 50,
+    "actions": [
+      "warn",
+      "recommend_headroom",
+      "recommend_delegate",
+      "recommend_downshift"
+    ]
   }
 }
 ```
@@ -141,6 +153,7 @@ Adaptive gate uses a bounded default tolerance (`-2.0%`) to absorb benchmark noi
 - dependency freshness check
 - global measure + review refresh
 - optional Caliper spend snapshot + Caliper-backed global review when the local Control Tower API is reachable
+- Databricks cost playbook scorecard in review output
 - workspace audit snapshot (`artifacts/token-reduction/workspace-audit-YYYY-MM-DD.json`)
 - bounded telemetry sync (`telemetry.self_improve_sync_timeout_seconds`, default 45s)
 - rolling baseline trend report (`artifacts/token-reduction/rolling-baseline-YYYY-MM-DD.{json,md}`)
