@@ -10,7 +10,7 @@ triggers:
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.3"
+  version: "5.6.4"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -74,6 +74,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
 | Cost Caliper companion (optional) | Adds Claude Code spend/session/model-tier/cache telemetry to token-reduce review output | Periodic meta-review of expensive sessions, not first-move discovery |
+| Databricks cost playbook scorecard | Warning-only coverage report for model efficiency, routing, visibility, budgets, token overhead, and gateway gaps | When reviewing AI coding cost governance across repos or tools |
 | code-review-graph companion (optional) | 6x–10x token wins on larger-repo token-efficiency samples; can lose on tiny single-file diffs | Large monorepo review, dependency blast-radius, architecture impact tasks |
 
 ## Process
@@ -146,6 +147,23 @@ Use Caliper output to identify expensive repos, model-tier mix, cache write/read
 `token-reduce-manage.sh self-improve` includes Caliper automatically when `companions.caliper.enabled` and `companions.caliper.self_improve` are true and the local Control Tower API is reachable. Missing Caliper remains nonblocking.
 
 Do not use Caliper as the first move for unknown-path discovery. Do not make it a required dependency. Treat costs as estimates. Do not allow Caliper or token-reduce to auto-write persistent cost-discipline guidance without explicit user consent.
+
+## Databricks Cost Playbook Scorecard
+
+Use `scripts/token-reduce-manage.sh cost-playbook` when the task asks whether token-reduce covers broader AI coding cost management patterns.
+
+The scorecard maps current telemetry/config to:
+
+- efficiency-frontier model evaluation
+- harness/model flexibility
+- request-level model routing
+- task/delegate routing
+- spend visibility
+- tripwires, budgets, and downshift
+- token overhead reduction
+- AI Gateway control plane
+
+Use `--with-caliper` to include local Caliper spend data and `--check-deps` to include optional companion freshness. `scripts/token-reduce-manage.sh review --check-deps` includes the same companion-readiness findings in the normal self-review. Budget tripwires are warning-only and do not block model access or change routing automatically.
 
 ## Output Brevity Profile (Companion)
 

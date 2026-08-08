@@ -52,6 +52,7 @@ commands:
   benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
   benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
   caliper-summary  Summarize a running Cost Caliper Control Tower API
+  cost-playbook  Compare current controls against the Databricks AI coding cost playbook
   release-gate  Run benchmark suite + keep/drop verdict for major change sets
   checkpoint  Run the full checkpoint suite and write audit artifacts
   test-adaptive  Run unit tests for adaptive tier routing decisions
@@ -129,6 +130,9 @@ case "$cmd" in
     ;;
   caliper-summary)
     exec uv run "$SCRIPT_DIR/caliper_summary.py" "$@"
+    ;;
+  cost-playbook)
+    exec uv run "$SCRIPT_DIR/cost_playbook.py" "$@"
     ;;
   release-gate)
     exec "$SCRIPT_DIR/release-gate.sh" "$@"

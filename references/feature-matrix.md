@@ -71,13 +71,14 @@ The 2026-04-18 savings figures in the Core Controls table above were measured be
 | `./scripts/token-reduce-manage.sh benchmark-composite` | quality-gated composite stack benchmark | `references/benchmarks/composite-benchmark.json` |
 | `./scripts/token-reduce-manage.sh benchmark-profiles` | profile-level savings/quality benchmark | `references/benchmarks/profile-presets-benchmark.json` |
 | `./scripts/token-reduce-manage.sh caliper-summary` | summarize a running Cost Caliper Control Tower API | terminal Markdown/JSON + optional artifacts |
+| `./scripts/token-reduce-manage.sh cost-playbook` | compare current controls against the Databricks AI coding cost playbook | terminal Markdown/JSON coverage scorecard |
 | `./scripts/token-reduce-manage.sh deps-check` | core dependency health (qmd + rtk) | terminal summary + JSON |
 | `./scripts/token-reduce-manage.sh deps-check-conditional` | conditional companion health (AXI/context-mode/headroom/code-review-graph) | terminal summary + JSON |
 | `./scripts/token-reduce-manage.sh release-gate` | benchmark + README benchmark-row sync + runtime-reliability keep/drop verdict for major change sets | terminal JSON verdict (`release_gate_pass`) |
 | `./scripts/token-reduce-manage.sh sync-benchmarks` | manual README benchmark token-row sync from artifacts | terminal JSON summary |
 | `./scripts/token-reduce-manage.sh checkpoint` | full consistency harness (release-gate/validate/tests + local/global review + workspace audit + telemetry sync dry-run) | `artifacts/token-reduction/checkpoint-*.{json,md}` |
 | `./scripts/token-reduce-manage.sh measure` | local adoption/compliance metrics | `artifacts/token-reduction/adoption-repo-*.{json,md}` |
-| `./scripts/token-reduce-manage.sh review` | telemetry-driven recommendation report | `artifacts/token-reduction/adoption-repo-*-review.md` |
+| `./scripts/token-reduce-manage.sh review` | telemetry-driven recommendation report; `--check-deps` adds Databricks scorecard companion-readiness findings | `artifacts/token-reduction/adoption-repo-*-review.md` |
 
 ## Activation And Handoff
 
@@ -96,4 +97,5 @@ The current telemetry is sufficient to evaluate tier usefulness and compliance o
 - companion adoption details, including `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and Headroom recommendation conversion findings
 - optional Caliper spend/session details when `review --with-caliper` is used against a running local Control Tower API
 - optional Caliper self-improve artifacts (`caliper-summary-*.json/.md`) when `companions.caliper.self_improve` is enabled and the local API is reachable
+- Databricks cost playbook coverage (`cost_playbook` in review JSON) across model efficiency, harness flexibility, request/task routing, visibility, warning-only budgets, token overhead, and gateway gaps
 - exclusion of synthetic benchmark/test events from runtime summaries by default

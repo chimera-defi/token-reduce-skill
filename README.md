@@ -19,6 +19,7 @@ It is a high-level token orchestration kit that:
 - auto-routes between path/snippet/structural tiers
 - wires tool hooks so wasteful calls are blocked before execution
 - integrates a dependency suite and operational benchmarking/review gates
+- reports warning-only AI coding cost governance gaps against the Databricks cost playbook
 
 ## Dependency Suite (Feature)
 
@@ -173,22 +174,22 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1348` | baseline |
+| `broad_inventory` | `1374` | baseline |
 | `guidance_scoped_rg` | `221` | `83.3%` saved |
-| `qmd_files` | `243` | `81.2%` saved |
-| `token_reduce_paths_warm` | `247` | `81.0%` saved |
-| `token_reduce_snippet_warm` | `375` | `71.2%` saved |
+| `qmd_files` | `240` | `81.2%` saved |
+| `token_reduce_paths_warm` | `238` | `81.0%` saved |
+| `token_reduce_snippet_warm` | `366` | `71.2%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1967` | baseline | `ok` |
-| `qmd_only` | `677` | `65.6%` saved | `ok` |
-| `token_reduce_only` | `440` | `77.6%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `89.2%` saved | `quality-fail` |
-| `rtk_only` | `890` | `54.8%` saved | `ok` |
-| `composite_stack` | `434` | `77.9%` saved | `quality-fail` |
+| `broad_shell` | `1984` | baseline | `ok` |
+| `qmd_only` | `674` | `66.0%` saved | `ok` |
+| `token_reduce_only` | `441` | `77.8%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `89.3%` saved | `quality-fail` |
+| `rtk_only` | `890` | `55.1%` saved | `ok` |
+| `composite_stack` | `435` | `78.1%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
@@ -241,7 +242,9 @@ It gates on:
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
 ./scripts/token-reduce-manage.sh review --with-caliper
+./scripts/token-reduce-manage.sh review --check-deps
 ./scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
+./scripts/token-reduce-manage.sh cost-playbook --with-caliper --check-deps
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh doctor
 ```
@@ -281,6 +284,38 @@ Dependency checks:
 
 When Caliper is not running, `review --with-caliper` reports a setup finding and continues with normal token-reduce telemetry.
 When Caliper is not running during `self-improve`, token-reduce records the skip and continues the rest of the maintenance loop.
+
+## Databricks Cost Playbook Scorecard
+
+`token-reduce` includes a warning-only scorecard based on Databricks' AI coding cost playbook:
+
+```bash
+./scripts/token-reduce-manage.sh cost-playbook
+./scripts/token-reduce-manage.sh cost-playbook --with-caliper --check-deps
+./scripts/token-reduce-manage.sh review --check-deps
+```
+
+The scorecard separates what token-reduce covers from what still needs a broader control plane:
+
+- efficiency-frontier model evaluation
+- harness/model flexibility
+- request-level routing
+- task/delegate routing
+- spend visibility
+- tripwires, budgets, and downshift
+- token overhead reduction
+- AI Gateway-style central control plane
+
+Budget controls are warning-only by default and disabled until configured:
+
+```bash
+./scripts/token-reduce-manage.sh settings set budgets.enabled true
+./scripts/token-reduce-manage.sh settings set budgets.session_warning_usd 5
+./scripts/token-reduce-manage.sh settings set budgets.repo_warning_usd 50
+```
+
+The scorecard can use Caliper spend estimates when available, but it never hard-blocks users, suspends access, or changes model routing automatically.
+Use `review --check-deps` when you want the same playbook and optional companion readiness findings in the normal self-review.
 
 ## Headroom Status
 

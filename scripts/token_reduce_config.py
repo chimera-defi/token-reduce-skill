@@ -74,6 +74,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
         },
         "qmd": {"enabled": True},
     },
+    "budgets": {
+        "enabled": False,
+        "daily_warning_usd": 20,
+        "session_warning_usd": 5,
+        "repo_warning_usd": 50,
+        "actions": [
+            "warn",
+            "recommend_headroom",
+            "recommend_delegate",
+            "recommend_downshift",
+        ],
+    },
     "enforcement": "warn_first",
 }
 
