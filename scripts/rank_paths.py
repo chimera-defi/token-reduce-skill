@@ -128,9 +128,10 @@ def _git_last_commit_ts(repo_root: Path, path: str) -> int | None:
             check=False,
             capture_output=True,
             text=True,
+            timeout=5,
             env={**os.environ, "PATH": os.environ.get("PATH", "/usr/bin:/bin")},
         )
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
     if result.returncode != 0:
         return None
