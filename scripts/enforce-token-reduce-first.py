@@ -327,9 +327,9 @@ def uv_run_needs_scan(command: str) -> bool:
 def helper_required_reason() -> str:
     hint = discovery_hint()
     return (
-        f"token-reduce helper required for this prompt. "
+        "token-reduce helper required for this prompt. "
         f"Run {hint} first. "
-        f"After discovery runs, targeted Grep, Glob, and Read follow-ups are allowed."
+        "After discovery runs, targeted Grep, Glob, and Read follow-ups are allowed."
     )
 
 
