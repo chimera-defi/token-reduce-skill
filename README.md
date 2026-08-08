@@ -20,6 +20,7 @@ It is a high-level token orchestration kit that:
 - wires tool hooks so wasteful calls are blocked before execution
 - integrates a dependency suite and operational benchmarking/review gates
 - reports warning-only AI coding cost governance gaps against the Databricks cost playbook
+- turns workspace telemetry into helper-usage SLOs and repo-level adoption interventions
 
 ## Dependency Suite (Feature)
 
@@ -211,6 +212,26 @@ The report now separates:
 - telemetry windows (`1d` and `14d`) so current behavior is not hidden by stale history
 
 This prevents claiming benchmark-only wins when adoption/compliance or runtime stability are weak.
+
+### Adoption improvement loop
+
+If helper usage looks weak despite clean installs/docs, run:
+
+```bash
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
+```
+
+The report writes:
+
+- `artifacts/token-reduction/adoption-improvement-YYYY-MM-DD.json`
+- `artifacts/token-reduction/adoption-improvement-YYYY-MM-DD.md`
+
+It tracks warning-only SLOs:
+
+- active repo helper usage target: `90%`
+- workspace helper usage target: `25%`
+
+The output ranks repos by likely cause: missing install, missing guidance, wrong skill root, version/commit drift, active sessions without helper usage, telemetry-only helper calls, or no recent sessions. Use `active_no_helper` repos as the immediate adoption queue.
 
 ### Release gate (anti-regression)
 
