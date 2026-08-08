@@ -103,9 +103,10 @@ When changing routing, hooks, telemetry, or benchmark logic, also run:
 ```bash
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
 ```
 
-Treat the review output as the current evidence source for weak adoption, weak routing, or benchmark drift.
+Treat the review output as the current evidence source for weak adoption, weak routing, or benchmark drift. Use `improve-adoption` when workspace install/docs are compliant but recent Claude/Codex sessions are not showing helper usage; it emits active-repo helper usage SLOs and a prioritized intervention queue.
 
 For major change sets before release/merge, also run:
 

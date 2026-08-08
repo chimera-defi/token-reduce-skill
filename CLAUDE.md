@@ -23,9 +23,10 @@ Measure adoption with:
 ```bash
 ./scripts/token-reduce-manage.sh measure
 ./scripts/token-reduce-manage.sh review
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
 ```
 
-The adoption report includes `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
+Use `improve-adoption` when install/docs look clean but Claude or Codex are not actually using the helper. It reports active-repo helper usage SLOs, active repos with zero helper usage, likely causes, and prioritized repo interventions. The adoption review includes `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
 
 ## Cost Caliper Companion
 

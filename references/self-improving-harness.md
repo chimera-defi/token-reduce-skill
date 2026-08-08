@@ -99,6 +99,7 @@ Command:
 ```bash
 ./scripts/token-reduce-manage.sh telemetry-sync
 ./scripts/token-reduce-manage.sh rolling-baseline
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
 ```
 
 Local receiver example:
@@ -155,6 +156,7 @@ Adaptive gate uses a bounded default tolerance (`-2.0%`) to absorb benchmark noi
 - optional Caliper spend snapshot + Caliper-backed global review when the local Control Tower API is reachable
 - Databricks cost playbook scorecard in review output
 - workspace audit snapshot (`artifacts/token-reduction/workspace-audit-YYYY-MM-DD.json`)
+- adoption improvement report (`artifacts/token-reduction/adoption-improvement-YYYY-MM-DD.{json,md}`)
 - bounded telemetry sync (`telemetry.self_improve_sync_timeout_seconds`, default 45s)
 - rolling baseline trend report (`artifacts/token-reduction/rolling-baseline-YYYY-MM-DD.{json,md}`)
 - update check
@@ -169,3 +171,20 @@ Caliper artifacts, when available:
 - `artifacts/token-reduction/caliper-summary-YYYY-MM-DD.md`
 
 If Caliper is not running, the command prints a nonblocking skip message and continues without spend telemetry.
+
+## Adoption Improvement
+
+`improve-adoption` is the focused continuous-improvement command for weak helper usage:
+
+```bash
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
+```
+
+It runs a workspace audit unless `--audit-json` is supplied, then emits:
+
+- active-repo helper usage SLO status
+- workspace helper usage SLO status
+- likely cause counts
+- prioritized repo interventions
+
+Default warning-only targets are 90% active-repo helper usage and 25% workspace helper usage. The command does not mutate repos; pair it with `workspace-install` only when the report shows install/docs/root/version drift. When install/docs are already clean, treat `active_no_helper` repos as agent behavior gaps and improve first-move nudges, hook coverage, or host instructions.
