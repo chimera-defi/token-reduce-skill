@@ -354,7 +354,8 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             last_call_by_key[key] = ts
 
     helper_calls = len(helper_events)
-    pct = lambda count: round((count * 100.0 / helper_calls), 1) if helper_calls else 0.0
+    def pct(count: int) -> float:
+        return round((count * 100.0 / helper_calls), 1) if helper_calls else 0.0
 
     helper_meta_present_pct = pct(helper_meta_present_count)
     helper_latency_coverage_pct = pct(helper_latency_coverage_count)
