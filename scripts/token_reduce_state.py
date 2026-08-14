@@ -240,23 +240,6 @@ def consume_block(repo: Path) -> dict | None:
     return data
 
 
-def last_block_info(repo: Path) -> dict | None:
-    """Peek at last block state without consuming it."""
-    path = block_state_path(repo)
-    if not path.exists():
-        return None
-    try:
-        data = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError):
-        return None
-    blocked_at = data.get("blocked_at")
-    if not isinstance(blocked_at, (int, float)):
-        return None
-    if time.time() - float(blocked_at) > BLOCK_TTL_SECONDS:
-        return None
-    return data
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
