@@ -96,13 +96,19 @@ SEMVER_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
 
 def run(cmd: list[str], *, cwd: Path | None = None) -> tuple[int, str, str]:
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, "", f"{cmd[0]}: timed out"
+    except FileNotFoundError:
+        return 1, "", f"{cmd[0]}: not found"
     return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
 
 

@@ -15,7 +15,12 @@ from token_reduce_config import load_config
 
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
-    proc = subprocess.run(cmd, cwd=cwd, check=False, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, check=False, capture_output=True, text=True, timeout=15)
+    except subprocess.TimeoutExpired:
+        return 1, "", f"{cmd[0]}: timed out"
+    except FileNotFoundError:
+        return 1, "", f"{cmd[0]}: not found"
     return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
 
 
