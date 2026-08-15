@@ -152,8 +152,10 @@ def main() -> int:
     default_workspace_days = parse_int(telemetry_cfg.get("workspace_days", 14), 14)
     default_include_source_repo = bool(telemetry_cfg.get("workspace_include_source_repo", False))
 
+    fetch_ok: bool | None = None
     if not args.no_fetch:
-        run(["git", "fetch", "origin", "--prune"], root)
+        fetch_code, _, _ = run(["git", "fetch", "origin", "--prune"], root)
+        fetch_ok = fetch_code == 0
 
     current_branch = branch(root)
     upstream_ref = upstream(root)
@@ -208,10 +210,12 @@ def main() -> int:
         "repo_root": str(root),
         "branch": current_branch,
         "upstream": upstream_ref,
+        "fetch_ok": fetch_ok,
         "ahead": ahead,
         "behind": behind,
         "dirty": is_dirty,
         "update_available": behind > 0,
+        "refs_may_be_stale": fetch_ok is False,
         "auto_update_enabled": auto_update_enabled,
         "workspace_auto_update_enabled": workspace_auto_update_enabled,
         "auto_update_attempted": attempted_auto_update,
