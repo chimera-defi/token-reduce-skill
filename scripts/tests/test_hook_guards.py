@@ -1,8 +1,21 @@
-"""Tests for hook guard scripts: enforce-glob-scope.py and advise-token-reduction.py."""
+"""Tests for hook guard scripts: enforce-token-reduce-first.py's Glob-blocking
+logic and advise-token-reduction.py.
+
+enforce-glob-scope.py (originally covered here) was removed as dead code:
+zero references anywhere in the repo, and its is_broad() logic is strictly
+subsumed by enforce-token-reduce-first.py's is_broad_glob()/is_exploratory_glob(),
+which is the hook actually wired to the Glob matcher in .claude/settings.json.
+That live policy is intentionally stricter than the old script's -- it blocks
+*any* pattern containing a wildcard character, including scoped ones like
+src/**/*.ts that the old script explicitly allowed -- so these tests assert
+the live behavior rather than the retired, more permissive one.
+"""
 from __future__ import annotations
 
 import io
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,86 +37,151 @@ def _load(name: str):
     spec.loader.exec_module(mod)
     return mod
 
-glob_guard = _load("enforce-glob-scope")
+enforce_guard = _load("enforce-token-reduce-first")
 advise_guard = _load("advise-token-reduction")
 
 
 # ---------------------------------------------------------------------------
-# enforce-glob-scope :: is_broad()
+# enforce-token-reduce-first :: is_broad_glob() / is_exploratory_glob()
 # ---------------------------------------------------------------------------
+# The live Glob matcher blocks on `is_broad_glob(pattern) or is_exploratory_glob(pattern)`.
+# is_exploratory_glob() is a broad catch-all (any of "*?[" present), so it fires
+# on nearly every wildcard pattern -- these cases document that combined policy.
 
-class TestIsBroad:
+class TestIsBroadGlob:
     def test_unscoped_double_star_prefix(self):
-        assert glob_guard.is_broad("**/*.ts") is True
+        assert enforce_guard.is_broad_glob("**/*.ts") is True
 
     def test_unscoped_double_star_any(self):
-        assert glob_guard.is_broad("**/*") is True
+        assert enforce_guard.is_broad_glob("**/*") is True
 
     def test_trailing_double_star_slash(self):
-        assert glob_guard.is_broad("src/**") is True
+        assert enforce_guard.is_broad_glob("src/**") is True
 
     def test_trailing_double_star_glob(self):
-        assert glob_guard.is_broad("src/**/*") is True
+        assert enforce_guard.is_broad_glob("src/**/*") is True
 
     def test_double_wildcard_no_slash(self):
-        assert glob_guard.is_broad("*.*.py") is True
+        assert enforce_guard.is_broad_glob("*.*.py") is True
 
     def test_all_wildcard_prefix_segments(self):
-        assert glob_guard.is_broad("**/**/*") is True
+        assert enforce_guard.is_broad_glob("**/**/*") is True
 
-    def test_scoped_pattern_is_not_broad(self):
-        assert glob_guard.is_broad("src/**/*.ts") is False
+    def test_scoped_double_star_pattern_is_still_broad(self):
+        # Unlike the retired enforce-glob-scope.py (which allowed this),
+        # is_broad_glob counts *any* pattern with 2+ wildcards as broad,
+        # directory scoping notwithstanding.
+        assert enforce_guard.is_broad_glob("src/**/*.ts") is True
 
-    def test_single_wildcard_extension_is_not_broad(self):
-        assert glob_guard.is_broad("scripts/*.py") is False
+    def test_single_wildcard_extension_is_not_broad_alone(self):
+        # is_broad_glob alone allows a single trailing wildcard extension --
+        # but is_exploratory_glob still catches it (see below).
+        assert enforce_guard.is_broad_glob("scripts/*.py") is False
+        assert enforce_guard.is_exploratory_glob("scripts/*.py") is True
 
     def test_empty_string_is_not_broad(self):
-        assert glob_guard.is_broad("") is False
+        assert enforce_guard.is_broad_glob("") is False
 
     def test_dotslash_prefix_stripped(self):
-        assert glob_guard.is_broad("./**/*.json") is True
+        assert enforce_guard.is_broad_glob("./**/*.json") is True
 
-    def test_deep_scoped_path_is_not_broad(self):
-        assert glob_guard.is_broad("packages/web/src/**/*.tsx") is False
+    def test_deep_scoped_path_is_still_broad(self):
+        assert enforce_guard.is_broad_glob("packages/web/src/**/*.tsx") is True
+
+    def test_literal_path_with_no_wildcard_is_not_exploratory(self):
+        assert enforce_guard.is_broad_glob("scripts/enforce-token-reduce-first.py") is False
+        assert enforce_guard.is_exploratory_glob("scripts/enforce-token-reduce-first.py") is False
+
+    def test_empty_string_is_not_exploratory(self):
+        assert enforce_guard.is_exploratory_glob("") is False
 
 
 # ---------------------------------------------------------------------------
-# enforce-glob-scope :: main() via stdin injection
+# enforce-token-reduce-first :: main() via subprocess, Glob tool calls
 # ---------------------------------------------------------------------------
+# main() does real filesystem I/O (repo state, telemetry), so this exercises
+# it as a subprocess against an isolated tmp git repo -- same pattern as
+# test_enforce_integration.py's _run_hook.
 
-class TestGlobGuardMain:
-    def _run(self, payload: dict, monkeypatch) -> tuple[int, str]:
-        stdin_text = json.dumps(payload)
-        monkeypatch.setattr(sys, "stdin", io.StringIO(stdin_text))
-        buf = io.StringIO()
-        monkeypatch.setattr(sys, "stdout", buf)
-        rc = glob_guard.main()
-        return rc, buf.getvalue()
+HOOK = SCRIPT_DIR / "enforce-token-reduce-first.py"
 
-    def test_non_glob_tool_passes(self, monkeypatch):
-        rc, out = self._run({"tool_name": "Bash", "tool_input": {"command": "ls"}}, monkeypatch)
-        assert rc == 0
-        assert out == ""
 
-    def test_broad_glob_pattern_blocked(self, monkeypatch):
-        rc, out = self._run(
-            {"tool_name": "Glob", "tool_input": {"pattern": "**/*.ts"}}, monkeypatch
+def _init_git_repo(path: Path) -> None:
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(path)],
+        check=True,
+        capture_output=True,
+    )
+
+
+def _run_glob_hook(pattern: str, repo_root: Path, session_id: str = "sess-glob-test") -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
+    env["PYTHONPATH"] = str(SCRIPT_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+    payload = json.dumps({"session_id": session_id, "tool_name": "Glob", "tool_input": {"pattern": pattern}})
+    return subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=payload,
+        text=True,
+        capture_output=True,
+        env=env,
+        cwd=str(repo_root),
+        timeout=30,
+    )
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    _init_git_repo(tmp_path)
+    return tmp_path
+
+
+class TestGlobToolBlocking:
+    def test_non_glob_tool_passes(self, repo: Path) -> None:
+        env = os.environ.copy()
+        env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
+        env["PYTHONPATH"] = str(SCRIPT_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+        payload = json.dumps({"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}})
+        result = subprocess.run(
+            [sys.executable, str(HOOK)],
+            input=payload,
+            text=True,
+            capture_output=True,
+            env=env,
+            cwd=str(repo),
+            timeout=30,
         )
-        assert rc == 2
-        data = json.loads(out.strip())
-        assert data["decision"] == "block"
+        assert result.returncode == 0
+        assert result.stdout.strip() == ""
 
-    def test_scoped_glob_pattern_passes(self, monkeypatch):
-        rc, out = self._run(
-            {"tool_name": "Glob", "tool_input": {"pattern": "src/**/*.ts"}}, monkeypatch
+    def test_broad_glob_pattern_blocked(self, repo: Path) -> None:
+        result = _run_glob_hook("**/*.ts", repo)
+        assert result.returncode == 2
+        decision = json.loads(result.stdout)
+        assert decision["decision"] == "block"
+
+    def test_scoped_glob_pattern_is_also_blocked(self, repo: Path) -> None:
+        # Documents the live (stricter-than-legacy) policy: even a directory-
+        # scoped pattern is blocked until the token-reduce helper has run.
+        result = _run_glob_hook("src/**/*.ts", repo)
+        assert result.returncode == 2
+        decision = json.loads(result.stdout)
+        assert decision["decision"] == "block"
+
+    def test_invalid_json_returns_zero(self, repo: Path) -> None:
+        env = os.environ.copy()
+        env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
+        env["PYTHONPATH"] = str(SCRIPT_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+        result = subprocess.run(
+            [sys.executable, str(HOOK)],
+            input="not-json",
+            text=True,
+            capture_output=True,
+            env=env,
+            cwd=str(repo),
+            timeout=30,
         )
-        assert rc == 0
-        assert out == ""
-
-    def test_invalid_json_returns_zero(self, monkeypatch):
-        monkeypatch.setattr(sys, "stdin", io.StringIO("not-json"))
-        rc = glob_guard.main()
-        assert rc == 0
+        assert result.returncode == 0
 
 
 # ---------------------------------------------------------------------------
