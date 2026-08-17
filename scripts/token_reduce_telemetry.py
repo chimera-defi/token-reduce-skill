@@ -20,9 +20,10 @@ def default_repo_root() -> Path:
             check=True,
             capture_output=True,
             text=True,
+            timeout=10,
         ).stdout.strip()
-    except subprocess.CalledProcessError:
-        return script_dir.parents[1]
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return script_dir.parent
     return Path(root)
 
 
