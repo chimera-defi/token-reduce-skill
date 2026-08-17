@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/remind-token-reduce.py"
+            "command": "timeout 20 uv run \"${CLAUDE_PROJECT_DIR:-.}/scripts/remind-token-reduce.py\" || exit 0"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/enforce-token-reduce-first.py"
+            "command": "T=\"${CLAUDE_PROJECT_DIR:-.}/scripts/enforce-token-reduce-first.py\"; timeout 20 uv run \"$T\"; ec=$?; if [ \"$ec\" -eq 2 ] && [ -f \"$T\" ]; then exit 2; fi; exit 0"
           },
           {
             "type": "command",
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/enforce-token-reduce-first.py"
+            "command": "T=\"${CLAUDE_PROJECT_DIR:-.}/scripts/enforce-token-reduce-first.py\"; timeout 20 uv run \"$T\"; ec=$?; if [ \"$ec\" -eq 2 ] && [ -f \"$T\" ]; then exit 2; fi; exit 0"
           }
         ]
       },
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/enforce-token-reduce-first.py"
+            "command": "T=\"${CLAUDE_PROJECT_DIR:-.}/scripts/enforce-token-reduce-first.py\"; timeout 20 uv run \"$T\"; ec=$?; if [ \"$ec\" -eq 2 ] && [ -f \"$T\" ]; then exit 2; fi; exit 0"
           }
         ]
       },
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run scripts/enforce-token-reduce-first.py"
+            "command": "T=\"${CLAUDE_PROJECT_DIR:-.}/scripts/enforce-token-reduce-first.py\"; timeout 20 uv run \"$T\"; ec=$?; if [ \"$ec\" -eq 2 ] && [ -f \"$T\" ]; then exit 2; fi; exit 0"
           }
         ]
       }

@@ -53,7 +53,7 @@ def discovery_hint() -> str:
     return "qmd search '<topic words>' -n 5 --files  (or scoped: rg --files -g '*.ext' | head -20)"
 
 
-STATE_TTL_SECONDS = 20 * 60
+STATE_TTL_SECONDS = 5 * 60
 BLOCK_TTL_SECONDS = 5 * 60
 STATE_DIR = ".claude/token-reduce-state"
 
@@ -61,12 +61,16 @@ STATE_DIR = ".claude/token-reduce-state"
 def repo_root() -> Path:
     base_dir = os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR")
     base = Path(base_dir).resolve() if base_dir else Path.cwd().resolve()
-    proc = subprocess.run(
-        ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return base
     candidate = (proc.stdout or "").strip()
     if candidate:
         return Path(candidate).resolve()
