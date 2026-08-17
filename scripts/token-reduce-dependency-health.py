@@ -96,13 +96,37 @@ SEMVER_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
 
 def run(cmd: list[str], *, cwd: Path | None = None) -> tuple[int, str, str]:
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, "", f"{cmd[0]}: timed out"
+    except FileNotFoundError:
+        return 1, "", f"{cmd[0]}: not found"
+    return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
+
+
+def run_install(cmd: list[str], *, cwd: Path | None = None) -> tuple[int, str, str]:
+    """Like run() but with a long timeout for package install/upgrade operations."""
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        return 1, "", f"{cmd[0]}: install timed out after 300s"
+    except FileNotFoundError:
+        return 1, "", f"{cmd[0]}: not found"
     return proc.returncode, (proc.stdout or "").strip(), (proc.stderr or "").strip()
 
 
@@ -219,7 +243,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     qmd_status = next((item for item in statuses if item["name"] == "qmd"), None)
     if qmd_status and needs_action(str(qmd_status.get("state"))):
         if shutil.which("bun"):
-            code, out, err = run(["bun", "install", "-g", "https://github.com/tobi/qmd"])
+            code, out, err = run_install(["bun", "install", "-g", "https://github.com/tobi/qmd"])
             actions.append(
                 {
                     "target": "qmd",
@@ -242,7 +266,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if rtk_status and needs_action(str(rtk_status.get("state"))):
         if shutil.which("brew"):
             cmd = ["brew", "upgrade", "rtk"]
-            code, out, err = run(cmd)
+            code, out, err = run_install(cmd)
             actions.append(
                 {
                     "target": "rtk",
@@ -253,7 +277,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
             )
         else:
             cmd = ["bash", "-lc", "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh"]
-            code, out, err = run(cmd)
+            code, out, err = run_install(cmd)
             actions.append(
                 {
                     "target": "rtk",
@@ -269,7 +293,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
     if needs_axi_update:
         if shutil.which("npm"):
-            code, out, err = run(["npm", "install", "-g", "gh-axi", "chrome-devtools-axi"])
+            code, out, err = run_install(["npm", "install", "-g", "gh-axi", "chrome-devtools-axi"])
             actions.append(
                 {
                     "target": "axi_companions",
@@ -290,7 +314,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     context_mode_status = next((item for item in statuses if item["name"] == "context-mode"), None)
     if context_mode_status and needs_action(str(context_mode_status.get("state"))):
         if shutil.which("npm"):
-            code, out, err = run(["npm", "install", "-g", "context-mode"])
+            code, out, err = run_install(["npm", "install", "-g", "context-mode"])
             actions.append(
                 {
                     "target": "context-mode",
@@ -313,7 +337,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if headroom_status and needs_action(str(headroom_status.get("state"))):
         if shutil.which("uv"):
             python = "/usr/bin/python3.12" if Path("/usr/bin/python3.12").exists() else "python3.12"
-            code, out, err = run(
+            code, out, err = run_install(
                 ["uv", "tool", "install", "--python", python, "headroom-ai[proxy]==0.24.0"]
             )
             actions.append(
@@ -339,7 +363,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
     if code_review_graph_status and needs_action(str(code_review_graph_status.get("state"))):
         if shutil.which("uv"):
-            code, out, err = run(["uv", "tool", "install", "--upgrade", "code-review-graph"])
+            code, out, err = run_install(["uv", "tool", "install", "--upgrade", "code-review-graph"])
             actions.append(
                 {
                     "target": "code-review-graph",
@@ -349,9 +373,9 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 }
             )
         elif shutil.which("pipx"):
-            code, out, err = run(["pipx", "install", "code-review-graph"])
+            code, out, err = run_install(["pipx", "install", "code-review-graph"])
             if code != 0:
-                code, out, err = run(["pipx", "upgrade", "code-review-graph"])
+                code, out, err = run_install(["pipx", "upgrade", "code-review-graph"])
             actions.append(
                 {
                     "target": "code-review-graph",
