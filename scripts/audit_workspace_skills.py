@@ -459,8 +459,12 @@ def summarize(rows: list[RepoSignals], extra: dict[str, object]) -> dict:
         for r in rows
     )
     fully_compliant = sum(int(r.fully_compliant) for r in rows)
-    pct = lambda n: round((n * 100.0 / total), 1) if total else 0.0
-    pct_active = lambda n: round((n * 100.0 / repos_with_sessions), 1) if repos_with_sessions else 0.0
+    def pct(n: float) -> float:
+        return round((n * 100.0 / total), 1) if total else 0.0
+
+    def pct_active(n: float) -> float:
+        return round((n * 100.0 / repos_with_sessions), 1) if repos_with_sessions else 0.0
+
     return {
         "repo_count": total,
         "local_skill_installed": installed,
