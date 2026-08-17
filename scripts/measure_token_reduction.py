@@ -492,12 +492,11 @@ def measure(scope: str, repo_root: str) -> dict:
         per_source[source]["headroom_command_sessions"] += int(item["headroom_command"])
         per_source[source]["axi_tool_sessions"] += int(item["axi_tool"])
 
-    pct = lambda n: round((n * 100.0 / session_count), 1) if session_count else 0.0
-    pct_observed = (
-        lambda n: round((n * 100.0 / observed_discovery_sessions), 1)
-        if observed_discovery_sessions
-        else 0.0
-    )
+    def pct(n: float) -> float:
+        return round((n * 100.0 / session_count), 1) if session_count else 0.0
+
+    def pct_observed(n: float) -> float:
+        return round((n * 100.0 / observed_discovery_sessions), 1) if observed_discovery_sessions else 0.0
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
     telemetry_1d = summarize_events(load_events(Path(repo_root).resolve(), days=1))
 

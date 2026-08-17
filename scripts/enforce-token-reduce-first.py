@@ -379,7 +379,7 @@ def main() -> int:
             is_broad_attempt = False
             if tool_name == "Bash" and isinstance(tool_input, dict):
                 cmd = str(tool_input.get("command", ""))
-                lines = [l.rstrip("\\").strip() for l in cmd.split("\n") if l.strip() and l.strip() != "\\"]
+                lines = [line_.rstrip("\\").strip() for line_ in cmd.split("\n") if line_.strip() and line_.strip() != "\\"]
                 is_broad_attempt = any(
                     re.search(pattern, line)
                     for line in lines
@@ -418,7 +418,7 @@ def main() -> int:
                 first_line = command.split("\n")[0]
                 if HELPER_COMMAND_RE.search(first_line):
                     # N2 fix: check continuation lines for broad patterns before allowing
-                    rest_lines = [l.strip() for l in command.split("\n")[1:] if l.strip() and l.strip() != "\\"]
+                    rest_lines = [line_.strip() for line_ in command.split("\n")[1:] if line_.strip() and line_.strip() != "\\"]
                     if any(
                         re.search(p, line) for line in rest_lines for p in BROAD_BASH_PATTERNS
                     ) or any(is_exploratory_rg(line, repo) for line in rest_lines):
@@ -445,7 +445,7 @@ def main() -> int:
             elif _SAFE_TOOL_RE.match(first_line):
                 return 0
             # Check all lines — broad scans may be on continuation lines
-            lines = [l.rstrip("\\").strip() for l in command.split("\n") if l.strip() and l.strip() != "\\"]
+            lines = [line_.rstrip("\\").strip() for line_ in command.split("\n") if line_.strip() and line_.strip() != "\\"]
             lines.extend(
                 inner for inner in (uv_run_inner_command(line) for line in list(lines)) if inner
             )

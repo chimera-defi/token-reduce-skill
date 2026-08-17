@@ -151,7 +151,6 @@ def build_playbook_scorecard(
     )
     companions = cfg.get("companions", {}) if isinstance(cfg.get("companions"), dict) else {}
     headroom_enabled = bool((companions.get("headroom") or {}).get("enabled")) and _tool_available("headroom")
-    caliper_enabled = bool((companions.get("caliper") or {}).get("enabled"))
 
     rows: dict[str, dict[str, str]] = {}
     rows["efficiency_frontier"] = _status(

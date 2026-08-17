@@ -30,7 +30,10 @@ def main() -> int:
         return 0
 
     latest = [json.loads(path.read_text()) for path in files[-7:]]
-    avg = lambda key: round(sum(item["compliance" if key.startswith("discovery") or key.startswith("broad") else "adoption"][key] for item in latest) / len(latest), 1)
+
+    def avg(key: str) -> float:
+        section = "compliance" if key.startswith("discovery") or key.startswith("broad") else "adoption"
+        return round(sum(item[section][key] for item in latest) / len(latest), 1)
 
     print("Token Reduction Weekly Summary")
     print(f"Samples: {len(latest)}")
