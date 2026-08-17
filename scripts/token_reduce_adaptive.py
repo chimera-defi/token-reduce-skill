@@ -448,13 +448,21 @@ def decide(
 
 def run_command(command: Sequence[str], *, cwd: Path) -> tuple[int, str, str, int]:
     start = time.perf_counter()
-    proc = subprocess.run(
-        list(command),
-        cwd=str(cwd),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            list(command),
+            cwd=str(cwd),
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=20,
+        )
+    except subprocess.TimeoutExpired:
+        duration_ms = int((time.perf_counter() - start) * 1000)
+        return 1, "", f"{command[0]}: timed out", duration_ms
+    except FileNotFoundError:
+        duration_ms = int((time.perf_counter() - start) * 1000)
+        return 1, "", f"{command[0]}: not found", duration_ms
     duration_ms = int((time.perf_counter() - start) * 1000)
     return proc.returncode, proc.stdout or "", proc.stderr or "", duration_ms
 

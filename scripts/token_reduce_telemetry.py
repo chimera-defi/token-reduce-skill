@@ -526,6 +526,17 @@ def main() -> int:
     log_parser.add_argument("--query")
     log_parser.add_argument("--meta-json")
 
+    # record-event is a documented CLI-friendly alias of `log` -- same
+    # arguments, same behavior. Lets external callers (e.g. shell hook
+    # wrappers) record telemetry without importing this module.
+    record_event_parser = subparsers.add_parser("record-event")
+    record_event_parser.add_argument("--event", required=True)
+    record_event_parser.add_argument("--source", required=True)
+    record_event_parser.add_argument("--tool")
+    record_event_parser.add_argument("--status", default="ok")
+    record_event_parser.add_argument("--query")
+    record_event_parser.add_argument("--meta-json")
+
     summary_parser = subparsers.add_parser("summary")
     summary_parser.add_argument("--days", type=int, default=14)
     summary_parser.add_argument(
@@ -537,7 +548,7 @@ def main() -> int:
     args = parser.parse_args()
     repo_root = Path(args.repo_root).resolve()
 
-    if args.command == "log":
+    if args.command in ("log", "record-event"):
         meta = None
         if args.meta_json:
             try:
