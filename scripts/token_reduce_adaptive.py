@@ -226,10 +226,11 @@ def repo_root() -> Path:
             check=False,
             text=True,
             capture_output=True,
+            timeout=10,
         )
         root = (proc.stdout or "").strip()
         return Path(root).resolve() if root else base.resolve()
-    except FileNotFoundError:
+    except (subprocess.TimeoutExpired, FileNotFoundError):
         return base.resolve()
 
 
