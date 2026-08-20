@@ -49,6 +49,42 @@ class TestRepoRootGuards:
         assert result == tmp_path.resolve()
 
 
+class TestAdaptiveRepoRootGuards:
+    """token_reduce_adaptive.repo_root() is a drifted duplicate of
+    token_reduce_state.repo_root() -- same purpose, but never got the
+    timeout+FileNotFoundError guard applied. Found via a repo-wide survey
+    for other unguarded subprocess.run call sites reachable from the
+    discovery-helper chain (token-reduce-adaptive.sh -> repo_root())."""
+
+    def test_timeout_falls_back_to_base_dir(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(tmp_path))
+        with mock.patch.object(
+            token_reduce_adaptive.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(cmd="git", timeout=10),
+        ):
+            result = token_reduce_adaptive.repo_root()
+        assert result == tmp_path.resolve()
+
+    def test_missing_git_binary_falls_back_to_base_dir(self, tmp_path: Path, monkeypatch) -> None:
+        monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(tmp_path))
+        with mock.patch.object(
+            token_reduce_adaptive.subprocess,
+            "run",
+            side_effect=FileNotFoundError("git not found"),
+        ):
+            result = token_reduce_adaptive.repo_root()
+        assert result == tmp_path.resolve()
+
+    def test_normal_git_repo_still_resolves_toplevel(self, tmp_path: Path, monkeypatch) -> None:
+        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+        nested = tmp_path / "a" / "b"
+        nested.mkdir(parents=True)
+        monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(nested))
+        result = token_reduce_adaptive.repo_root()
+        assert result == tmp_path.resolve()
+
+
 class TestRunCommandGuards:
     def test_timeout_returns_failure_tuple_instead_of_raising(self, tmp_path: Path) -> None:
         with mock.patch.object(
