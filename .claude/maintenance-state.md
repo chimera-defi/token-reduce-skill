@@ -1,11 +1,9 @@
 # Maintenance State
-last_run: 2026-08-01
-focus: observability
+last_run: 2026-08-25
+focus: lint-cleanup
 status: completed
 completed:
-  - fix(rank_paths.py): timeout=5 + except TimeoutExpired in _git_last_commit_ts()
-  - fix(validate_skill_package.py): timeout=5 + catch TimeoutExpired/FileNotFoundError in repo_root()
-  - fix(token-reduce-telemetry-sync.py): timeout=5 + try/except in git_head(), return "unknown" on failure
+  - fix(lint): remove unused shutil import from scripts/tests/test_hook_fail_open.py
 in_progress:
 pending:
   - checkpoint_gate — requires real filesystem commands to run steps
