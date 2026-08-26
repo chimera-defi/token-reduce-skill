@@ -89,14 +89,17 @@ const TOOLS = [
       type: "object",
       properties: {
         system: {
+          type: "string",
           description: "Anthropic system prompt content.",
         },
         tools: {
           type: "array",
+          items: { type: "object" },
           description: "Anthropic tool definition array.",
         },
         messages: {
           type: "array",
+          items: { type: "object" },
           description: "Anthropic messages array.",
         },
         minTokensToCache: {
@@ -175,7 +178,7 @@ async function handleMessage(message) {
       case "initialize":
         sendResult(message.id, {
           protocolVersion: "2024-11-05",
-          capabilities: { tools: {} },
+          capabilities: { tools: { listChanged: false } },
           serverInfo: SERVER,
         });
         return;
