@@ -199,3 +199,186 @@ def test_enforce_hook_still_blocks_a_genuine_catastrophic_command(tmp_path: Path
     )
     decision = json.loads(result.stdout)
     assert decision["decision"] == "block"
+
+
+# ---------------------------------------------------------------------------
+# Python-layer fail-open (defense-in-depth on top of the settings.json wrapper).
+#
+# The shell wrapper (#70) only honors exit code 2 as a block, so a Python crash
+# (exit 1) already fails open *through* it. These tests instead pin the script's
+# own internal contract: the REAL script must itself exit 0 -- never 1 -- when
+# its helper modules are missing (partial deploy) or a helper throws at runtime,
+# so it stays safe even under a naive wrapper that propagates the raw exit code.
+# ---------------------------------------------------------------------------
+
+ENFORCE_SCRIPT = REPO_ROOT / "scripts" / "enforce-token-reduce-first.py"
+
+_IMPORTED_HELPER_NAMES = {
+    "command_rewrites": [
+        "estimate_output_tokens",
+        "format_block_message",
+        "is_catastrophic",
+        "suggest_rewrite",
+    ],
+    "coverage_patterns": ["matches_any_broad_pattern"],
+    "token_reduce_state": [
+        "broad_attempt_count",
+        "consume_block",
+        "discovery_hint",
+        "is_pending",
+        "record_block",
+        "record_broad_attempt",
+        "repo_root",
+        "session_key",
+    ],
+    "token_reduce_telemetry": ["record_event"],
+}
+
+
+def _write_stub_helpers(dest: Path, *, raising: str | None = None) -> None:
+    """Write minimal stub helper modules next to the entrypoint.
+
+    Every name the entrypoint imports is provided as a no-op so the import
+    succeeds; if ``raising`` names a function, that stub raises RuntimeError so
+    we can exercise a runtime failure deep in the hook body.
+    """
+    for module, names in _IMPORTED_HELPER_NAMES.items():
+        lines = []
+        for name in names:
+            if name == raising:
+                lines.append(
+                    f"def {name}(*a, **k):\n"
+                    f"    raise RuntimeError('stub {name} deliberately raising')\n"
+                )
+            else:
+                lines.append(f"def {name}(*a, **k):\n    return None\n")
+        (dest / f"{module}.py").write_text("\n".join(lines))
+
+
+def _run_script_directly(
+    script_dir: Path, stdin: str
+) -> subprocess.CompletedProcess[str]:
+    """Run the entrypoint copy with python3 directly (no shell wrapper), so the
+    assertion is on the script's own exit code, not the wrapper's."""
+    return subprocess.run(
+        ["python3", str(script_dir / "enforce-token-reduce-first.py")],
+        input=stdin,
+        text=True,
+        capture_output=True,
+        cwd=str(script_dir),
+        timeout=30,
+    )
+
+
+def test_enforce_script_exits_zero_when_helper_imports_missing(tmp_path: Path) -> None:
+    """Partial deploy: entrypoint present, helper modules absent. The real
+    script must exit 0 at the Python level, not 1 (which a naive wrapper that
+    does `exit $?` would surface, and which is a traceback on every tool call)."""
+    isolated = tmp_path / "scripts"
+    isolated.mkdir()
+    shutil.copy(ENFORCE_SCRIPT, isolated / "enforce-token-reduce-first.py")
+    # Deliberately copy NO helper modules -> every `from <helper> import ...` fails.
+
+    payload = json.dumps(
+        {"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}}
+    )
+    result = _run_script_directly(isolated, payload)
+
+    assert result.returncode == 0, (
+        f"script must exit 0 when helper imports are missing, "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+    assert "decision" not in result.stdout
+
+
+def test_enforce_script_exits_zero_when_runtime_helper_throws(tmp_path: Path) -> None:
+    """A helper raising deep in the hook body (here repo_root(), reached before
+    the pre-existing runtime try/except) must fail open, not surface as exit 1."""
+    isolated = tmp_path / "scripts"
+    isolated.mkdir()
+    shutil.copy(ENFORCE_SCRIPT, isolated / "enforce-token-reduce-first.py")
+    _write_stub_helpers(isolated, raising="repo_root")
+
+    payload = json.dumps(
+        {"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}}
+    )
+    result = _run_script_directly(isolated, payload)
+
+    assert result.returncode == 0, (
+        f"script must exit 0 when a helper throws at runtime, "
+        f"got returncode={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    assert "decision" not in result.stdout
+
+
+REMIND_SCRIPT = REPO_ROOT / "scripts" / "remind-token-reduce.py"
+
+_REMIND_HELPER_NAMES = {
+    "token_reduce_state": [
+        "clear_pending",
+        "discovery_hint",
+        "mark_pending",
+        "prompt_requires_helper",
+        "repo_root",
+        "session_key",
+    ],
+    "token_reduce_telemetry": ["record_event"],
+}
+
+
+def _write_remind_stub_helpers(dest: Path, *, raising: str | None = None) -> None:
+    for module, names in _REMIND_HELPER_NAMES.items():
+        lines = []
+        for name in names:
+            if name == raising:
+                lines.append(
+                    f"def {name}(*a, **k):\n"
+                    f"    raise RuntimeError('stub {name} deliberately raising')\n"
+                )
+            else:
+                lines.append(f"def {name}(*a, **k):\n    return None\n")
+        (dest / f"{module}.py").write_text("\n".join(lines))
+
+
+def test_remind_script_exits_zero_when_helper_imports_missing(tmp_path: Path) -> None:
+    """Partial deploy for the UserPromptSubmit hook: the real script must exit 0
+    at the Python level even with no helper modules present."""
+    isolated = tmp_path / "scripts"
+    isolated.mkdir()
+    shutil.copy(REMIND_SCRIPT, isolated / "remind-token-reduce.py")
+
+    result = subprocess.run(
+        ["python3", str(isolated / "remind-token-reduce.py")],
+        input="{}",
+        text=True,
+        capture_output=True,
+        cwd=str(isolated),
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"remind script must exit 0 when helper imports are missing, "
+        f"got returncode={result.returncode} stderr={result.stderr!r}"
+    )
+
+
+def test_remind_script_exits_zero_when_runtime_helper_throws(tmp_path: Path) -> None:
+    """A helper raising while the remind body runs (and again inside the error
+    handler) must still fail open, not surface as exit 1."""
+    isolated = tmp_path / "scripts"
+    isolated.mkdir()
+    shutil.copy(REMIND_SCRIPT, isolated / "remind-token-reduce.py")
+    _write_remind_stub_helpers(isolated, raising="repo_root")
+
+    payload = json.dumps({"session_id": "s1", "prompt": "where is the auth module"})
+    result = subprocess.run(
+        ["python3", str(isolated / "remind-token-reduce.py")],
+        input=payload,
+        text=True,
+        capture_output=True,
+        cwd=str(isolated),
+        timeout=30,
+    )
+    assert result.returncode == 0, (
+        f"remind script must exit 0 when a helper throws at runtime, "
+        f"got returncode={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
