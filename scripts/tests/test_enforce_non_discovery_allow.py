@@ -120,17 +120,28 @@ def test_genuine_discovery_still_blocks_while_pending(repo: Path, command: str) 
     assert decision["decision"] == "block"
 
 
-def test_tmux_command_hiding_a_scan_still_blocks(repo: Path) -> None:
+SMUGGLED_SCAN_COMMANDS = [
+    # Multi-line: a real scan on a continuation line.
+    "tmux new-session -d 'x'\nfind . -name '*.py'",
+    # Single-line: scan hidden inside a quoted tmux arg (grep/find/rg variants).
+    "tmux new-session -d 'grep -R foo .'",
+    "tmux send-keys -t s 'find . -name x' Enter",
+    "tmux new-session -d 'rg foo src/'",
+    "tmux new-session -d 'rg -n bar .'",
+]
+
+
+@pytest.mark.parametrize("command", SMUGGLED_SCAN_COMMANDS)
+def test_tmux_command_hiding_a_scan_still_blocks(repo: Path, command: str) -> None:
     """A repo scan smuggled into a tmux/session command must NOT pass -- the
-    non-discovery allowance is disqualified by any embedded scan pattern."""
+    non-discovery allowance is disqualified by any embedded scan pattern,
+    including a mid-line `rg` that is_exploratory_rg alone would miss."""
     session_id = "sess-smuggle"
     _make_pending(repo, session_id)
 
-    # `find /` on its own line inside a compound command is a real scan.
-    command = "tmux new-session -d 'x'\nfind . -name '*.py'"
     result = _run_hook(command, repo, session_id)
 
     assert result.returncode == 2, (
-        f"a command containing a real scan must still block, got "
-        f"returncode={result.returncode} stdout={result.stdout!r}"
+        f"a command containing a real scan must still block: {command!r}\n"
+        f"got returncode={result.returncode} stdout={result.stdout!r}"
     )

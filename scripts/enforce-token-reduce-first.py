@@ -363,13 +363,20 @@ def is_non_discovery_command(command: str, repo: Path) -> bool:
     if not lines:
         return False
 
-    # Any actual scan pattern disqualifies the whole command.
+    # Any actual scan pattern disqualifies the whole command. Broad-bash and
+    # coverage patterns already match anywhere in a line (so `grep -R`/`find .`
+    # hidden inside a tmux arg is caught), but is_exploratory_rg only inspects a
+    # line-leading `rg`, so an `rg` scan smuggled mid-line (e.g.
+    # `tmux new-session -d 'rg foo .'`) would slip through. Disqualify any
+    # embedded `rg <arg>` invocation too, so the "no scan can pass" guarantee holds.
     for line in lines:
         if any(re.search(pattern, line) for pattern in BROAD_BASH_PATTERNS):
             return False
         if is_exploratory_rg(line, repo):
             return False
         if matches_any_broad_pattern(line):
+            return False
+        if re.search(r"\brg\s+\S", line):
             return False
 
     first = lines[0]
