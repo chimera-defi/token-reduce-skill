@@ -5,8 +5,17 @@ import re
 import shlex
 import sys
 
-from token_reduce_state import clear_pending, discovery_hint, mark_pending, prompt_requires_helper, repo_root, session_key
-from token_reduce_telemetry import record_event
+try:
+    from token_reduce_state import clear_pending, discovery_hint, mark_pending, prompt_requires_helper, repo_root, session_key
+    from token_reduce_telemetry import record_event
+except Exception:
+    # Fail-open: a UserPromptSubmit hook must never hard-fail on a partial deploy
+    # (entrypoint present, helper modules missing) or any other import-time error.
+    try:
+        sys.stdin.read()
+    except Exception:
+        pass
+    sys.exit(0)
 
 STOPWORDS = {
     "a",
@@ -103,19 +112,27 @@ def suggested_discovery_command(prompt: str, hint: str) -> str:
     return f"{hint} {quoted_words}"
 
 
-def main() -> int:
+def _record_hook_error(stage: str, exc: Exception) -> None:
+    """Best-effort fail-open telemetry; must NEVER raise (repo_root()/record_event()
+    can themselves throw during a partial/broken deploy)."""
     try:
-        data = json.load(sys.stdin)
-    except Exception as exc:
-        repo = repo_root()
         record_event(
-            repo,
+            repo_root(),
             event="hook_error",
             source="hook",
             tool="remind-token-reduce",
             status="error",
-            meta={"stage": "stdin_json", "error": str(exc)[:240]},
+            meta={"stage": stage, "error": str(exc)[:240]},
         )
+    except Exception:
+        pass
+
+
+def main() -> int:
+    try:
+        data = json.load(sys.stdin)
+    except Exception as exc:
+        _record_hook_error("stdin_json", exc)
         return 0
 
     try:
@@ -165,17 +182,19 @@ def main() -> int:
         print()
         return 0
     except Exception as exc:
-        repo = repo_root()
-        record_event(
-            repo,
-            event="hook_error",
-            source="hook",
-            tool="remind-token-reduce",
-            status="error",
-            meta={"stage": "runtime", "error": str(exc)[:240]},
-        )
+        _record_hook_error("runtime", exc)
         return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except BaseException:
+        # Absolute last resort: a UserPromptSubmit hook must never hard-fail.
+        try:
+            sys.stdin.read()
+        except Exception:
+            pass
+        raise SystemExit(0)
