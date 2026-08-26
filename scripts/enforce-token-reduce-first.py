@@ -345,6 +345,60 @@ def helper_required_reason() -> str:
     )
 
 
+# Leading commands that are session/process control, tmux inspection, or message
+# relays — they never scan the repo, so a pending discovery prompt must not gate
+# them. Matched against the first token of the first line.
+_NON_DISCOVERY_LEADING_RE = re.compile(
+    r"^(?:tmux|session-handoff|session-send|session-handoff-send|sleep|wait|kill|"
+    r"pkill|jobs|disown|caffeinate|clear|reset)\b"
+)
+# Wait/poll loops: `until/while/for ... ; do sleep N; done`. Allowed only when a
+# sleep is present (a genuine poll) and the loop carries no repo-scan (checked
+# separately), so a `while read ...; do rg ...; done` discovery loop can't slip
+# through.
+_WAIT_LOOP_LEADING_RE = re.compile(r"^(?:until|while|for)\b")
+
+
+def is_non_discovery_command(command: str, repo: Path) -> bool:
+    """True for command shapes that clearly aren't repo discovery — session/tmux
+    control, message relays, and wait/poll loops — so the pending-discovery gate
+    should let them through without a fresh helper call.
+
+    A repo-scan anywhere in the command disqualifies it, so this can never be
+    used to smuggle a scan (e.g. ``tmux new-session 'rg -R .'``) past the gate.
+    """
+    lines = [
+        line_.rstrip("\\").strip()
+        for line_ in command.split("\n")
+        if line_.strip() and line_.strip() != "\\"
+    ]
+    if not lines:
+        return False
+
+    # Any actual scan pattern disqualifies the whole command. Broad-bash and
+    # coverage patterns already match anywhere in a line (so `grep -R`/`find .`
+    # hidden inside a tmux arg is caught), but is_exploratory_rg only inspects a
+    # line-leading `rg`, so an `rg` scan smuggled mid-line (e.g.
+    # `tmux new-session -d 'rg foo .'`) would slip through. Disqualify any
+    # embedded `rg <arg>` invocation too, so the "no scan can pass" guarantee holds.
+    for line in lines:
+        if any(re.search(pattern, line) for pattern in BROAD_BASH_PATTERNS):
+            return False
+        if is_exploratory_rg(line, repo):
+            return False
+        if matches_any_broad_pattern(line):
+            return False
+        if re.search(r"\brg\s+\S", line):
+            return False
+
+    first = lines[0]
+    if _NON_DISCOVERY_LEADING_RE.match(first):
+        return True
+    if _WAIT_LOOP_LEADING_RE.match(first) and re.search(r"\bsleep\b", " ".join(lines)):
+        return True
+    return False
+
+
 def _record_hook_error(stage: str, exc: Exception, data: object = None) -> None:
     """Best-effort fail-open telemetry. Must NEVER raise: repo_root()/record_event()
     are themselves the kind of call that can throw during a partial/broken deploy,
@@ -456,6 +510,13 @@ def main() -> int:
                         re.search(p, line) for line in rest_lines for p in BROAD_BASH_PATTERNS
                     ) or any(is_exploratory_rg(line, repo) for line in rest_lines):
                         return block(helper_required_reason(), data)
+                    return 0
+                # Session/tmux control, message relays, and wait/poll loops are
+                # not repo discovery — never gate them (they carry no scan, which
+                # is_non_discovery_command verifies). This is the fix for the gate
+                # over-blocking tmux capture-pane, session-handoff send, and
+                # `until ...; do sleep; done` wait loops.
+                if is_non_discovery_command(command, repo):
                     return 0
                 return block(helper_required_reason(), data)
             if tool_name in {"Glob", "Grep", "Read"}:
