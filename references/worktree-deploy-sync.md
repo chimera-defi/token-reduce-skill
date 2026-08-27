@@ -1,20 +1,32 @@
 # Worktree Deploy Sync — closing the stale-`.worktrees/main` gap
 
-**Why this doc exists.** Live Claude/Codex sessions execute the skill through a
-symlink chain:
+**Why this doc exists.** There are **two independent deploy targets**, and both
+lag `origin/main` after a normal PR merge:
 
-```
-~/.claude/skills/token-reduce  ->  <repo>/.worktrees/main   (a git worktree)
-```
+1. **The skill content** — `~/.claude/skills/token-reduce -> <repo>/.worktrees/main`
+   (a git worktree). Used by the skill and by sibling repos that symlink it.
+2. **The per-session hook gate (the important one)** — `~/.claude/settings.json`
+   points PreToolUse/UserPromptSubmit at a **separate copy** under
+   `~/.claude/hooks/token-reduce/*.py`, written by `scripts/setup.sh`. **This
+   copy — not `.worktrees/main` — is what actually gates every session's tool
+   calls.** It is a plain `cp`, so it does not track the repo at all.
 
 `.worktrees/main` is a *checked-out working tree*, not a moving pointer at
-`origin/main`. Merging a PR to `origin/main` therefore does **not** reach live
-sessions until that worktree is fast-forwarded. `references/skill-propagation-process.md`
-documents the release + sibling-propagation flow, but assumes all release work
-happens *inside* `.worktrees/main` (so it stays current organically). When work
-is instead done in a separate worktree and squash-merged on GitHub — the normal
-case — **nothing advances `.worktrees/main`**, and it silently runs stale hook
-logic. This is the missing step.
+`origin/main`; and the `~/.claude/hooks/` copy is a snapshot from the last
+`setup.sh` run. Merging a PR to `origin/main` therefore does **not** reach live
+sessions until **both** are refreshed. `references/skill-propagation-process.md`
+assumes all release work happens *inside* `.worktrees/main` (so it stays current
+organically) and never mentions the `~/.claude/hooks/` copy at all. When work is
+done in a separate worktree and squash-merged — the normal case — nothing
+advances either target, and sessions silently run stale hook logic.
+
+> **Root anomaly (flag for operator):** the top-level checkout
+> `/home/agents/workspace/token-reduce-skill` is itself on branch `main`, and a
+> branch can only be checked out in one worktree. So `.worktrees/main` is *forced*
+> into detached HEAD and **will silently re-drift after every merge**. The durable
+> fix is to resolve the double-`main` checkout (e.g. keep the top-level on a
+> throwaway branch and let `.worktrees/main` own `main`), so a normal
+> `git -C .worktrees/main pull` works. Until then the sync below is detached.
 
 ## Detecting drift
 
@@ -41,21 +53,46 @@ cd <repo>/.worktrees/main
 #    keeping via a normal PR, then discard the rest). Never commit-over them blind.
 git stash push -u -m "pre-sync-$(date +%Y%m%dT%H%M%SZ) local worktree edits"
 
-# 2. Re-attach to main and fast-forward to the merged fixes.
+# 2. Fast-forward to the merged fixes. The worktree MUST stay detached, because
+#    the top-level checkout holds the `main` branch (see "Root anomaly" above) —
+#    `git switch -C main origin/main` errors with "'main' is already used by
+#    worktree". Use --detach:
 git fetch origin
-git switch -C main origin/main            # re-attaches a detached HEAD onto main
+git checkout --detach origin/main
 
-# 3. Verify the deployed hooks are the intended version.
-grep -n "except Exception" scripts/enforce-token-reduce-first.py | head   # fail-open present
+# 3. Verify the deployed skill tree is the intended version.
+grep -c "except Exception" scripts/enforce-token-reduce-first.py     # fail-open present (>=5)
+grep -q is_non_discovery_command scripts/enforce-token-reduce-first.py && echo over-block:present
 ./scripts/token-reduce-manage.sh validate
 
 # 4. Confirm the symlink still resolves.
 readlink -f ~/.claude/skills/token-reduce
 ```
 
-The primary wedge guard (`.claude/settings.json`, PR #70's `timeout` +
-`${CLAUDE_PROJECT_DIR}` anchor + `ec==2 && -f` fail-open wrapper) only protects
-live sessions **after** this sync — it lives in the deployed tree.
+### Also refresh the per-session hook gate (`~/.claude/hooks/`)
+
+`.worktrees/main` is only the skill content. The hooks that gate tool calls are
+the **separate copy** at `~/.claude/hooks/token-reduce/`. Refresh it too:
+
+```bash
+# Canonical: re-run the installer (idempotent since #79 — writes the hardened
+# fail-open wrapper and copies ALL helper modules).
+<repo>/.worktrees/main/scripts/setup.sh
+
+# Or, surgically (what the 2026-08-26 live fix did): copy the entrypoints +
+# helpers and confirm ~/.claude/settings.json uses the #70 fail-open wrapper
+# (`timeout 20 uv run "$T"; ec=$?; [ "$ec" -eq 2 ] && [ -f "$T" ] && exit 2; exit 0`).
+for f in enforce-token-reduce-first.py remind-token-reduce.py token_reduce_state.py \
+         token_reduce_telemetry.py token_reduce_config.py command_rewrites.py coverage_patterns.py; do
+  cp "<repo>/.worktrees/main/scripts/$f" ~/.claude/hooks/token-reduce/$f
+done
+```
+
+**Note:** Claude Code caches hook config at **session start**, so a running
+session keeps the old behavior — verify a refresh by invoking the deployed hook
+as a subprocess, or from a *new* session. The PR #70 `timeout` + `ec==2 && -f`
+fail-open wrapper only protects sessions once it is present in *both* the deployed
+tree's `.claude/settings.json` and the global `~/.claude/settings.json`.
 
 ## Consumer coordination (do this together with the sync)
 
