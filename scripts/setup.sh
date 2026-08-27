@@ -140,7 +140,7 @@ fi
 HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
 mkdir -p "$HOOK_INSTALL_DIR"
 
-for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py remind-token-reduce.py enforce-token-reduce-first.py; do
+for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py command_rewrites.py coverage_patterns.py remind-token-reduce.py enforce-token-reduce-first.py; do
   cp "$REPO_ROOT/scripts/$f" "$HOOK_INSTALL_DIR/$f"
 done
 ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
@@ -169,25 +169,44 @@ settings = json.loads(settings_path.read_text()) if settings_path.exists() else 
 
 hook_dir = str(pathlib.Path.home() / ".claude" / "hooks" / "token-reduce")
 uv_abs = shutil.which("uv") or "uv"
-remind_cmd = f"{uv_abs} run {hook_dir}/remind-token-reduce.py"
-enforce_cmd = f"{uv_abs} run {hook_dir}/enforce-token-reduce-first.py"
+enforce_script = f"{hook_dir}/enforce-token-reduce-first.py"
+remind_script = f"{hook_dir}/remind-token-reduce.py"
+# Fail-open wrappers (the 2026-08-17 wedge RCA / PR #70): a bare `uv run <script>`
+# lets a uv spawn-failure exit 2 -- indistinguishable from enforce's own
+# intentional-block signal -- and wedge every subsequent tool call. So: wrap in
+# `timeout`, and for the PreToolUse hook honor exit 2 as a block ONLY when the
+# script still exists (otherwise fail open). UserPromptSubmit never blocks, so it
+# fails open unconditionally.
+remind_cmd = f'timeout 20 {uv_abs} run "{remind_script}" || exit 0'
+enforce_cmd = (
+    f'T="{enforce_script}"; timeout 20 {uv_abs} run "$T"; ec=$?; '
+    f'if [ "$ec" -eq 2 ] && [ -f "$T" ]; then exit 2; fi; exit 0'
+)
 update_cmd = "${UPDATE_CHECK_CMD}"
+
+
+def _refs_token_reduce(cmd, script):
+    # Match by script path so an older naive wrapper for the same script is
+    # replaced, not duplicated, on re-run.
+    return isinstance(cmd, str) and script in cmd
+
 
 hooks = settings.setdefault("hooks", {})
 
 ups = hooks.setdefault("UserPromptSubmit", [])
-remind_entry = {"hooks": [{"type": "command", "command": remind_cmd}]}
-if not any(h.get("hooks", [{}])[0].get("command") == remind_cmd for h in ups if h.get("hooks")):
-    ups.append(remind_entry)
+ups[:] = [
+    h for h in ups
+    if not any(_refs_token_reduce(hh.get("command"), remind_script) for hh in h.get("hooks", []))
+]
+ups.append({"hooks": [{"type": "command", "command": remind_cmd}]})
 
 ptu = hooks.setdefault("PreToolUse", [])
+ptu[:] = [
+    h for h in ptu
+    if not any(_refs_token_reduce(hh.get("command"), enforce_script) for hh in h.get("hooks", []))
+]
 for matcher in ("Bash", "Glob", "Grep", "Read"):
-    enforce_entry = {"matcher": matcher, "hooks": [{"type": "command", "command": enforce_cmd}]}
-    if not any(
-        h.get("matcher") == matcher and any(hh.get("command") == enforce_cmd for hh in h.get("hooks", []))
-        for h in ptu
-    ):
-        ptu.append(enforce_entry)
+    ptu.append({"matcher": matcher, "hooks": [{"type": "command", "command": enforce_cmd}]})
 
 ss = hooks.setdefault("SessionStart", [])
 if not any(
