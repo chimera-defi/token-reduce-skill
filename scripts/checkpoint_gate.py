@@ -31,24 +31,36 @@ def tail_lines(text: str, max_lines: int = 20) -> str:
     return "\n".join(lines[-max_lines:])
 
 
+STEP_TIMEOUT_SECONDS = 300
+
+
 def run_step(name: str, command: list[str], cwd: Path) -> dict:
     started = time.perf_counter()
-    proc = subprocess.run(
-        command,
-        cwd=str(cwd),
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=str(cwd),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=STEP_TIMEOUT_SECONDS,
+        )
+        exit_code = proc.returncode
+        stdout = proc.stdout or ""
+        stderr = proc.stderr or ""
+    except subprocess.TimeoutExpired:
+        exit_code = -1
+        stdout = ""
+        stderr = f"step timed out after {STEP_TIMEOUT_SECONDS}s"
     duration_ms = int((time.perf_counter() - started) * 1000)
     return {
         "name": name,
         "command": command,
-        "exit_code": proc.returncode,
+        "exit_code": exit_code,
         "duration_ms": duration_ms,
-        "status": "pass" if proc.returncode == 0 else "fail",
-        "stdout_tail": tail_lines(proc.stdout or ""),
-        "stderr_tail": tail_lines(proc.stderr or ""),
+        "status": "pass" if exit_code == 0 else "fail",
+        "stdout_tail": tail_lines(stdout),
+        "stderr_tail": tail_lines(stderr),
     }
 
 
