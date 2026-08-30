@@ -48,10 +48,10 @@ def run_step(name: str, command: list[str], cwd: Path) -> dict:
         exit_code = proc.returncode
         stdout = proc.stdout or ""
         stderr = proc.stderr or ""
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as exc:
         exit_code = -1
-        stdout = ""
-        stderr = f"step timed out after {STEP_TIMEOUT_SECONDS}s"
+        stdout = exc.stdout or ""
+        stderr = ((exc.stderr or "") + f"\nstep timed out after {STEP_TIMEOUT_SECONDS}s").strip()
     duration_ms = int((time.perf_counter() - started) * 1000)
     return {
         "name": name,
