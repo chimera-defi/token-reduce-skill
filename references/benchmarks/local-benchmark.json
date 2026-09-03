@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-08-08T00:26:16.784133+00:00",
-  "cwd": "/home/agents/workspace/token-reduce-skill/.worktrees/main",
+  "generated_at": "2026-09-03T21:15:25.832148+00:00",
+  "cwd": "/home/agents/.claude/worktrees/ah-trh-telemetry-0903-2301",
   "qmd_available": true,
   "benchmarks": [
     {
       "name": "broad_inventory",
       "command": "rg --files -g '!scripts/__pycache__/**' -g '!references/benchmarks/local-benchmark.json' . | head -200",
       "exit_code": 0,
-      "duration_ms": 9,
-      "bytes": 5350,
-      "lines": 146,
-      "tokens": 1374,
-      "stdout_preview": "./README.md\n./scripts/coverage_patterns.py\n./scripts/benchmark-token-reduce.py\n./scripts/token-reduce-adaptive.sh\n./scripts/token_reduce_config.py\n./scripts/composite_token_telemetry.py"
+      "duration_ms": 8,
+      "bytes": 6103,
+      "lines": 164,
+      "tokens": 1543,
+      "stdout_preview": "./README.md\n./CLAUDE.md\n./package.json\n./agents/openai.yaml\n./scripts/benchmark-code-review-graph-intake.py\n./scripts/benchmark-companion-tools.py"
     },
     {
       "name": "guidance_scoped_rg",
@@ -21,45 +21,45 @@
       "bytes": 933,
       "lines": 8,
       "tokens": 221,
-      "stdout_preview": "./SKILL.md:22:# Token Reduction Skill\n./SKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\n./references/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\n./references/agent-setup.md:116:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\n./references/meta-learnings-2026-05-31.md:11:## AI Delegate Token Reduction Patterns (NEW \u2014 highest value learnings)\n./references/token-reduction-guide.md:1:# Token Reduction Guide"
+      "stdout_preview": "./SKILL.md:22:# Token Reduction Skill\n./SKILL.md:70:| Caveman-style output profile (optional companion) | 20\u201365% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |\n./references/meta-learnings-2026-05-20.md:25:- The adaptive benchmark includes `token reduction guide`; if docs routing regresses, adaptive/profile gates fail quickly.\n./references/agent-setup.md:116:| Optional response/input companion | caveman (`/caveman lite`, `/caveman:compress`) | Extra response brevity and memory-file token reduction |\n./references/composite-benchmark.md:21:3. output-heavy scan (`token reduction`)\n./references/token-reduction-guide.md:1:# Token Reduction Guide"
     },
     {
       "name": "qmd_files",
-      "command": "qmd search \"token reduction\" -n 8 --files -c repo-6cc136950dbf",
+      "command": "qmd search \"token reduction\" -n 8 --files -c repo-a2756fc87bfb",
       "exit_code": 0,
-      "duration_ms": 241,
+      "duration_ms": 273,
       "bytes": 650,
       "lines": 8,
-      "tokens": 240,
-      "stdout_preview": "#3d311c,0.93,qmd://repo-6cc136950dbf/references/benchmarks/token-optimizer-mcp-intake.json\n#6dfbd9,0.93,qmd://repo-6cc136950dbf/references/benchmarks/composite-benchmark.json\n#59c307,0.93,qmd://repo-6cc136950dbf/references/benchmarks/local-benchmark.json\n#9c6a61,0.93,qmd://repo-6cc136950dbf/scripts/tests/test_ranking_quality.py\n#32c9e8,0.93,qmd://repo-6cc136950dbf/scripts/install-token-reduction-cron.sh\n#397f14,0.93,qmd://repo-6cc136950dbf/references/benchmarks/adaptive-tier-benchmark.json"
+      "tokens": 242,
+      "stdout_preview": "#3d311c,0.93,qmd://repo-a2756fc87bfb/references/benchmarks/token-optimizer-mcp-intake.json\n#6dfbd9,0.93,qmd://repo-a2756fc87bfb/references/benchmarks/composite-benchmark.json\n#9c6a61,0.93,qmd://repo-a2756fc87bfb/scripts/tests/test_ranking_quality.py\n#cf532f,0.93,qmd://repo-a2756fc87bfb/references/benchmarks/local-benchmark.json\n#397f14,0.93,qmd://repo-a2756fc87bfb/references/benchmarks/adaptive-tier-benchmark.json\n#32c9e8,0.93,qmd://repo-a2756fc87bfb/scripts/install-token-reduction-cron.sh"
     },
     {
       "name": "token_reduce_paths_warm",
       "command": "./scripts/token-reduce-paths.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 1328,
+      "duration_ms": 2293,
       "bytes": 581,
       "lines": 8,
       "tokens": 238,
-      "stdout_preview": "#32c9e8,0.93,qmd://repo-6cc136950dbf/scripts/install-token-reduction-cron.sh\n#36cb0e,0.93,qmd://repo-6cc136950dbf/references/self-enhancing-harness-log-2026-04-12.md\n#323e35,0.93,qmd://repo-6cc136950dbf/references/token-reduction-guide.md\n#6aa3ef,0.93,qmd://repo-6cc136950dbf/scripts/summarize_token_reduction.py\n#0e1326,0.93,qmd://repo-6cc136950dbf/references/telemetry-evaluation-2026-05-06.md\n#e103b2,0.93,qmd://repo-6cc136950dbf/references/architecture.md"
+      "stdout_preview": "#32c9e8,0.93,qmd://repo-a2756fc87bfb/scripts/install-token-reduction-cron.sh\n#66c670,0.93,qmd://repo-a2756fc87bfb/SKILL.md\n#3ed291,0.93,qmd://repo-a2756fc87bfb/references/architecture.md\n#36cb0e,0.93,qmd://repo-a2756fc87bfb/references/self-enhancing-harness-log-2026-04-12.md\n#323e35,0.93,qmd://repo-a2756fc87bfb/references/token-reduction-guide.md\n#0e1326,0.93,qmd://repo-a2756fc87bfb/references/telemetry-evaluation-2026-05-06.md"
     },
     {
       "name": "token_reduce_snippet_warm",
       "command": "./scripts/token-reduce-snippet.sh \"token reduction\"",
       "exit_code": 0,
-      "duration_ms": 1712,
+      "duration_ms": 2612,
       "bytes": 958,
       "lines": 18,
       "tokens": 366,
-      "stdout_preview": "#9c6a61,0.93,qmd://repo-6cc136950dbf/scripts/tests/test_ranking_quality.py\n#32c9e8,0.93,qmd://repo-6cc136950dbf/scripts/install-token-reduction-cron.sh\n#36cb0e,0.93,qmd://repo-6cc136950dbf/references/self-enhancing-harness-log-2026-04-12.md\n#323e35,0.93,qmd://repo-6cc136950dbf/references/token-reduction-guide.md\n#6aa3ef,0.93,qmd://repo-6cc136950dbf/scripts/summarize_token_reduction.py\n#0e1326,0.93,qmd://repo-6cc136950dbf/references/telemetry-evaluation-2026-05-06.md"
+      "stdout_preview": "#9c6a61,0.93,qmd://repo-a2756fc87bfb/scripts/tests/test_ranking_quality.py\n#32c9e8,0.93,qmd://repo-a2756fc87bfb/scripts/install-token-reduction-cron.sh\n#66c670,0.93,qmd://repo-a2756fc87bfb/SKILL.md\n#3ed291,0.93,qmd://repo-a2756fc87bfb/references/architecture.md\n#36cb0e,0.93,qmd://repo-a2756fc87bfb/references/self-enhancing-harness-log-2026-04-12.md\n#323e35,0.93,qmd://repo-a2756fc87bfb/references/token-reduction-guide.md"
     }
   ],
   "savings_vs_broad_inventory": {
     "broad_inventory": 0.0,
-    "guidance_scoped_rg": 83.9,
-    "qmd_files": 82.5,
-    "token_reduce_paths_warm": 82.7,
-    "token_reduce_snippet_warm": 73.4
+    "guidance_scoped_rg": 85.7,
+    "qmd_files": 84.3,
+    "token_reduce_paths_warm": 84.6,
+    "token_reduce_snippet_warm": 76.3
   },
-  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `1374` | baseline | `9 ms` |\n| `guidance_scoped_rg` | `221` | 83.9% | `9 ms` |\n| `qmd_files` | `240` | 82.5% | `241 ms` |\n| `token_reduce_paths_warm` | `238` | 82.7% | `1328 ms` |\n| `token_reduce_snippet_warm` | `366` | 73.4% | `1712 ms` |"
+  "table": "| Strategy | Tokens | Savings vs broad inventory | Duration |\n|----------|--------|----------------------------|----------|\n| `broad_inventory` | `1543` | baseline | `8 ms` |\n| `guidance_scoped_rg` | `221` | 85.7% | `9 ms` |\n| `qmd_files` | `242` | 84.3% | `273 ms` |\n| `token_reduce_paths_warm` | `238` | 84.6% | `2293 ms` |\n| `token_reduce_snippet_warm` | `366` | 76.3% | `2612 ms` |"
 }

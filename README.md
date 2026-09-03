@@ -175,9 +175,9 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1374` | baseline |
+| `broad_inventory` | `1543` | baseline |
 | `guidance_scoped_rg` | `221` | `83.3%` saved |
-| `qmd_files` | `240` | `81.2%` saved |
+| `qmd_files` | `242` | `81.2%` saved |
 | `token_reduce_paths_warm` | `238` | `81.0%` saved |
 | `token_reduce_snippet_warm` | `366` | `71.2%` saved |
 
@@ -185,12 +185,12 @@ TOKEN_REDUCE_ADAPTIVE_HINT=0
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `1984` | baseline | `ok` |
-| `qmd_only` | `674` | `66.0%` saved | `ok` |
-| `token_reduce_only` | `441` | `77.8%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `89.3%` saved | `quality-fail` |
-| `rtk_only` | `890` | `55.1%` saved | `ok` |
-| `composite_stack` | `435` | `78.1%` saved | `quality-fail` |
+| `broad_shell` | `2154` | baseline | `ok` |
+| `qmd_only` | `679` | `68.5%` saved | `ok` |
+| `token_reduce_only` | `462` | `78.6%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `90.1%` saved | `quality-fail` |
+| `rtk_only` | `897` | `58.4%` saved | `ok` |
+| `composite_stack` | `447` | `79.2%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
