@@ -148,6 +148,88 @@ def test_brain_hint_error_logged_in_snippet_sh() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Regression: token-reduce-paths.sh error branch must preserve the real exit
+# code, not silently report success.
+#
+# Root cause: `if OUTPUT="$(token-reduce-search.sh ...)"; then ... exit 0; fi`
+# had no `else`. In bash, when an `if` condition is false and there is no
+# `else` clause, `$?` immediately after the `fi` is reset to 0 (the exit
+# status of the `if` construct itself, which POSIX defines as 0 when no
+# branch's condition tested true) -- NOT the failing command's exit code.
+# `STATUS=$?` on the line after `fi` therefore always read 0, so the wrapper
+# always `exit 0`d with empty output on a genuine search failure, and its own
+# "error" telemetry event always logged exit_code=0 -- exactly the
+# backend=unknown/exit_code=0/status=error events seen in production
+# telemetry (e.g. token_reduce_paths at 2026-09-01T19:10:19Z).
+# ---------------------------------------------------------------------------
+
+
+WRAPPER_SCRIPTS = ["token-reduce-paths.sh", "token-reduce-snippet.sh"]
+
+
+@pytest.mark.parametrize("wrapper_name", WRAPPER_SCRIPTS)
+def test_wrapper_sh_error_branch_is_inside_an_else(wrapper_name: str) -> None:
+    """Structural guard: `STATUS=$?` must be the first statement of an
+    explicit `else` block, not a bare statement after `fi`, or `$?` no
+    longer reflects the failing search command (see module docstring)."""
+    wrapper_sh = SCRIPTS_DIR / wrapper_name
+    lines = [ln.strip() for ln in wrapper_sh.read_text().splitlines()]
+    status_idx = next(i for i, ln in enumerate(lines) if ln.startswith("STATUS=$?"))
+    preceding = next(
+        ln for ln in reversed(lines[:status_idx]) if ln and not ln.startswith("#")
+    )
+    assert preceding == "else", (
+        f"{wrapper_name}: STATUS=$? must directly follow `else`, found "
+        f"{preceding!r} instead -- an `if ...; then ... fi` with no `else` "
+        "resets $? to 0 on the false branch, silently discarding the real "
+        "(nonzero) exit code."
+    )
+
+
+@pytest.mark.parametrize("wrapper_name", WRAPPER_SCRIPTS)
+def test_wrapper_sh_preserves_real_exit_code_on_search_failure(
+    wrapper_name: str, tmp_path: Path
+) -> None:
+    """Behavioral: when token-reduce-search.sh genuinely fails, the wrapper
+    must exit with that same nonzero code and log it accurately to
+    telemetry -- not exit 0 with backend=unknown/exit_code=0/status=error."""
+    _init_git_repo(tmp_path)
+    work_scripts = tmp_path / "scripts"
+    work_scripts.mkdir()
+    (work_scripts / wrapper_name).write_text((SCRIPTS_DIR / wrapper_name).read_text())
+    (work_scripts / wrapper_name).chmod(0o755)
+    (work_scripts / "token_reduce_telemetry.py").write_text(
+        (SCRIPTS_DIR / "token_reduce_telemetry.py").read_text()
+    )
+    stub = work_scripts / "token-reduce-search.sh"
+    stub.write_text("#!/usr/bin/env bash\nexit 5\n")
+    stub.chmod(0o755)
+
+    result = subprocess.run(
+        ["bash", f"scripts/{wrapper_name}", "some", "query"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 5, (
+        f"{wrapper_name}: wrapper must propagate the search script's real "
+        f"exit code (5), got {result.returncode} "
+        f"(stdout={result.stdout!r} stderr={result.stderr!r})"
+    )
+    events = _read_events(tmp_path)
+    error_events = [
+        e for e in events
+        if e.get("event") == "helper_invocation" and e.get("status") == "error"
+    ]
+    assert error_events, f"{wrapper_name}: expected an error telemetry event, got: {events}"
+    assert error_events[-1]["meta"]["exit_code"] == 5, (
+        f"{wrapper_name}: telemetry must log the real exit code (5), "
+        f"got meta={error_events[-1]['meta']}"
+    )
+
+
 def test_snippet_sh_brain_rc_can_capture_nonzero() -> None:
     """N4 behavioral: snippet.sh must NOT use `|| true` inside $() for brain_hint.
 
