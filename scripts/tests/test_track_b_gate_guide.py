@@ -96,6 +96,25 @@ def test_is_catastrophic_non_catastrophic_broad() -> None:
     assert is_catastrophic("grep -R pattern .") is False
 
 
+def test_is_catastrophic_find_deep_scoped_path_not_catastrophic() -> None:
+    # A find rooted several levels deep in one specific, named directory
+    # (>2 path segments) is scoped, not catastrophic -- regression test for
+    # a false positive where `find /home/agents/.claude/skills/token-reduce
+    # -maxdepth 2` hard-blocked as "catastrophic scan" even though it's a
+    # narrow, bounded scan. It still hits the broad-scan warn-once path via
+    # BROAD_BASH_PATTERNS, just not the always-block catastrophic path.
+    assert is_catastrophic(
+        "find /home/agents/.claude/skills/token-reduce -maxdepth 2"
+    ) is False
+
+
+def test_is_catastrophic_find_home_dir_wide_is_still_catastrophic() -> None:
+    # A find rooted at a near-top-level directory (<=2 path segments, e.g.
+    # the whole home directory) stays catastrophic even with -maxdepth,
+    # since the fan-out at that level is still enormous.
+    assert is_catastrophic("find /home/agents -maxdepth 3") is True
+
+
 # --------------------------------------------------------------------------- #
 # B3 — broad attempt counter
 # --------------------------------------------------------------------------- #
