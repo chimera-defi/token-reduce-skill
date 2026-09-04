@@ -61,6 +61,31 @@ def canonical_skill_repo_root(skill_source: Path) -> Path:
     return skill_source.resolve()
 
 
+def resolve_expected_skill_root(home: Path | None = None) -> Path:
+    """The canonical skill install location every repo is expected to
+    symlink to.
+
+    Prefers the global install target (``~/.claude/skills/token-reduce``),
+    which is what real sessions actually resolve when they load the skill.
+    Falls back to the currently-executing script's own repo root only when
+    that global symlink is absent or broken (e.g. a machine with no global
+    install, or a test environment) -- otherwise the audit spuriously flags
+    every repo as ``wrong_skill_root`` whenever it's invoked from a copy of
+    the tool other than the one every repo actually points to (a session-
+    scoped worktree under ``~/.claude/worktrees/<session>``, a stale
+    top-level checkout, etc.), since no other repo's symlink could ever
+    resolve to that one-off path.
+    """
+    home = home or Path.home()
+    global_skill = home / ".claude" / "skills" / "token-reduce"
+    if global_skill.exists() or global_skill.is_symlink():
+        try:
+            return global_skill.resolve(strict=True)
+        except OSError:
+            pass
+    return Path(__file__).resolve().parents[1].resolve()
+
+
 def default_excluded_repo(workspace_root: Path) -> str | None:
     skill_root = canonical_skill_repo_root(Path(__file__).resolve().parents[1])
     if skill_root.parent == workspace_root:
@@ -369,7 +394,7 @@ def build_rows(
             excluded.add(source_repo)
     repos = workspace_repos(workspace_root, excluded=excluded)
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    expected_root = Path(__file__).resolve().parents[1].resolve()
+    expected_root = resolve_expected_skill_root()
     expected_version = package_version(expected_root)
     expected_commit = git_head(expected_root)
     claude_usage = claude_usage_by_repo(workspace_root, repos, cutoff)
