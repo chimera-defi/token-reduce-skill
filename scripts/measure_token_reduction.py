@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from session_metrics_cache import SessionMetricsCache, cache_path, fingerprint_files
 from token_reduce_telemetry import load_events, summarize_events
 
 
@@ -405,14 +406,52 @@ def parse_codex_session(session_file: Path) -> dict:
     return metrics
 
 
-def measure(scope: str, repo_root: str) -> dict:
+def measure(
+    scope: str,
+    repo_root: str,
+    *,
+    use_cache: bool = True,
+    cache_flush_every: int = 20,
+) -> dict:
     claude_session_files: list[Path] = []
     for root in repo_session_roots(scope, repo_root):
         claude_session_files.extend(top_level_session_files(root))
     codex_files = codex_session_files(scope, repo_root)
 
-    parsed = [parse_claude_session(p) for p in claude_session_files]
-    parsed.extend(parse_codex_session(p) for p in codex_files)
+    cache = SessionMetricsCache(cache_path(Path(repo_root))) if use_cache else None
+
+    def cached_parse(source: str, session_file: Path, related_files: list[Path], parse_fn) -> dict:
+        if cache is None:
+            return parse_fn(session_file)
+        fingerprint = fingerprint_files(related_files)
+        key = f"{source}:{session_file}"
+        cached_metrics = cache.get(key, fingerprint)
+        if cached_metrics is not None:
+            return cached_metrics
+        metrics = parse_fn(session_file)
+        if fingerprint is not None:
+            cache.set(key, fingerprint, metrics)
+        return metrics
+
+    parsed: list[dict] = []
+    processed_since_flush = 0
+    for p in claude_session_files:
+        parsed.append(cached_parse("claude", p, session_related_files(p), parse_claude_session))
+        processed_since_flush += 1
+        if cache is not None and processed_since_flush >= cache_flush_every:
+            cache.save()
+            processed_since_flush = 0
+    for p in codex_files:
+        parsed.append(cached_parse("codex", p, [p], parse_codex_session))
+        processed_since_flush += 1
+        if cache is not None and processed_since_flush >= cache_flush_every:
+            cache.save()
+            processed_since_flush = 0
+
+    if cache is not None:
+        cache.prune_stale()
+        cache.save()
+
     session_count = len(parsed)
 
     adoption = defaultdict(int)
@@ -629,9 +668,14 @@ def main() -> int:
         action="store_true",
         help="Print full JSON to stdout, including raw_session_metrics.",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable the session-metrics cache and re-parse every session file.",
+    )
     args = parser.parse_args()
 
-    result = measure(args.scope, args.repo_root)
+    result = measure(args.scope, args.repo_root, use_cache=not args.no_cache)
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n")
