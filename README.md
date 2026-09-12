@@ -268,6 +268,7 @@ It gates on:
 ./scripts/token-reduce-manage.sh cost-playbook --with-caliper --check-deps
 ./scripts/token-reduce-manage.sh composite
 ./scripts/token-reduce-manage.sh doctor
+./scripts/token-reduce-manage.sh review-pass all --report artifacts/token-reduction/review-pass.md
 ```
 
 `checkpoint` is the consistent maintenance harness: it runs release gate/validate/tests + local/global measure/review + workspace audit + dry-run telemetry sync and writes checkpoint artifacts under `artifacts/token-reduction/`.
@@ -288,6 +289,21 @@ Dependency checks:
 
 - core only: `deps-check`, `deps-update`
 - conditional companions: `deps-check-conditional`, `deps-update-conditional`
+
+### Review Pass (hook diagnostic)
+
+`review-pass` is a report-only diagnostic pass for the token-reduce hook stack itself, wrapping `scripts/review_pass.py`. It is separate from `review`/`doctor` (which check repo/skill health) — this checks whether the *deployed* hooks (`~/.claude/hooks/token-reduce/` and `.worktrees/main`, see `references/worktree-deploy-sync.md`) still match this repo's `scripts/`, and whether the S1-S9 hook-contract regression scenarios still pass on both copies.
+
+```bash
+./scripts/token-reduce-manage.sh review-pass deploy-drift
+./scripts/token-reduce-manage.sh review-pass hook-contract
+./scripts/token-reduce-manage.sh review-pass env-sanity
+./scripts/token-reduce-manage.sh review-pass adoption-snapshot
+./scripts/token-reduce-manage.sh review-pass inventory-staleness
+./scripts/token-reduce-manage.sh review-pass all --report artifacts/token-reduction/review-pass.md
+```
+
+Every check is read-only and exits 0 (healthy), 1 (findings), or 2 (tool error). An exit-1 result is often *correct* — e.g. a fix landed in `scripts/` but has not yet been redeployed — not a sign the tool is broken. Redeploying a fix is a separate, human-approved step; this tool never writes to deploy targets. An opt-in `skills/token-reduce-review/SKILL.md` router documents the same workflow for in-session use (`ln -s` install, not installed by default).
 
 ## Cost Caliper Status
 

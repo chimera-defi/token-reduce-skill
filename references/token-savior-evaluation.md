@@ -12,7 +12,10 @@ Integrate it as an optional structural accelerator, not as a replacement for tok
 - Upstream tests run locally:
   - `cd /tmp/token-savior-bench && uv run --with pytest --with mcp pytest -q`
   - result: `416 passed`
-- Local benchmark run:
+- Local benchmark run (historical — `scripts/benchmark-companion-tools.py` was a
+  one-shot harness removed 2026-09-12 as orphaned dead code; to re-benchmark,
+  use `npm run bench` / `scripts/benchmark-composite-stack.py`, the maintained
+  suite):
   - `uv run --with tiktoken scripts/benchmark-companion-tools.py --repo-root . --token-savior-repo /tmp/token-savior-bench`
 
 ## Why

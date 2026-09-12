@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -128,12 +129,17 @@ def prune(repo: Path) -> None:
 
 
 def mark_pending(repo: Path, key: str, prompt: str) -> None:
+    # F1: write ONLY the caller's key. A prior version also duplicated every
+    # mark to "default.json", and is_pending() consulted "default.json"
+    # unconditionally -- so one session's pending marker poisoned every other
+    # session in the same repo (RC1). "default" remains the natural key for
+    # payloads that genuinely lack any session identity (session_key()
+    # already normalizes those to "default"), so id-less callers still work
+    # without any special-casing here.
     root = state_dir(repo)
     root.mkdir(parents=True, exist_ok=True)
     payload = json.dumps({"prompt": prompt, "created_at": time.time()}) + "\n"
     state_path(repo, key).write_text(payload)
-    if key != "default":
-        state_path(repo, "default").write_text(payload)
 
 
 def clear_pending(repo: Path, key: str | None = None) -> None:
@@ -141,11 +147,14 @@ def clear_pending(repo: Path, key: str | None = None) -> None:
     if not root.exists():
         return
     if key:
-        for candidate in {key, "default"}:
-            try:
-                state_path(repo, candidate).unlink()
-            except FileNotFoundError:
-                pass
+        # Only the caller's own key -- clearing "default" here too would
+        # reintroduce cross-session interference in the other direction
+        # (one session's compliant follow-up wiping another id-less
+        # session's still-pending marker).
+        try:
+            state_path(repo, key).unlink()
+        except FileNotFoundError:
+            pass
         return
     for path in root.glob("*.json"):
         try:
@@ -156,7 +165,7 @@ def clear_pending(repo: Path, key: str | None = None) -> None:
 
 def is_pending(repo: Path, key: str) -> bool:
     prune(repo)
-    return state_path(repo, key).exists() or state_path(repo, "default").exists()
+    return state_path(repo, key).exists()
 
 
 def broad_attempt_path(repo: Path, key: str) -> Path:
@@ -242,6 +251,97 @@ def consume_block(repo: Path) -> dict | None:
     if time.time() - float(blocked_at) > BLOCK_TTL_SECONDS:
         return None
     return data
+
+
+DECISION_DEDUP_SECONDS = 5
+
+
+def decision_cache_path(repo: Path, key: str) -> Path:
+    safe_key = normalize_session_key(key)
+    return state_dir(repo) / f"decision_{safe_key}.json"
+
+
+def _decision_fingerprint(fingerprint_source: str) -> str:
+    return hashlib.sha256(fingerprint_source.encode("utf-8", "replace")).hexdigest()[:16]
+
+
+def recent_decision(repo: Path, key: str, tool_use_id: str, fingerprint_source: str) -> dict | None:
+    """F5: return a still-fresh cached decision for (key, tool_use_id), or None.
+
+    Two settings layers can wire the same hook onto one PreToolUse matcher
+    (repo .claude/settings.json + a global/deployed copy), so Claude Code
+    invokes enforce-token-reduce-first.py's logic twice for the SAME tool
+    call -- but both invocations receive an identical ``tool_use_id``
+    (confirmed against Claude Code's hooks docs: it's a stable per-tool-call
+    id, unique across genuinely separate calls even with identical command
+    text). Without this cache the second invocation recomputes the
+    broad-attempt counter from scratch -- already bumped by the first
+    invocation -- and double-increments it (observed live: x2 then x4).
+
+    Keying on ``tool_use_id`` rather than (session, fingerprint, time)
+    alone is deliberate: a bare hash+time key can't tell "the same tool
+    call checked twice" apart from "the agent genuinely retried the exact
+    same broad command a few seconds later" -- and the latter must still
+    escalate through the warn-once/block-on-repeat policy, not get silently
+    deduped into an allow. ``tool_use_id`` is the one field guaranteed
+    identical for the former and different for the latter. ``fingerprint_source``
+    (R5: tool-agnostic -- ``tool_name`` + a stable JSON dump of
+    ``tool_input``, not just Bash's ``command`` string, since dedup now
+    covers Glob/Grep/Read/symlink-guard too) is a belt-and-suspenders check
+    against a theoretical ``tool_use_id`` collision.
+
+    R5 note: this file-marker approach only works because the two hook-
+    wiring layers run SEQUENTIALLY for one tool call (layer 1 writes the
+    marker before layer 2 reads it) -- the observed live x2/x4 counter
+    doubling is evidence of that ordering. There is no lock; if Claude Code
+    ever ran same-matcher hooks in parallel, both could miss the marker and
+    the race would return. Acceptable given the confirmed sequential
+    behavior, but worth naming.
+    """
+    path = decision_cache_path(repo, key)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if data.get("tool_use_id") != tool_use_id:
+        return None
+    if data.get("fingerprint") != _decision_fingerprint(fingerprint_source):
+        return None
+    decided_at = data.get("decided_at")
+    if not isinstance(decided_at, (int, float)):
+        return None
+    if time.time() - float(decided_at) > DECISION_DEDUP_SECONDS:
+        return None
+    return data
+
+
+def record_decision(
+    repo: Path,
+    key: str,
+    tool_use_id: str,
+    fingerprint_source: str,
+    *,
+    blocked: bool,
+    stdout: str,
+) -> None:
+    """Store this invocation's decision for replay. ``stdout`` is the EXACT
+    bytes the caller wrote (or "" for an allow/warn) so a replay can
+    reproduce it verbatim -- storing just a "reason" string wouldn't work
+    once dedup covers Glob/Grep/Read blocks too, whose messages aren't all
+    built the same way Bash's are.
+    """
+    root = state_dir(repo)
+    root.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "tool_use_id": tool_use_id,
+        "fingerprint": _decision_fingerprint(fingerprint_source),
+        "decided_at": time.time(),
+        "blocked": blocked,
+        "stdout": stdout,
+    }
+    decision_cache_path(repo, key).write_text(json.dumps(payload) + "\n")
 
 
 def main() -> int:

@@ -388,7 +388,7 @@ ranked_content_paths() {
 
 filter_hook_candidates() {
   if [[ "$NEEDS_HOOK_FOCUS" -eq 1 ]]; then
-    rg -v '(^|/)(measure_token_reduction|benchmark-token-reduction-workflow|benchmark-token-reduction-agents|baseline-measurement|summarize_token_reduction|install-token-reduction-cron|token-reduce-(paths|search|snippet)|remind-token-reduce)\.(py|sh)(:|$)' || true
+    rg -v '(^|/)(measure_token_reduction|baseline-measurement|summarize_token_reduction|install-token-reduction-cron|token-reduce-(paths|search|snippet)|remind-token-reduce)\.(py|sh)(:|$)' || true
   else
     cat
   fi
