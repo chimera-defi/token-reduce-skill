@@ -34,9 +34,13 @@ from token_reduce_state import (  # noqa: E402
 
 
 def test_suggest_rewrite_find_name_to_rg_glob() -> None:
+    # F7: --hidden --no-ignore is mandatory -- rg's defaults silently drop
+    # dotfiles/gitignored paths that `find` would have returned (verified
+    # live: 0 vs 1454 hits under a dot-directory root), so a bare `rg -g
+    # ... --files` rewrite is an unsafe suggestion, not just a style choice.
     s = suggest_rewrite('find . -name "*.py"')
     assert s is not None
-    assert "rg -g '*.py' --files" in s
+    assert "rg --files --hidden --no-ignore -g '*.py'" in s
 
 
 def test_suggest_rewrite_find_root_to_helper() -> None:
