@@ -909,3 +909,137 @@ class TestR7PostBlockClassifierQuoteAware:
         events = _events(repo)
         escapes = [e for e in events if e.get("event") == "post_block_escape"]
         assert not escapes, f"quoted inert text must not be classified as an escape, got {events}"
+
+
+# --------------------------------------------------------------------------- #
+# Round 4 - Codex external review of PR #87 (C1-C3)
+# --------------------------------------------------------------------------- #
+
+
+class TestC1DoubleQuotedCommandSubstitution:
+    """Double quotes suppress word-splitting/globbing but NOT command
+    substitution -- `echo "$(find / -name x)"` really runs `find / -name x`
+    for real. Single quotes suppress ALL expansion and are genuinely inert."""
+
+    def test_command_substitution_is_catastrophic_non_pending(self, repo: Path) -> None:
+        cmd = 'echo "$(find / -name x)"'
+        result = _run_hook(_bash_payload(cmd, session_id="sess-c1-cata"), repo)
+        assert result.returncode == 2, result.stdout
+        decision = json.loads(result.stdout)
+        assert "catastrophic" in decision["reason"].lower()
+
+    def test_command_substitution_blocks_while_pending(self, repo: Path) -> None:
+        session_id = "sess-c1-pending"
+        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
+        cmd = 'echo "$(find / -name x)"'
+        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+        assert result.returncode == 2, result.stdout
+
+    def test_ls_dash_R_command_substitution_blocked(self, repo: Path) -> None:
+        cmd = 'echo "$(ls -R /)"'
+        result = _run_hook(_bash_payload(cmd, session_id="sess-c1-lsr"), repo)
+        assert result.returncode == 2, result.stdout
+
+    def test_plain_double_quoted_text_still_allowed(self, repo: Path) -> None:
+        result = _run_hook(_bash_payload('echo "plain text"', session_id="sess-c1-plain"), repo)
+        assert result.returncode == 0, result.stdout
+
+    def test_single_quoted_dollar_paren_is_inert(self, repo: Path) -> None:
+        """Single quotes suppress command substitution entirely -- this is
+        literal text `$(find / -name x)`, never executed."""
+        result = _run_hook(
+            _bash_payload("echo '$(find / -name x)'", session_id="sess-c1-single"), repo
+        )
+        assert result.returncode == 0, result.stdout
+
+    def test_surfaces_directly(self) -> None:
+        surfaces = cr.command_scan_surfaces('echo "$(find / -name x)"')
+        assert any(cr.is_catastrophic(s) for s in surfaces)
+        surfaces_single = cr.command_scan_surfaces("echo '$(find / -name x)'")
+        assert not any(cr.is_catastrophic(s) for s in surfaces_single)
+
+
+class TestC2HelperMustLeadSegment:
+    """HELPER_COMMAND_RE.search() on the whole first line let a helper
+    mention ANYWHERE credit compliance, even when the actual scan ran in a
+    sibling segment that was never classified."""
+
+    def test_helper_then_scan_via_and_and_blocks(self, repo: Path) -> None:
+        session_id = "sess-c2-andand"
+        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
+        cmd = "token-reduce-paths auth && find / -name x"
+        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+        assert result.returncode == 2, result.stdout
+        assert trs.is_pending(repo, session_id) is True, "pending must NOT be cleared when a scan is present"
+
+    def test_echoed_helper_name_then_scan_via_semicolon_blocks(self, repo: Path) -> None:
+        session_id = "sess-c2-semicolon"
+        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
+        cmd = "echo token-reduce-paths; find / -name x"
+        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
+        assert result.returncode == 2, result.stdout
+        assert trs.is_pending(repo, session_id) is True
+
+    def test_plain_helper_invocation_still_allowed_and_clears_pending(self, repo: Path) -> None:
+        session_id = "sess-c2-plain"
+        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
+        result = _run_hook(
+            _bash_payload("./scripts/token-reduce-paths.sh topic", session_id=session_id), repo
+        )
+        assert result.returncode == 0, result.stdout
+        assert trs.is_pending(repo, session_id) is False
+
+    def test_uv_run_wrapped_helper_still_counts(self, repo: Path) -> None:
+        session_id = "sess-c2-uvrun"
+        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
+        result = _run_hook(
+            _bash_payload("uv run token-reduce-paths.py topic", session_id=session_id), repo
+        )
+        assert result.returncode == 0, result.stdout
+        assert trs.is_pending(repo, session_id) is False
+
+
+class TestC3SymlinkGuardHonorsFollowOptions:
+    """`find -H`/`find -L` make find follow the symlinked root -- blocking
+    them recommends, as the fix, exactly what the caller already did."""
+
+    def test_find_dash_H_symlink_passes_guard(self, tmp_path: Path, repo: Path) -> None:
+        real_dir = tmp_path / "real_c3h"
+        real_dir.mkdir()
+        link = tmp_path / "link_c3h"
+        link.symlink_to(real_dir)
+        msg = enforce.find_symlink_guard(f"find -H {link} -name x")
+        assert msg is None
+
+    def test_find_dash_L_symlink_passes_guard(self, tmp_path: Path, repo: Path) -> None:
+        real_dir = tmp_path / "real_c3l"
+        real_dir.mkdir()
+        link = tmp_path / "link_c3l"
+        link.symlink_to(real_dir)
+        msg = enforce.find_symlink_guard(f"find -L {link} -name x")
+        assert msg is None
+
+    def test_bare_find_symlink_still_blocks(self, tmp_path: Path, repo: Path) -> None:
+        real_dir = tmp_path / "real_c3bare"
+        real_dir.mkdir()
+        link = tmp_path / "link_c3bare"
+        link.symlink_to(real_dir)
+        msg = enforce.find_symlink_guard(f"find {link} -name x")
+        assert msg is not None
+        assert "symlink" in msg.lower()
+
+    def test_find_dash_H_live_still_subject_to_normal_classification(
+        self, tmp_path: Path, repo: Path
+    ) -> None:
+        """The guard is skipped, but the command is still a `find /...`-
+        shaped scan and goes through the ordinary broad/catastrophic path."""
+        real_dir = tmp_path / "real_c3live"
+        real_dir.mkdir()
+        link = tmp_path / "link_c3live"
+        link.symlink_to(real_dir)
+        result = _run_hook(
+            _bash_payload(f"find -H {link} -name x", session_id="sess-c3-live"), repo
+        )
+        decision = json.loads(result.stdout) if result.stdout.strip() else None
+        if decision is not None:
+            assert "symlink" not in decision["reason"].lower()
