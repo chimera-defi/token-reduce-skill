@@ -638,6 +638,13 @@ def find_symlink_guard(command: str) -> str | None:
     pre-filter before any quote-stripping/regex work, plus a single lstat
     (not the two separate os.path.islink/os.path.isdir convenience calls,
     which independently re-stat) for the symlink+directory check.
+
+    C3: `-H` (follow symlinks named on the command line) and `-L` (follow
+    all symlinks) both make `find` descend a symlinked root -- so blocking
+    `find -H <symlink>` / `find -L <symlink>` is an infinite advice loop
+    (the block message's own recommended remedy is exactly what the caller
+    already did). `-P` (never follow, the default) does NOT change
+    anything, so the guard still applies with -P or no option at all.
     """
     if "find" not in command:
         return None
@@ -647,6 +654,14 @@ def find_symlink_guard(command: str) -> str | None:
                 continue
             match = FIND_ROOT_ARG_RE.search(surface)
             if not match:
+                continue
+            # The global-options text is everything the regex consumed
+            # between "find" and the root capture -- check THAT span
+            # specifically (not the whole match, which also contains the
+            # root) so a coincidental "-H"/"-L"-looking substring inside
+            # the path itself can't produce a false skip.
+            opts_text = surface[match.start() : match.start(1)]
+            if re.search(r"-[HL]\b", opts_text):
                 continue
             path = match.group(1)
             if not path.startswith("/"):
@@ -871,10 +886,30 @@ def main() -> int:
                 return block(guard_msg, data, extra_meta={"policy": "symlink_root_guard"})
 
             if pending:
-                if HELPER_COMMAND_RE.search(first_line):
-                    # N2 fix: check continuation lines for broad patterns before allowing
+                # C2: the helper must LEAD a shell segment of the first
+                # line, not merely appear anywhere in it via a bare
+                # .search() -- otherwise `token-reduce-paths auth && find /
+                # -name x` ran the scan for real (its rest_lines was empty:
+                # everything was on ONE line, so the N2 continuation check
+                # below never even saw the `find /` segment), and `echo
+                # token-reduce-paths; find / -name x` was credited as
+                # compliance without the helper ever having run at all.
+                # _strip_leading_wrappers reuses the same wrapper-stripping
+                # _bare_command_matches uses, so `uv run token-reduce-paths
+                # ...` (and other wrapped invocations) still count.
+                first_line_segments = _shell_segments(first_line)
+                leading_segment = (
+                    _strip_leading_wrappers(first_line_segments[0]) if first_line_segments else ""
+                )
+                if HELPER_COMMAND_RE.search(leading_segment):
+                    # N2 fix: classify every OTHER segment of this line
+                    # (not just continuation lines) for broad patterns
+                    # before allowing/clearing pending -- any hit blocks.
+                    rest_segments = first_line_segments[1:]
                     rest_lines = [line_.strip() for line_ in command.split("\n")[1:] if line_.strip() and line_.strip() != "\\"]
-                    _, rest_broad, rest_rg, rest_coverage = classify_bash_command(rest_lines, repo)
+                    _, rest_broad, rest_rg, rest_coverage = classify_bash_command(
+                        rest_segments + rest_lines, repo
+                    )
                     if rest_broad or rest_rg or rest_coverage:
                         return block(helper_required_reason(), data)
                     # F1 follow-up: the helper actually ran clean -- clear this

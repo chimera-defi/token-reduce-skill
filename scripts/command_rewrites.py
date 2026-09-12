@@ -245,7 +245,7 @@ def is_broad_find(command: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
-_QUOTED_SPAN_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+_QUOTED_SPAN_RE = re.compile(r"(?P<single>'[^']*')|(?P<double>\"[^\"]*\")")
 # Command-executors whose quoted argument is itself run as a real command --
 # a broad/coverage pattern hidden inside must still count. Anything else
 # (echo/printf payloads, JSON blobs, commit messages) is inert data and must
@@ -267,6 +267,45 @@ _EXECUTOR_QUOTE_LEADER_RE = re.compile(
     r"|(?:timeout|env|nohup|watch|ssh)\b[^|;&]*"
     r")\s*$"
 )
+
+
+def _extract_command_substitutions(text: str) -> list[str]:
+    """Return the inner command text of every ``$(...)`` and backtick
+    ``` `...` ``` substitution in ``text``.
+
+    C1: the shell evaluates command substitution even INSIDE double quotes
+    -- only single quotes suppress it. ``$(...)`` is extracted via balanced-
+    paren scanning (handles arbitrary nesting depth, e.g.
+    ``$(echo $(find / -name x))``, not just one level); backticks don't
+    nest without escaping, so a plain matching-pair scan is sufficient for
+    those.
+    """
+    results: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] == "$" and i + 1 < n and text[i + 1] == "(":
+            depth = 1
+            j = i + 2
+            while j < n and depth > 0:
+                if text[j] == "(":
+                    depth += 1
+                elif text[j] == ")":
+                    depth -= 1
+                j += 1
+            inner_end = j - 1 if depth == 0 else n
+            results.append(text[i + 2 : inner_end])
+            i = j
+            continue
+        if text[i] == "`":
+            end = text.find("`", i + 1)
+            if end == -1:
+                break
+            results.append(text[i + 1 : end])
+            i = end + 1
+            continue
+        i += 1
+    return results
 
 
 @functools.lru_cache(maxsize=128)
@@ -295,15 +334,31 @@ def command_scan_surfaces(line: str) -> list[str]:
        rg -n bar ." where "rg" is buried mid-string and a naive "is rg
        anywhere" catch-all would be needed (and would then also
        false-positive on unrelated text like `which rg fd rtk`).
+
+    C1: single- and double-quoted spans are NOT equally inert. Single
+    quotes suppress ALL shell expansion, so their content is genuinely
+    inert data. Double quotes suppress word-splitting/globbing but NOT
+    command substitution -- ``echo "$(find / -name x)"`` really runs
+    ``find / -name x`` for real, regardless of ``echo`` not being a
+    recognized command-executor. So for a double-quoted span, every
+    ``$(...)``/backtick substitution inside it is extracted and recursed
+    into as its own surface (independent of any executor-leader match),
+    and only the substitution-free remainder is treated as inert.
     """
     if not line or ("'" not in line and '"' not in line):
         return [line]
     executed_surfaces: list[str] = []
     for match in _QUOTED_SPAN_RE.finditer(line):
         prefix = line[: match.start()]
+        body = match.group(0)[1:-1]
+        if match.group("double") is not None:
+            # Command substitution runs regardless of any executor-leader
+            # match on the prefix -- the shell evaluates it before `echo`
+            # (or whatever the outer command is) ever sees the argument.
+            for sub in _extract_command_substitutions(body):
+                executed_surfaces.extend(command_scan_surfaces(sub))
         leader_match = _EXECUTOR_QUOTE_LEADER_RE.search(prefix)
         if leader_match:
-            body = match.group(0)[1:-1]
             executed_surfaces.append(prefix[leader_match.start() :] + body)
             executed_surfaces.append(body)
     stripped = _QUOTED_SPAN_RE.sub(" ", line)
