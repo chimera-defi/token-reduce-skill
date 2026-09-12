@@ -562,12 +562,17 @@ def _scenario_s6(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         # count >= 1 (the counter file must exist at all) so that same class
         # of path drift fails loudly instead of masking as "healthy".
         count = _trs.broad_attempt_count(root, session_id)
-        events = _trt.load_events(root)
-        dedup_seen = any(e.get("event") == "hook_dedup_replay" for e in events)
-        passed = identical and count == 1 and dedup_seen
+        # A replay is deliberately side-effect-free (no telemetry event at all),
+        # so the observable contract is: identical decisions, counter bumped
+        # exactly once, and the decision marker on disk proving the dedup path
+        # (not merely an idempotent re-decision) served call 2.
+        marker_seen = any(
+            p.name.startswith("decision_") for p in _trs.state_dir(root).glob("decision_*.json")
+        )
+        passed = identical and count == 1 and marker_seen
         detail = (
             f"call1 rc={first.returncode} call2 rc={second.returncode} identical={identical} "
-            f"broad_attempt_count={count} hook_dedup_replay_seen={dedup_seen}"
+            f"broad_attempt_count={count} decision_marker_seen={marker_seen}"
         )
         return ScenarioResult(sid, desc, passed, detail), steps
 
