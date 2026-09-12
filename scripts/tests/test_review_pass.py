@@ -452,7 +452,7 @@ class TestHookContractPlumbing:
         assert result["scenarios"]["S4"].passed is True
         assert result["scenarios"]["S3"].passed is False  # expected a block; stub always allows
         assert result["scenarios"]["S8"].passed is False  # expected a catastrophic block
-        # P1: stub never writes broad-attempt state or emits hook_dedup_replay,
+        # P1: stub never writes broad-attempt state or a decision marker,
         # so the canonical token_reduce_state.broad_attempt_count() correctly
         # reads back 0 -- and S6 now requires count == 1 exactly, so it fails
         # loudly here rather than silently passing under the old `<= 1` check.
@@ -521,7 +521,13 @@ class TestScenarioS6CounterSourceOfTruth:
         _write_stub_copy(stub_root)
         copy = rp.HookCopy("stub", stub_root)
         monkeypatch.setattr(rp._trs, "broad_attempt_count", lambda root, key: 1)
-        monkeypatch.setattr(rp._trt, "load_events", lambda root: [{"event": "hook_dedup_replay"}])
+        # Replays are side-effect-free (no telemetry event), so S6's dedup
+        # evidence is the on-disk decision marker, found via the canonical
+        # state_dir helper.
+        marker_dir = tmp_path / "state"
+        marker_dir.mkdir()
+        (marker_dir / "decision_hc-s6.json").write_text("{}")
+        monkeypatch.setattr(rp._trs, "state_dir", lambda root: marker_dir)
         result, _steps = rp._scenario_s6(copy)
         assert result.passed is True
         assert "broad_attempt_count=1" in result.detail
