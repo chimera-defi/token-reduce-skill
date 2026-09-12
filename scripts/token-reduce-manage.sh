@@ -68,6 +68,7 @@ commands:
   review-global   Generate the telemetry-driven self-review for global scope
   validate    Validate the skill package shape
   doctor      Run a compact health pass (validate + deps + updates + settings)
+  review-pass  Report-only diagnostic pass: deploy-drift/hook-contract/env-sanity/adoption-snapshot/inventory-staleness/all
   telemetry   Summarize recent helper/hook telemetry
   settings    Show/set/reset local config (telemetry and updates)
   telemetry-sync  Run opt-in telemetry snapshot and optional upload
@@ -190,6 +191,9 @@ case "$cmd" in
     ;;
   doctor)
     exec uv run "$SCRIPT_DIR/token-reduce-doctor.py" "$@"
+    ;;
+  review-pass)
+    exec uv run "$SCRIPT_DIR/review_pass.py" "$@"
     ;;
   telemetry)
     exec uv run "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14

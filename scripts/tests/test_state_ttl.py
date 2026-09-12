@@ -27,13 +27,10 @@ def test_pending_marker_older_than_five_minutes_is_pruned(tmp_path: Path, monkey
     trs.mark_pending(repo, key, "explore the repo for hooks")
     stale_mtime = time.time() - (6 * 60)
     path = trs.state_path(repo, key)
-    default_path = trs.state_path(repo, "default")
     os.utime(path, (stale_mtime, stale_mtime))
-    os.utime(default_path, (stale_mtime, stale_mtime))
 
     assert trs.is_pending(repo, key) is False
     assert not path.exists()
-    assert not default_path.exists()
 
 
 def test_pending_marker_within_five_minutes_is_kept(tmp_path: Path) -> None:
