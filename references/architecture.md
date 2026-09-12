@@ -42,8 +42,7 @@ That reduces wasted context and makes host behavior more predictable.
 +------------------------------------------------------------+
 |  Reporting                                                 |
 |   review_token_reduction.py    measure_token_reduction.py  |
-|   advise-token-reduction.py    cost_ledger.py              |
-|   composite_token_telemetry.py                             |
+|   composite_token_telemetry.py cost_ledger.py              |
 +------------------------------------------------------------+
 ```
 
