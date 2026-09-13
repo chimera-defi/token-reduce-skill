@@ -161,12 +161,16 @@ def package_version(path: Path) -> str:
 
 
 def git_head(path: Path) -> str:
-    proc = subprocess.run(
-        ["git", "-C", str(path), "rev-parse", "--short", "HEAD"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--short", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
     return (proc.stdout or "").strip() if proc.returncode == 0 else ""
 
 
