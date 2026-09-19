@@ -20,7 +20,7 @@ def main() -> int:
             ).stdout.strip()
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        repo_root = script_dir.parents[2]
+        repo_root = script_dir.parent
 
     out_dir = repo_root / "artifacts" / "token-reduction"
     files = sorted(
