@@ -16,9 +16,10 @@ def main() -> int:
                 check=True,
                 capture_output=True,
                 text=True,
+                timeout=10,
             ).stdout.strip()
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         repo_root = script_dir.parents[2]
 
     out_dir = repo_root / "artifacts" / "token-reduction"
