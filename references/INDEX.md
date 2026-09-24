@@ -7,6 +7,7 @@ Use this index to keep maintenance repeatable and avoid drift.
 - `README.md` for install/activation and benchmark snapshots
 - `SKILL.md` for runtime behavior and first-move rules
 - `references/architecture.md` for routing/enforcement model
+- `references/opus55-anti-patterns.md` for named anti-patterns, enforcement posture (targeted work is never blocked), and subagent-first broad discovery
 
 ## Hard Gates
 
