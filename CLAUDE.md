@@ -8,6 +8,13 @@ Use `token-reduce` before broad repo discovery. If the path is unknown, start wi
 
 Use scoped `rg` and targeted reads after the helper returns candidate paths. Do not start with `find .`, `ls -R`, `grep -R`, `rg --files .`, or broad glob patterns.
 
+For a broad sweep — an audit, a repo-wide search, tracing something across many files —
+delegate instead of scanning it yourself: `Agent(subagent_type="Explore", ...)` for read-only
+search, or `subagent_type="builder"` / `model="sonnet"` for implementation and deep-research
+fan-out, and use the conclusions + evidence it returns. Ordinary targeted work (a known file, a
+specific grep, `git`/`gh` commands, running tests) is never gated by enforcement — see
+`references/opus55-anti-patterns.md` for the named anti-patterns enforcement actually targets.
+
 ## Headroom Companion
 
 Use Headroom more aggressively for large tool-result payloads, repeated logs/API responses, and long-running sessions where old tool output keeps inflating context.
