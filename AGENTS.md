@@ -88,6 +88,8 @@ Do not start Codex discovery in this repo with:
 
 Scoped `rg` and targeted reads are follow-up tools after the helper returns candidate paths. They are not the initial compliant move when token-reduce is installed.
 
+Named anti-patterns (see `references/opus55-anti-patterns.md` for the full, host-agnostic list): dumping a whole large file when a line range would do, `cat`/`head`/`tail` over a transcript or JSONL log, recursive `ls -R`/`find /` with no depth limit, and re-reading a file just edited. Ordinary targeted work — a known file, a specific grep, running tests — is not blocked by these rules; they target unbounded scans, not narrow reads.
+
 ### Packaging Checks
 
 Before calling the skill package complete, run:

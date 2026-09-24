@@ -17,7 +17,7 @@ It is a high-level token orchestration kit that:
 
 - enforces low-cost discovery first
 - auto-routes between path/snippet/structural tiers
-- wires tool hooks so wasteful calls are blocked before execution
+- wires tool hooks that gate named anti-patterns (unbounded scans, whole-repo dumps) — ordinary targeted work (a known file, a specific grep, git/gh, tests) is never blocked, pending or not; see `references/opus55-anti-patterns.md`
 - integrates a dependency suite and operational benchmarking/review gates
 - reports warning-only AI coding cost governance gaps against the Databricks cost playbook
 - turns workspace telemetry into helper-usage SLOs and repo-level adoption interventions
@@ -168,6 +168,13 @@ Disable adaptive hinting if needed:
 ```bash
 TOKEN_REDUCE_ADAPTIVE_HINT=0
 ```
+
+For broad discovery — an audit, a repo-wide search, tracing something across many files —
+delegate instead of running a bigger manual scan: `Agent(subagent_type="Explore", ...)` for
+read-only search, or `subagent_type="builder"` / `model="sonnet"` for implementation. The
+adaptive router recommends this automatically above `SUBAGENT_CANDIDATE_THRESHOLD` (5)
+candidate files or on broad-scope query cues; the reminder and block hooks also name it
+directly. See `references/subagent-and-brain-integration.md`.
 
 ## Benchmarks And Regression Guard
 

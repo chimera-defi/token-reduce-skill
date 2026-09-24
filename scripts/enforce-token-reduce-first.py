@@ -496,9 +496,11 @@ def uv_run_needs_scan(command: str) -> bool:
 def helper_required_reason() -> str:
     hint = discovery_hint()
     return (
-        "token-reduce helper required for this prompt. "
-        f"Run {hint} first. "
-        "After discovery runs, targeted Grep, Glob, and Read follow-ups are allowed."
+        f"Broad/exploratory discovery. Run {hint} first, or delegate directly: "
+        'Agent(subagent_type="Explore", ...) for read-only search, or '
+        '"builder"/model="sonnet" for implementation -- have it return '
+        "conclusions + evidence instead of reading everything yourself. "
+        "Targeted Grep, Glob, and Read on an exact, known path are not gated by this."
     )
 
 
@@ -950,27 +952,48 @@ def main() -> int:
             return handle_broad_bash(data, repo, lines, first_line, pending=False)
 
         if pending:
-            if tool_name in {"Glob", "Grep", "Read"}:
-                # Read on an absolute path is targeted, not exploratory — always allow
-                if tool_name == "Read":
-                    file_path = str(tool_input.get("file_path", "") or "")
-                    if file_path.startswith("/") and not any(c in file_path for c in "*?["):
-                        return 0
+            # F10: apply the SAME targeted-vs-exploratory classification the
+            # non-pending path already uses for Glob/Grep, instead of a
+            # blanket block. Before this fix, `Grep(path="/exact/file.py",
+            # pattern="foo")` -- an ordinary, specific grep on a known file --
+            # was unconditionally blocked while a session's prompt-triggered
+            # "pending" marker was set, regardless of how targeted the call
+            # actually was (Read already got this treatment; Glob/Grep did
+            # not). Opus 5.5 guidance: targeted work (a known file, a
+            # specific grep) must never be blocked -- only genuinely
+            # exploratory Glob/Grep calls should still gate on discovery.
+            if tool_name == "Read":
+                file_path = str(tool_input.get("file_path", "") or "")
+                if file_path.startswith("/") and not any(c in file_path for c in "*?["):
+                    return 0
                 return block(helper_required_reason(), data)
+            if tool_name == "Glob":
+                pattern = tool_input.get("pattern", "") or ""
+                if is_broad_glob(pattern) or is_exploratory_glob(pattern):
+                    return block(helper_required_reason(), data)
+                return 0
+            if tool_name == "Grep":
+                if is_exploratory_grep(tool_input, repo):
+                    return block(helper_required_reason(), data)
+                return 0
             return 0
 
         if tool_name == "Glob":
             pattern = tool_input.get("pattern", "") or ""
             if is_broad_glob(pattern) or is_exploratory_glob(pattern):
                 return block(
-                    f"Blocked exploratory Glob pattern. Use {discovery_hint()} for path-only kickoff, then switch to Read on an exact file path.",
+                    f"Blocked exploratory Glob pattern. Use {discovery_hint()} for a path-only kickoff, "
+                    'or delegate a multi-file sweep to Agent(subagent_type="Explore", ...), '
+                    "then switch to Read on an exact file path.",
                     data,
                 )
             return 0
 
         if tool_name == "Grep" and is_exploratory_grep(tool_input, repo):
             return block(
-                f"Blocked exploratory Grep before helper kickoff. Run {discovery_hint()} first, then use Grep on an exact file path or a much narrower scope.",
+                f"Blocked exploratory Grep before helper kickoff. Run {discovery_hint()} first, "
+                'or delegate a multi-file sweep to Agent(subagent_type="Explore", ...), '
+                "then use Grep on an exact file path or a much narrower scope.",
                 data,
             )
 

@@ -196,6 +196,9 @@ def format_block_message(
     if rewrite and "token-reduce" not in rewrite.lower():
         parts.append(f"Try: {rewrite}.")
     parts.append(f"Or: {helper_hint}.")
+    # For a broad sweep across many files, delegating to a subagent (instead
+    # of a manual scan) keeps the raw output out of the caller's context.
+    parts.append('Or delegate: Agent(subagent_type="Explore", ...).')
     msg = " ".join(parts)
     return msg[:240]
 
@@ -246,6 +249,24 @@ def is_broad_find(command: str) -> bool:
 
 
 _QUOTED_SPAN_RE = re.compile(r"(?P<single>'[^']*')|(?P<double>\"[^\"]*\")")
+# F8: placeholder that replaces an entire quoted span in the "stripped"
+# surface (see command_scan_surfaces below). Blanking a quoted span to a
+# single space (the pre-F8 behavior) makes the whole argument DISAPPEAR --
+# not just its regex-visible content -- which breaks every downstream
+# consumer that counts shlex tokens by POSITION, not just by regex search.
+# Confirmed live: `rg -n "^#|^##" SKILL.md` (an ordinary single-file grep
+# with a bare, quoted pattern) blanks to `rg -n   SKILL.md`; rg_paths()
+# then has only two bare tokens left and, having never seen a pattern
+# token, treats "SKILL.md" itself as the pattern -- rg_paths() returns no
+# paths at all, and is_exploratory_rg() concludes "no path argument" and
+# flags an ordinary targeted grep as exploratory. A placeholder token (no
+# shell metacharacters, so segment-splitting on the stripped surface is
+# still safe, and not a `-`-prefixed flag) preserves the ONE-ARGUMENT shape
+# a quoted span always has at the shell level, so positional parsers
+# (rg_paths, is_unscoped_rg) count correctly while regex-based detectors
+# (BROAD_BASH_PATTERNS, is_catastrophic, is_broad_find, matches_broad_bash)
+# still don't see whatever broad-looking text was actually inside the quotes.
+_QUOTED_SPAN_PLACEHOLDER = "QUOTEDARG"
 # Command-executors whose quoted argument is itself run as a real command --
 # a broad/coverage pattern hidden inside must still count. Anything else
 # (echo/printf payloads, JSON blobs, commit messages) is inert data and must
@@ -361,5 +382,5 @@ def command_scan_surfaces(line: str) -> list[str]:
         if leader_match:
             executed_surfaces.append(prefix[leader_match.start() :] + body)
             executed_surfaces.append(body)
-    stripped = _QUOTED_SPAN_RE.sub(" ", line)
+    stripped = _QUOTED_SPAN_RE.sub(_QUOTED_SPAN_PLACEHOLDER, line)
     return [stripped, *executed_surfaces]

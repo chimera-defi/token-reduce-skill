@@ -10,7 +10,7 @@ triggers:
 metadata:
   author: "GPT-5 Codex"
   category: "productivity"
-  version: "5.6.5"
+  version: "5.7.0"
   argument_hint: "[file-or-directory]"
 allowed-tools:
   - Read
@@ -57,7 +57,8 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 - Do not chain discovery commands with `||`, `&&`, `find`, `ls`, or extra fallback shell logic.
 - Do not treat `rg --files .` as compliant discovery.
 - Do not start with `find .`, `ls -R`, `grep -R`, or broad `Glob` patterns such as `**/*`.
-- After two failed discovery attempts or once the candidate set exceeds 5 files, stop expanding and ask the user to narrow the scope.
+- After two failed discovery attempts, or once the candidate set exceeds 5 files, delegate the sweep to a subagent instead of continuing to read every candidate yourself — `Agent(subagent_type="Explore", ...)` for read-only search, `subagent_type="builder"` (or `model="sonnet"`) for implementation/deep-research fan-out — and use the conclusions + evidence it returns. Ask the user to narrow scope only if delegation still doesn't converge.
+- This is guidance for how to move fast, not a ritual pre-step: a hook should never block ordinary targeted work (reading a known file, a specific grep, git/gh commands, running tests). Enforcement is reserved for named anti-patterns (see `references/opus55-anti-patterns.md`) — unbounded recursive scans, whole-repo dumps — and even those should warn/redirect before they hard-block.
 
 ## Heuristics
 
@@ -118,7 +119,7 @@ See `references/headroom-evaluation-2026-06-10.md` for evidence and rollback cav
 
 ## Subagent / gstack / Brain-First Hints
 
-The adaptive router emits a subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. See: `references/subagent-and-brain-integration.md`.
+For broad discovery, audits, or "sweep many files" work, delegating to a subagent — not a bigger manual scan — is the token saver: spawn `Agent(subagent_type="Explore", ...)` for read-only search, or `subagent_type="builder"`/`model="sonnet"` for implementation and deep-research fan-out, and have it report conclusions + evidence instead of pulling every candidate file into the parent's context. The adaptive router formalizes this: it emits a ready-to-copy subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. The reminder and enforcement hooks surface the same subagent option directly, before you ever run the router, so the choice doesn't wait on a first CLI call. See: `references/subagent-and-brain-integration.md`.
 
 ## Structural backend (`token-savior`)
 
@@ -200,6 +201,8 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 - `scripts/token-reduce-search.sh` uses repo-scoped QMD first, then scoped `rg`.
 - `rg --files .` and similar broad inventory commands are treated as violations.
 - Reads stay targeted.
+- Broad discovery, audits, and repo-wide sweeps are delegated to a subagent, not read file-by-file in the parent session.
+- Ordinary targeted work — a known file, a specific grep, git/gh commands, running tests — is never gated by enforcement, pending or not.
 - Final summaries cite only the minimum files needed.
 - Repo-level instructions and hooks point at the same first-move workflow.
 - Owned-workspace changes that are more than trivial end on a feature branch with a PR for review and backup.
