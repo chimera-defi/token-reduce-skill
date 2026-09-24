@@ -167,14 +167,15 @@ def main() -> int:
             {
                 "continue": True,
                 "systemMessage": (
-                    "TOKEN-REDUCE ENFORCEMENT ACTIVE. "
-                    f"Your FIRST tool call MUST be a Bash discovery call: {hint}. "
-                    f"Suggested kickoff for this prompt: {suggested}. "
-                    "The hooks will block any Grep, Glob, Read, or broad Bash scan until discovery runs. "
-                    "This applies even for skill maintenance tasks — if you do not know the exact file path already, run discovery first. "
-                    "Use the user's literal filenames, identifiers, or key nouns as query words; "
-                    "do not use generic synonyms or omit qualifiers like Bash, Glob, hook, or token reduction. "
-                    "After discovery runs, use targeted Grep or Read for narrowing — do not switch back to broad Bash search commands."
+                    "TOKEN-REDUCE: this prompt looks like repo discovery. "
+                    f"For a quick, narrow lookup: run {hint} (suggested: {suggested}). "
+                    "For a broad sweep -- an audit, a repo-wide search, tracing something "
+                    "across many files -- delegate instead of scanning it yourself: "
+                    'Agent(subagent_type="Explore", ...) for read-only search, or '
+                    'subagent_type="builder" / model="sonnet" for implementation and deep '
+                    "research, and use the conclusions + evidence it returns. "
+                    "Targeted work you already know the path for -- a known file, a specific "
+                    "grep, git/gh commands, running tests -- is not gated by this reminder."
                 ),
             },
             sys.stdout,
