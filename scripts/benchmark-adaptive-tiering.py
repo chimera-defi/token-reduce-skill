@@ -67,13 +67,30 @@ def token_count(text: str) -> int:
 
 def run(command: str, expected: list[str], *, cwd: Path, strategy: str, task: str) -> RunResult:
     started = time.perf_counter()
-    proc = subprocess.run(
-        ["bash", "-lc", command],
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            ["bash", "-lc", command],
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        elapsed_ms = int((time.perf_counter() - started) * 1000)
+        return RunResult(
+            task=task,
+            strategy=strategy,
+            command=command,
+            exit_code=-1,
+            duration_ms=elapsed_ms,
+            bytes=0,
+            lines=0,
+            tokens=0,
+            quality_pass=False,
+            quality_note="timeout: command exceeded 120s",
+            stdout_preview="",
+        )
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     stdout = proc.stdout or ""
     missing = [needle for needle in expected if needle not in stdout]
