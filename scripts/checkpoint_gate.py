@@ -52,6 +52,10 @@ def run_step(name: str, command: list[str], cwd: Path) -> dict:
         exit_code = -1
         stdout = exc.stdout or ""
         stderr = ((exc.stderr or "") + f"\nstep timed out after {STEP_TIMEOUT_SECONDS}s").strip()
+    except FileNotFoundError as exc:
+        exit_code = -1
+        stdout = ""
+        stderr = f"command not found: {exc}"
     duration_ms = int((time.perf_counter() - started) * 1000)
     return {
         "name": name,
