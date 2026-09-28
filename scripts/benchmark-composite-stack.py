@@ -269,8 +269,8 @@ def main() -> int:
                 ("fuzzy_discovery", "rg --files . | head -200", []),
                 (
                     "exact_symbol",
-                    "rg -n \"prompt_requires_helper\" scripts/*.py | head -40",
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    "rg -n \"session_key\" scripts/*.py | head -40",
+                    ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
@@ -290,7 +290,7 @@ def main() -> int:
                 ),
                 (
                     "exact_symbol",
-                    f"qmd search \"prompt requires helper token reduce state\" -n 8 --files -c {QMD_COLLECTION}",
+                    f"qmd search \"session key normalization token reduce state\" -n 8 --files -c {QMD_COLLECTION}",
                     ["scripts/token_reduce_state.py"],
                 ),
                 (
@@ -307,7 +307,7 @@ def main() -> int:
                 ("fuzzy_discovery", "token-reduce-paths hook enforcement system | head -40", []),
                 (
                     "exact_symbol",
-                    "token-reduce-paths find symbol prompt_requires_helper | head -40",
+                    "token-reduce-paths find symbol session_key | head -40",
                     ["scripts/token_reduce_state.py"],
                 ),
                 (
@@ -328,8 +328,8 @@ def main() -> int:
                 ),
                 (
                     "exact_symbol",
-                    "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80",
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    "token-reduce-structural --project-root . find-symbol session_key | head -80",
+                    ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
@@ -345,8 +345,8 @@ def main() -> int:
                 ("fuzzy_discovery", "rtk find . -name '*.md' | head -40", []),
                 (
                     "exact_symbol",
-                    "rtk grep -n \"prompt_requires_helper\" scripts/*.py | head -40",
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    "rtk grep -n \"session_key\" scripts/*.py | head -40",
+                    ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
@@ -365,11 +365,11 @@ def main() -> int:
                 (
                     "exact_symbol",
                     (
-                        "token-reduce-structural --project-root . find-symbol prompt_requires_helper | head -80"
+                        "token-reduce-structural --project-root . find-symbol session_key | head -80"
                         if _token_savior_functional()
-                        else 'rg -n "def prompt_requires_helper" scripts/*.py | head -5'
+                        else 'rg -n "def session_key" scripts/*.py | head -5'
                     ),
-                    ["prompt_requires_helper", "scripts/token_reduce_state.py"],
+                    ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",

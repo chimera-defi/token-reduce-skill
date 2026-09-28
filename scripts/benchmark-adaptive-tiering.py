@@ -42,7 +42,7 @@ class RunResult:
 TASKS = [
     {
         "name": "exact_symbol",
-        "query": "find symbol prompt_requires_helper",
+        "query": "find symbol session_key",
         "expected": ["token_reduce_state.py"],
     },
     {
