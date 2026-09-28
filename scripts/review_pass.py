@@ -56,7 +56,13 @@ if str(SCRIPT_DIR) not in sys.path:
 import token_reduce_state as _trs  # noqa: E402
 import token_reduce_telemetry as _trt  # noqa: E402
 
-ENTRYPOINTS = ["enforce-token-reduce-first.py", "remind-token-reduce.py"]
+# remind-token-reduce.py (the former UserPromptSubmit reminder, retired
+# 2026-09-28 -- see references/worktree-deploy-sync.md) is deliberately NOT
+# watched here anymore: scripts/setup.sh no longer deploys it to
+# ~/.claude/hooks/token-reduce/, so comparing it against that target would
+# report permanent "missing"/"stale" drift for a hook that is no longer part
+# of the deploy pipeline by design, not an actual regression.
+ENTRYPOINTS = ["enforce-token-reduce-first.py"]
 HELPER_MODULES = [
     "token_reduce_state.py",
     "token_reduce_telemetry.py",
@@ -379,17 +385,18 @@ class HookCopy:
     def enforce_path(self) -> Path:
         return self.root / "enforce-token-reduce-first.py"
 
-    @property
-    def remind_path(self) -> Path:
-        return self.root / "remind-token-reduce.py"
-
     def available(self) -> bool:
-        return self.enforce_path.is_file() and self.remind_path.is_file()
+        # Only the enforce entrypoint is required. The former remind
+        # entrypoint (remind-token-reduce.py, retired 2026-09-28) is no
+        # longer deployed by scripts/setup.sh, so a deployed copy missing it
+        # is expected, not a reason to mark the whole copy unavailable and
+        # skip every hook-contract scenario.
+        return self.enforce_path.is_file()
 
 
 @dataclass
 class StepResult:
-    hook: str  # "enforce" | "remind"
+    hook: str  # "enforce" | "mark_pending"
     ok: bool  # subprocess executed (infra-level, not a pass/fail verdict)
     returncode: int | None
     stdout: str
@@ -438,10 +445,48 @@ def _run_enforce(copy: HookCopy, root: Path, command: str, session_id: str, *, t
     return StepResult(hook="enforce", ok=r["ok"], returncode=r["returncode"], stdout=r["stdout"], error=r["error"])
 
 
-def _run_remind(copy: HookCopy, root: Path, prompt: str, session_id: str) -> StepResult:
-    payload = {"session_id": session_id, "prompt": prompt}
-    r = _run_script(copy.remind_path, root, payload)
-    return StepResult(hook="remind", ok=r["ok"], returncode=r["returncode"], stdout=r["stdout"], error=r["error"])
+_MARK_PENDING_CODE = (
+    "import sys\n"
+    "sys.path.insert(0, sys.argv[1])\n"
+    "from pathlib import Path\n"
+    "from token_reduce_state import mark_pending, session_key\n"
+    "mark_pending(Path(sys.argv[2]), session_key({'session_id': sys.argv[3]}), sys.argv[4])\n"
+)
+
+
+def _mark_pending_for_copy(copy: HookCopy, root: Path, prompt: str, session_id: str) -> StepResult:
+    """Set the pending marker directly via THIS copy's own token_reduce_state
+    module (PYTHONPATH anchored at copy.root, mirroring _run_script), instead
+    of routing through the retired remind-token-reduce.py hook.
+
+    Historically S1-S3 ran the remind hook with a discovery prompt on stdin
+    as their pending-state setup step; classifying the prompt and calling
+    mark_pending() was a side effect of that hook. The reminder hook was
+    retired 2026-09-28 (operator ruling -- see
+    references/worktree-deploy-sync.md) and is now a no-op shim, so it no
+    longer sets pending. The pending-gate machinery itself
+    (mark_pending/is_pending/the enforce hook's `if pending:` branch) is
+    untouched in this repo -- a separate PR removes it -- and S1-S3 exist to
+    exercise exactly that machinery, so call mark_pending directly instead of
+    through the hook that used to trigger it as a side effect.
+    """
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _MARK_PENDING_CODE, str(copy.root), str(root), session_id, prompt],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return StepResult(hook="mark_pending", ok=False, returncode=None, stdout="", error=str(exc))
+    ok = proc.returncode == 0
+    return StepResult(
+        hook="mark_pending",
+        ok=ok,
+        returncode=proc.returncode,
+        stdout=proc.stdout,
+        error=None if ok else (proc.stderr.strip()[:200] or f"exit {proc.returncode}"),
+    )
 
 
 DISCOVERY_PROMPT = "where is the auth hook defined in this repo"
@@ -455,11 +500,11 @@ def _scenario_s1(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
     sid, desc = "S1", "cold-start: discovery prompt then `which rg` MUST allow"
     with _scratch_repo() as root:
         session_id = "hc-s1"
-        remind = _run_remind(copy, root, DISCOVERY_PROMPT, session_id)
-        if not remind.ok:
-            return _fail(sid, desc, f"remind hook failed to execute: {remind.error}", [remind])
+        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
+        if not setup.ok:
+            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
         enforce = _run_enforce(copy, root, "which rg", session_id)
-        steps = [remind, enforce]
+        steps = [setup, enforce]
         if not enforce.ok:
             return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
         passed = enforce.returncode == 0
@@ -472,11 +517,11 @@ def _scenario_s2(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
     with _scratch_repo() as root:
         session_id = "hc-s2"
         (root / "scripts").mkdir(exist_ok=True)
-        remind = _run_remind(copy, root, DISCOVERY_PROMPT, session_id)
-        if not remind.ok:
-            return _fail(sid, desc, f"remind hook failed to execute: {remind.error}", [remind])
+        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
+        if not setup.ok:
+            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
         enforce = _run_enforce(copy, root, "ls -la scripts", session_id)
-        steps = [remind, enforce]
+        steps = [setup, enforce]
         if not enforce.ok:
             return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
         passed = enforce.returncode == 0
@@ -488,11 +533,11 @@ def _scenario_s3(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
     sid, desc = "S3", "pending + broad `grep -R foo .` MUST block with a helper hint"
     with _scratch_repo() as root:
         session_id = "hc-s3"
-        remind = _run_remind(copy, root, DISCOVERY_PROMPT, session_id)
-        if not remind.ok:
-            return _fail(sid, desc, f"remind hook failed to execute: {remind.error}", [remind])
+        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
+        if not setup.ok:
+            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
         enforce = _run_enforce(copy, root, "grep -R foo .", session_id)
-        steps = [remind, enforce]
+        steps = [setup, enforce]
         if not enforce.ok:
             return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
         if enforce.returncode != 2:

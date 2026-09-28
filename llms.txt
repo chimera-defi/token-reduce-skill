@@ -91,7 +91,8 @@ After paths returned?      → Grep or Read on exact paths only
 Once installed, the hooks enforce this automatically:
 
 - `enforce-token-reduce-first.py` (PreToolUse) — blocks broad Bash scans (`find .`, `ls -R`, `rg --files`), broad Glob patterns, and directory-wide Grep until a path helper has run
-- `remind-token-reduce.py` (UserPromptSubmit) — injects a reminder on discovery-shaped prompts
+
+(There is no `UserPromptSubmit` reminder hook anymore — it was retired 2026-09-28; the enforcer above is the only hook.)
 
 If you see "Blocked broad exploratory Bash scan", run `token-reduce-paths.sh` first.
 

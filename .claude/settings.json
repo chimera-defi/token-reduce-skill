@@ -1,15 +1,5 @@
 {
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "timeout 20 uv run \"${CLAUDE_PROJECT_DIR:-.}/scripts/remind-token-reduce.py\" || exit 0"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
