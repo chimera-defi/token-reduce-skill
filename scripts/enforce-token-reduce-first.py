@@ -23,10 +23,8 @@ try:
     from coverage_patterns import matches_any_broad_pattern
     from token_reduce_state import (
         broad_attempt_count,
-        clear_pending,
         consume_block,
         discovery_hint,
-        is_pending,
         record_block,
         record_broad_attempt,
         record_decision,
@@ -265,10 +263,10 @@ def block(
             status="warn" if warn_mode else "blocked",
             meta=meta or None,
         )
-        # R5: record the decision marker for EVERY block() caller (pending
-        # gate, Glob, Grep, symlink guard, catastrophic, repeat-broad) so a
-        # second hook-wiring layer for the same tool_use_id replays this
-        # exact outcome instead of recomputing it.
+        # R5: record the decision marker for EVERY block() caller (Glob,
+        # Grep, symlink guard, catastrophic, repeat-broad) so a second
+        # hook-wiring layer for the same tool_use_id replays this exact
+        # outcome instead of recomputing it.
         _record_decision_for(data, blocked=(rc == 2), stdout=stdout_payload)
 
     if stdout_payload:
@@ -493,96 +491,9 @@ def uv_run_needs_scan(command: str) -> bool:
     return matches_any_broad_pattern(inner)
 
 
-def helper_required_reason() -> str:
-    hint = discovery_hint()
-    return (
-        f"Broad/exploratory discovery. Run {hint} first, or delegate directly: "
-        'Agent(subagent_type="Explore", ...) for read-only search, or '
-        '"builder"/model="sonnet" for implementation -- have it return '
-        "conclusions + evidence instead of reading everything yourself. "
-        "Targeted Grep, Glob, and Read on an exact, known path are not gated by this."
-    )
-
-
-# Leading commands that are session/process control, tmux inspection, or message
-# relays — they never scan the repo, so a pending discovery prompt must not gate
-# them. Matched against the first token of the first line.
-_NON_DISCOVERY_LEADING_RE = re.compile(
-    r"^(?:tmux|session-handoff|session-send|session-handoff-send|sleep|wait|kill|"
-    r"pkill|jobs|disown|caffeinate|clear|reset)\b"
-)
-# Wait/poll loops: `until/while/for ... ; do sleep N; done`. Allowed only when a
-# sleep is present (a genuine poll) and the loop carries no repo-scan (checked
-# separately), so a `while read ...; do rg ...; done` discovery loop can't slip
-# through.
-_WAIT_LOOP_LEADING_RE = re.compile(r"^(?:until|while|for)\b")
-
-
-def is_non_discovery_command(command: str, repo: Path) -> bool:
-    """True for command shapes that clearly aren't repo discovery — session/tmux
-    control, message relays, and wait/poll loops — so the pending-discovery gate
-    should let them through without a fresh helper call.
-
-    A repo-scan anywhere in the command disqualifies it, so this can never be
-    used to smuggle a scan (e.g. ``tmux new-session 'rg -R .'``) past the gate.
-    """
-    lines = [
-        line_.rstrip("\\").strip()
-        for line_ in command.split("\n")
-        if line_.strip() and line_.strip() != "\\"
-    ]
-    if not lines:
-        return False
-
-    # Any actual scan pattern disqualifies the whole command. Broad-bash and
-    # coverage patterns already match anywhere in a line (so `grep -R`/`find .`
-    # hidden inside a tmux arg is caught).
-    #
-    # F3: match against quote-aware surfaces, not the raw line, so inert
-    # quoted data (echo/printf payloads, JSON, commit messages) can't be
-    # mistaken for a scan -- but a quoted argument that a command-executor
-    # (tmux new-session/send-keys, sh/bash -c, eval, xargs, ...) actually
-    # runs is still recursed into and checked for real. command_scan_surfaces
-    # emits the recursed body as its OWN surface (leader stripped), so
-    # is_exploratory_rg's line-leading `rg` check sees "rg foo ." directly
-    # for e.g. `tmux new-session -d 'rg foo .'` -- no separate blunt
-    # "rg anywhere" catch-all needed (a prior version of this check used one
-    # and it false-positived on unrelated text like `which rg fd rtk`).
-    #
-    # R3: matches_broad_bash/is_exploratory_rg are evaluated PER SHELL
-    # SEGMENT, not against the whole surface -- otherwise a scan smuggled
-    # after a wait-loop's leading `sleep` (e.g.
-    # `while true; do sleep 5; rg -n foo .; done`) is invisible to
-    # is_exploratory_rg (only fires on a segment-leading "rg ") and slips
-    # through, since the WHOLE surface starts with "while", not "rg".
-    # matches_any_broad_pattern stays on the whole (unsegmented) surface:
-    # is_xargs_cat_chain's pattern needs to see the literal `|` that
-    # segment-splitting would otherwise consume as a delimiter.
-    for line in lines:
-        for surface in command_scan_surfaces(line):
-            if matches_any_broad_pattern(surface):
-                return False
-            for segment in _shell_segments(surface):
-                if matches_broad_bash(segment):
-                    return False
-                if is_exploratory_rg(segment, repo):
-                    return False
-
-    first = lines[0]
-    if _NON_DISCOVERY_LEADING_RE.match(first):
-        return True
-    if _WAIT_LOOP_LEADING_RE.match(first) and re.search(r"\bsleep\b", " ".join(lines)):
-        return True
-    return False
-
-
 def classify_bash_command(lines: list[str], repo: Path) -> tuple[bool, bool, bool, bool]:
     """Quote-aware broad/catastrophic classification for a Bash command's
     lines. Returns (catastrophic, broad_hit, rg_hit, coverage_hit).
-
-    Shared by the pending-gate (F2) and non-pending paths, plus the
-    helper-command continuation-line (N2) check, so all three apply
-    identical policy to identical (quote-aware, F3) input.
     """
     surfaces: list[str] = []
     for line in lines:
@@ -691,8 +602,6 @@ def handle_broad_bash(
     repo: Path,
     lines: list[str],
     first_line: str,
-    *,
-    pending: bool,
 ) -> int:
     """Classify a Bash command's lines and apply the broad/catastrophic
     policy.
@@ -705,11 +614,13 @@ def handle_broad_bash(
     Grep, Read, symlink guard), not just this Bash-specific path. This
     function is now pure policy.
 
-    Used by both the pending (F2) and non-pending gate paths so they share
-    one policy: catastrophic -> hard block; broad/exploratory-rg/coverage
-    hit -> warn-once-then-block while NOT pending, or block immediately
-    while pending (no warn-grace, since the pending gate's whole purpose is
-    "helper first"); anything else -> allow.
+    Policy: catastrophic -> hard block; broad/exploratory-rg/coverage hit ->
+    warn-once-then-block (first attempt this session warns and allows,
+    letting the agent pivot; a repeat attempt hard-blocks); anything else ->
+    allow. (A "pending" first-move discovery gate used to apply a stricter
+    immediate-block variant of this policy with no warn-grace; it was
+    removed 2026-09-28 as dead code once nothing set the pending marker --
+    see references/worktree-deploy-sync.md.)
     """
     catastrophic, broad_hit, rg_hit, coverage_hit = classify_bash_command(lines, repo)
     if not (broad_hit or rg_hit or coverage_hit):
@@ -722,9 +633,6 @@ def handle_broad_bash(
             helper_hint=discovery_hint(),
         )
         return block(msg, data, extra_meta={"policy": "catastrophic"})
-
-    if pending:
-        return block(helper_required_reason(), data, extra_meta={"policy": "pending_gate"})
 
     # B3 first attempt → warn + measure, allow. B3 repeat → block.
     sk = session_key(data)
@@ -873,12 +781,7 @@ def main() -> int:
         tool_name = data.get("tool_name")
         tool_input = data.get("tool_input", {}) or {}
         repo = repo_root()
-        pending = is_pending(repo, session_key(data))
 
-        # R7(a): Bash handling unified into one call site (was duplicated
-        # under the pending and non-pending branches separately), so
-        # find_symlink_guard is checked exactly once per invocation instead
-        # of once per branch.
         if tool_name == "Bash":
             command = tool_input.get("command", "") or ""
             first_line = command.split("\n")[0]
@@ -887,59 +790,9 @@ def main() -> int:
             if guard_msg:
                 return block(guard_msg, data, extra_meta={"policy": "symlink_root_guard"})
 
-            if pending:
-                # C2: the helper must LEAD a shell segment of the first
-                # line, not merely appear anywhere in it via a bare
-                # .search() -- otherwise `token-reduce-paths auth && find /
-                # -name x` ran the scan for real (its rest_lines was empty:
-                # everything was on ONE line, so the N2 continuation check
-                # below never even saw the `find /` segment), and `echo
-                # token-reduce-paths; find / -name x` was credited as
-                # compliance without the helper ever having run at all.
-                # _strip_leading_wrappers reuses the same wrapper-stripping
-                # _bare_command_matches uses, so `uv run token-reduce-paths
-                # ...` (and other wrapped invocations) still count.
-                first_line_segments = _shell_segments(first_line)
-                leading_segment = (
-                    _strip_leading_wrappers(first_line_segments[0]) if first_line_segments else ""
-                )
-                if HELPER_COMMAND_RE.search(leading_segment):
-                    # N2 fix: classify every OTHER segment of this line
-                    # (not just continuation lines) for broad patterns
-                    # before allowing/clearing pending -- any hit blocks.
-                    rest_segments = first_line_segments[1:]
-                    rest_lines = [line_.strip() for line_ in command.split("\n")[1:] if line_.strip() and line_.strip() != "\\"]
-                    _, rest_broad, rest_rg, rest_coverage = classify_bash_command(
-                        rest_segments + rest_lines, repo
-                    )
-                    if rest_broad or rest_rg or rest_coverage:
-                        return block(helper_required_reason(), data)
-                    # F1 follow-up: the helper actually ran clean -- clear this
-                    # session's pending marker so the very next Grep/Glob/Read
-                    # isn't gated again (previously pending survived a
-                    # compliant helper call and kept blocking follow-ups).
-                    clear_pending(repo, session_key(data))
-                    return 0
-                # Session/tmux control, message relays, and wait/poll loops are
-                # not repo discovery — never gate them (they carry no scan, which
-                # is_non_discovery_command verifies). This is the fix for the gate
-                # over-blocking tmux capture-pane, session-handoff send, and
-                # `until ...; do sleep; done` wait loops.
-                if is_non_discovery_command(command, repo):
-                    return 0
-                # F2: apply the SAME broad/catastrophic classification as the
-                # non-pending path instead of a blanket default-block, so
-                # targeted commands (which, ls <dir>, stat, date, cat <file>)
-                # pass while pending and only genuine scans still block.
-                lines = [line_.rstrip("\\").strip() for line_ in command.split("\n") if line_.strip() and line_.strip() != "\\"]
-                lines.extend(
-                    inner for inner in (uv_run_inner_command(line) for line in list(lines)) if inner
-                )
-                return handle_broad_bash(data, repo, lines, first_line, pending=True)
-
-            # Non-pending. Safe orchestrators: may carry broad-looking
-            # strings as arguments. N1 fix: python3 -c/-m must fall through
-            # to coverage checks; only plain `python3 script.py` is safe.
+            # Safe orchestrators: may carry broad-looking strings as
+            # arguments. N1 fix: python3 -c/-m must fall through to coverage
+            # checks; only plain `python3 script.py` is safe.
             if _PYTHON_MODULE_OR_COMMAND_RE.match(first_line) or uv_run_needs_scan(first_line):
                 pass  # fall through to broad-pattern checks below
             elif _SAFE_TOOL_RE.match(first_line):
@@ -949,34 +802,7 @@ def main() -> int:
             lines.extend(
                 inner for inner in (uv_run_inner_command(line) for line in list(lines)) if inner
             )
-            return handle_broad_bash(data, repo, lines, first_line, pending=False)
-
-        if pending:
-            # F10: apply the SAME targeted-vs-exploratory classification the
-            # non-pending path already uses for Glob/Grep, instead of a
-            # blanket block. Before this fix, `Grep(path="/exact/file.py",
-            # pattern="foo")` -- an ordinary, specific grep on a known file --
-            # was unconditionally blocked while a session's prompt-triggered
-            # "pending" marker was set, regardless of how targeted the call
-            # actually was (Read already got this treatment; Glob/Grep did
-            # not). Opus 5.5 guidance: targeted work (a known file, a
-            # specific grep) must never be blocked -- only genuinely
-            # exploratory Glob/Grep calls should still gate on discovery.
-            if tool_name == "Read":
-                file_path = str(tool_input.get("file_path", "") or "")
-                if file_path.startswith("/") and not any(c in file_path for c in "*?["):
-                    return 0
-                return block(helper_required_reason(), data)
-            if tool_name == "Glob":
-                pattern = tool_input.get("pattern", "") or ""
-                if is_broad_glob(pattern) or is_exploratory_glob(pattern):
-                    return block(helper_required_reason(), data)
-                return 0
-            if tool_name == "Grep":
-                if is_exploratory_grep(tool_input, repo):
-                    return block(helper_required_reason(), data)
-                return 0
-            return 0
+            return handle_broad_bash(data, repo, lines, first_line)
 
         if tool_name == "Glob":
             pattern = tool_input.get("pattern", "") or ""

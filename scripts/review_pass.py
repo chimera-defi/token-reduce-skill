@@ -396,7 +396,7 @@ class HookCopy:
 
 @dataclass
 class StepResult:
-    hook: str  # "enforce" | "mark_pending"
+    hook: str  # "enforce"
     ok: bool  # subprocess executed (infra-level, not a pass/fail verdict)
     returncode: int | None
     stdout: str
@@ -445,103 +445,54 @@ def _run_enforce(copy: HookCopy, root: Path, command: str, session_id: str, *, t
     return StepResult(hook="enforce", ok=r["ok"], returncode=r["returncode"], stdout=r["stdout"], error=r["error"])
 
 
-_MARK_PENDING_CODE = (
-    "import sys\n"
-    "sys.path.insert(0, sys.argv[1])\n"
-    "from pathlib import Path\n"
-    "from token_reduce_state import mark_pending, session_key\n"
-    "mark_pending(Path(sys.argv[2]), session_key({'session_id': sys.argv[3]}), sys.argv[4])\n"
-)
-
-
-def _mark_pending_for_copy(copy: HookCopy, root: Path, prompt: str, session_id: str) -> StepResult:
-    """Set the pending marker directly via THIS copy's own token_reduce_state
-    module (PYTHONPATH anchored at copy.root, mirroring _run_script), instead
-    of routing through the retired remind-token-reduce.py hook.
-
-    Historically S1-S3 ran the remind hook with a discovery prompt on stdin
-    as their pending-state setup step; classifying the prompt and calling
-    mark_pending() was a side effect of that hook. The reminder hook was
-    retired 2026-09-28 (operator ruling -- see
-    references/worktree-deploy-sync.md) and is now a no-op shim, so it no
-    longer sets pending. The pending-gate machinery itself
-    (mark_pending/is_pending/the enforce hook's `if pending:` branch) is
-    untouched in this repo -- a separate PR removes it -- and S1-S3 exist to
-    exercise exactly that machinery, so call mark_pending directly instead of
-    through the hook that used to trigger it as a side effect.
-    """
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-c", _MARK_PENDING_CODE, str(copy.root), str(root), session_id, prompt],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return StepResult(hook="mark_pending", ok=False, returncode=None, stdout="", error=str(exc))
-    ok = proc.returncode == 0
-    return StepResult(
-        hook="mark_pending",
-        ok=ok,
-        returncode=proc.returncode,
-        stdout=proc.stdout,
-        error=None if ok else (proc.stderr.strip()[:200] or f"exit {proc.returncode}"),
-    )
-
-
-DISCOVERY_PROMPT = "where is the auth hook defined in this repo"
-
-
 def _fail(sid: str, desc: str, detail: str, steps: list[StepResult]) -> tuple[ScenarioResult, list[StepResult]]:
     return ScenarioResult(id=sid, description=desc, passed=False, detail=detail), steps
 
 
 def _scenario_s1(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S1", "cold-start: discovery prompt then `which rg` MUST allow"
+    sid, desc = "S1", "ordinary command with no state: `which rg` MUST allow"
     with _scratch_repo() as root:
         session_id = "hc-s1"
-        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
-        if not setup.ok:
-            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
         enforce = _run_enforce(copy, root, "which rg", session_id)
-        steps = [setup, enforce]
+        steps = [enforce]
         if not enforce.ok:
             return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
         passed = enforce.returncode == 0
-        detail = f"`which rg` after discovery prompt -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
+        detail = f"`which rg` with no state -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
         return ScenarioResult(sid, desc, passed, detail), steps
 
 
 def _scenario_s2(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S2", "pending + targeted `ls -la <specific dir>` MUST allow"
+    sid, desc = "S2", "targeted `ls -la <specific dir>` MUST allow"
     with _scratch_repo() as root:
         session_id = "hc-s2"
         (root / "scripts").mkdir(exist_ok=True)
-        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
-        if not setup.ok:
-            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
         enforce = _run_enforce(copy, root, "ls -la scripts", session_id)
-        steps = [setup, enforce]
+        steps = [enforce]
         if not enforce.ok:
             return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
         passed = enforce.returncode == 0
-        detail = f"`ls -la scripts` while pending -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
+        detail = f"`ls -la scripts` -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
         return ScenarioResult(sid, desc, passed, detail), steps
 
 
 def _scenario_s3(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S3", "pending + broad `grep -R foo .` MUST block with a helper hint"
+    sid, desc = (
+        "S3",
+        "broad `grep -R foo .` MUST warn-and-allow once, then block with a helper hint on repeat",
+    )
     with _scratch_repo() as root:
         session_id = "hc-s3"
-        setup = _mark_pending_for_copy(copy, root, DISCOVERY_PROMPT, session_id)
-        if not setup.ok:
-            return _fail(sid, desc, f"pending setup failed: {setup.error}", [setup])
-        enforce = _run_enforce(copy, root, "grep -R foo .", session_id)
-        steps = [setup, enforce]
-        if not enforce.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
+        first = _run_enforce(copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-a")
+        second = _run_enforce(copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-b")
+        steps = [first, second]
+        if not first.ok or not second.ok:
+            return _fail(sid, desc, f"enforce hook failed to execute: {first.error or second.error}", steps)
+        if first.returncode != 0:
+            return _fail(sid, desc, f"first attempt should warn-and-allow (rc=0), got rc={first.returncode}", steps)
+        enforce = second
         if enforce.returncode != 2:
-            return _fail(sid, desc, f"expected block (rc=2), got rc={enforce.returncode}", steps)
+            return _fail(sid, desc, f"expected repeat attempt to block (rc=2), got rc={enforce.returncode}", steps)
         try:
             decision = json.loads(enforce.stdout)
         except json.JSONDecodeError:
