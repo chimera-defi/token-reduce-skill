@@ -17,7 +17,7 @@ It is a high-level token orchestration kit that:
 
 - enforces low-cost discovery first
 - auto-routes between path/snippet/structural tiers
-- wires tool hooks that gate named anti-patterns (unbounded scans, whole-repo dumps) — ordinary targeted work (a known file, a specific grep, git/gh, tests) is never blocked, pending or not; see `references/opus55-anti-patterns.md`
+- wires tool hooks that gate named anti-patterns (unbounded scans, whole-repo dumps) — ordinary targeted work (a known file, a specific grep, git/gh, tests) is never blocked; see `references/opus55-anti-patterns.md`
 - integrates a dependency suite and operational benchmarking/review gates
 - reports warning-only AI coding cost governance gaps against the Databricks cost playbook
 - turns workspace telemetry into helper-usage SLOs and repo-level adoption interventions
