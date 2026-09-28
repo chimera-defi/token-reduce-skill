@@ -5,9 +5,9 @@ This hook used to classify UserPromptSubmit prompts and inject a
 TOKEN-REDUCE reminder (and set the PreToolUse enforcer's "pending" marker)
 for discovery-shaped prompts. It was retired: telemetry showed 93% of its
 firings were on harness-generated turns (task notifications, compaction
-summaries, slash-command wrappers, etc.), and the false positives on real
-human prompts had already been tightened out of the PreToolUse enforcer
-directly, making the separate reminder redundant. See
+summaries, slash-command wrappers, etc.), each false positive tightened the
+PreToolUse enforcer via the pending marker, and its advice duplicated the
+CLAUDE.md guidance adopted in PR #92. See
 references/worktree-deploy-sync.md for the consumer-coordination note, and
 references/architecture.md / references/token-reduction-guide.md for the
 current (enforcer-only) flow.
