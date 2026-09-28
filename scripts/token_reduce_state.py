@@ -23,12 +23,13 @@ TRIGGERS = (
     r"\breview\b.{0,60}\b(repo|codebase|entire|whole|skill|hook|script)\b",
     r"\bwhere\s+(is|are|does|do)\b",
     r"\bwhere.{0,20}\blive[s]?\b",
-    # Maintenance and improvement tasks on code/skills/hooks/scripts
-    r"\b(validate|check|verify)\b.{0,80}\b(skill|hook|script|code|file|package)\b",
-    r"\b(improve|fix|update|enhance|tighten)\b.{0,80}\b(skill|hook|script|file|code|routing|trigger|enforcement)\b",
     r"\bhow\s+(does|do|is)\b.{0,60}\b(work|used|structured|enforced|triggered)\b",
-    r"\bso\s+it'?s\s+actually\b",
-    r"\b(being\s+used|getting\s+used|actually\s+used)\b",
+    # Deliberately NOT triggers: maintenance verbs (validate/check/verify/
+    # improve/fix/update ... skill/hook/script/file/code) and vague phrasing
+    # ("being used", "so it's actually"). They describe targeted work on a
+    # known path, which must never be gated (PR #92), and in a 14-day
+    # transcript sample they drove most false positives -- largely on
+    # harness-generated task-notification turns quoting task descriptions.
 )
 
 
