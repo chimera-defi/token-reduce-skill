@@ -58,6 +58,52 @@ STOPWORDS = {
 }
 
 
+# Turns the harness (not a human) injects as a "user" prompt: background task
+# notifications, system reminders, slash-command wrappers and their stdout,
+# compaction summaries, /loop wakeups. These are never repo-discovery requests,
+# and their embedded task descriptions/results used to trip the classifier and
+# set the pending gate on every notification.
+HARNESS_TURN_RE = re.compile(
+    r"^\s*(?:"
+    r"<task-notification\b"
+    r"|<system-reminder\b"
+    r"|\[SYSTEM NOTIFICATION\b"
+    r"|<command-(?:name|message|args)\b"
+    r"|<local-command-"
+    r"|This session is being continued from a previous conversation"
+    r"|\[\d+ prior /loop wakeup"
+    r"|\[Image: "
+    r")",
+    re.IGNORECASE,
+)
+
+# Machine-generated blocks that can be embedded in (or wrap) a human prompt.
+# Only the text outside them is classified.
+EMBEDDED_BLOCK_RE = re.compile(
+    r"<(system-reminder|task-notification|pasted_content)\b[^>]*>.*?</\1\b[^>]*>",
+    re.IGNORECASE | re.DOTALL,
+)
+RELAY_WRAPPER_RE = re.compile(r"^\s*User:\s*<turn>|</turn>\s*$", re.IGNORECASE)
+
+# Beyond this, the remaining text is a brief or handoff, not a question; a
+# regex cannot tell broad discovery from targeted work in it, so stay silent.
+MAX_CLASSIFIABLE_CHARS = 500
+
+# Tokens that are identifiers (task ids, tool-use ids, hashes, dates), not topics.
+NOISE_TOKEN_RE = re.compile(r"^(?:toolu_\w+|[0-9a-f]{7,}|\S*\d{4,}\S*)$", re.IGNORECASE)
+
+
+def is_harness_turn(prompt: str) -> bool:
+    return bool(HARNESS_TURN_RE.match(prompt))
+
+
+def human_text(prompt: str) -> str:
+    """The part of the prompt a human plausibly typed: harness blocks stripped."""
+    text = EMBEDDED_BLOCK_RE.sub(" ", prompt)
+    text = RELAY_WRAPPER_RE.sub(" ", text)
+    return text.strip()
+
+
 def extract_prompt(data: dict) -> str:
     for key in ("user_prompt", "prompt", "text", "input"):
         value = data.get(key)
@@ -89,6 +135,8 @@ def topic_words(prompt: str, limit: int = 8) -> str:
         if lowered in STOPWORDS:
             continue
         if len(token) < 2:
+            continue
+        if NOISE_TOKEN_RE.match(token):
             continue
         if lowered in seen:
             continue
@@ -136,10 +184,16 @@ def main() -> int:
         return 0
 
     try:
-        prompt = extract_prompt(data)
+        raw_prompt = extract_prompt(data)
         repo = repo_root()
         key = session_key(data)
-        if not prompt_requires_helper(prompt):
+        prompt = "" if is_harness_turn(raw_prompt) else human_text(raw_prompt)
+        if not prompt:
+            # Harness-generated turn: no human input arrived, so neither emit a
+            # reminder nor touch the pending marker the real prompt set.
+            record_event(repo, event="harness_turn_skipped", source="hook", tool="remind-token-reduce")
+            return 0
+        if len(prompt) > MAX_CLASSIFIABLE_CHARS or not prompt_requires_helper(prompt):
             clear_pending(repo, key)
             record_event(repo, event="pending_cleared", source="hook", tool="remind-token-reduce")
             return 0
