@@ -84,23 +84,6 @@ def scratch_repo(tmp_path: Path) -> Path:
     return other
 
 
-def test_remind_hook_fails_open_when_script_is_unreachable(scratch_repo: Path) -> None:
-    """CLAUDE_PROJECT_DIR pointing at a repo where the script is missing must not block prompts."""
-    command = _hook_command("UserPromptSubmit", None, "remind-token-reduce.py")
-
-    fake_project = scratch_repo / "fake-project"
-    (fake_project / "scripts").mkdir(parents=True)
-    # Deliberately do NOT create remind-token-reduce.py -- simulates the
-    # exact wedge trigger (uv "Failed to spawn").
-
-    result = _run_shell(command, cwd=scratch_repo, project_dir=fake_project, stdin="{}")
-
-    assert result.returncode == 0, (
-        f"remind hook must fail open when its script is unreachable, "
-        f"got returncode={result.returncode} stderr={result.stderr!r}"
-    )
-
-
 def test_enforce_hook_fails_open_when_script_is_unreachable(scratch_repo: Path) -> None:
     """Same wedge trigger for the PreToolUse hook must not block tool calls."""
     command = _hook_command("PreToolUse", "Bash", "enforce-token-reduce-first.py")
@@ -138,23 +121,6 @@ def test_enforce_hook_fails_open_when_script_crashes(scratch_repo: Path) -> None
         f"got returncode={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
     )
     assert "decision" not in result.stdout
-
-
-def test_remind_hook_fails_open_when_script_crashes(scratch_repo: Path) -> None:
-    command = _hook_command("UserPromptSubmit", None, "remind-token-reduce.py")
-
-    fake_project = scratch_repo / "fake-project"
-    (fake_project / "scripts").mkdir(parents=True)
-    (fake_project / "scripts" / "remind-token-reduce.py").write_text(
-        "raise RuntimeError('deliberately broken for the fail-open regression test')\n"
-    )
-
-    result = _run_shell(command, cwd=scratch_repo, project_dir=fake_project, stdin="{}")
-
-    assert result.returncode == 0, (
-        f"remind hook must fail open when the script crashes, "
-        f"got returncode={result.returncode} stderr={result.stderr!r}"
-    )
 
 
 def test_enforce_hook_fails_open_on_cwd_drift_alone(scratch_repo: Path) -> None:
@@ -311,74 +277,3 @@ def test_enforce_script_exits_zero_when_runtime_helper_throws(tmp_path: Path) ->
     assert "decision" not in result.stdout
 
 
-REMIND_SCRIPT = REPO_ROOT / "scripts" / "remind-token-reduce.py"
-
-_REMIND_HELPER_NAMES = {
-    "token_reduce_state": [
-        "clear_pending",
-        "discovery_hint",
-        "mark_pending",
-        "prompt_requires_helper",
-        "repo_root",
-        "session_key",
-    ],
-    "token_reduce_telemetry": ["record_event"],
-}
-
-
-def _write_remind_stub_helpers(dest: Path, *, raising: str | None = None) -> None:
-    for module, names in _REMIND_HELPER_NAMES.items():
-        lines = []
-        for name in names:
-            if name == raising:
-                lines.append(
-                    f"def {name}(*a, **k):\n"
-                    f"    raise RuntimeError('stub {name} deliberately raising')\n"
-                )
-            else:
-                lines.append(f"def {name}(*a, **k):\n    return None\n")
-        (dest / f"{module}.py").write_text("\n".join(lines))
-
-
-def test_remind_script_exits_zero_when_helper_imports_missing(tmp_path: Path) -> None:
-    """Partial deploy for the UserPromptSubmit hook: the real script must exit 0
-    at the Python level even with no helper modules present."""
-    isolated = tmp_path / "scripts"
-    isolated.mkdir()
-    shutil.copy(REMIND_SCRIPT, isolated / "remind-token-reduce.py")
-
-    result = subprocess.run(
-        ["python3", str(isolated / "remind-token-reduce.py")],
-        input="{}",
-        text=True,
-        capture_output=True,
-        cwd=str(isolated),
-        timeout=30,
-    )
-    assert result.returncode == 0, (
-        f"remind script must exit 0 when helper imports are missing, "
-        f"got returncode={result.returncode} stderr={result.stderr!r}"
-    )
-
-
-def test_remind_script_exits_zero_when_runtime_helper_throws(tmp_path: Path) -> None:
-    """A helper raising while the remind body runs (and again inside the error
-    handler) must still fail open, not surface as exit 1."""
-    isolated = tmp_path / "scripts"
-    isolated.mkdir()
-    shutil.copy(REMIND_SCRIPT, isolated / "remind-token-reduce.py")
-    _write_remind_stub_helpers(isolated, raising="repo_root")
-
-    payload = json.dumps({"session_id": "s1", "prompt": "where is the auth module"})
-    result = subprocess.run(
-        ["python3", str(isolated / "remind-token-reduce.py")],
-        input=payload,
-        text=True,
-        capture_output=True,
-        cwd=str(isolated),
-        timeout=30,
-    )
-    assert result.returncode == 0, (
-        f"remind script must exit 0 when a helper throws at runtime, "
-        f"got returncode={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
-    )

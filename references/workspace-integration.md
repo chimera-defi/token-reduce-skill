@@ -23,19 +23,13 @@ Two hook layers work together:
 - **token-reduce hooks** block wasteful discovery commands before they fire
 - **RTK hook** (`~/.claude/hooks/rtk-rewrite.sh`) compresses output of commands that do run — install with `scripts/setup.sh` or `rtk init -g`
 
+There is no `UserPromptSubmit` reminder hook to wire up (it was retired 2026-09-28 as
+redundant with the `PreToolUse` enforcer below — see `references/worktree-deploy-sync.md`).
+Only `PreToolUse` needs wiring:
+
 ```json
 {
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/token-reduce-skill/scripts/remind-token-reduce.py"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

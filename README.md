@@ -173,8 +173,9 @@ For broad discovery — an audit, a repo-wide search, tracing something across m
 delegate instead of running a bigger manual scan: `Agent(subagent_type="Explore", ...)` for
 read-only search, or `subagent_type="builder"` / `model="sonnet"` for implementation. The
 adaptive router recommends this automatically above `SUBAGENT_CANDIDATE_THRESHOLD` (5)
-candidate files or on broad-scope query cues; the reminder and block hooks also name it
-directly. See `references/subagent-and-brain-integration.md`.
+candidate files or on broad-scope query cues; the enforcer's block messages also name it
+directly. (There is no separate `UserPromptSubmit` reminder hook anymore — retired
+2026-09-28.) See `references/subagent-and-brain-integration.md`.
 
 ## Benchmarks And Regression Guard
 

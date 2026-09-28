@@ -16,9 +16,10 @@ These tests exercise:
      unlike Read, which already had this exemption).
   3. Genuinely broad/exploratory Glob/Grep still blocks while pending --
      control, proving the F10 fix narrows the gate rather than removing it.
-  4. The UserPromptSubmit reminder concretely surfaces the subagent-delegation
-     path (Agent/Explore) for a broad-discovery-looking prompt, not just the
-     CLI helper.
+
+(A former section 4 exercised the UserPromptSubmit reminder hook's
+subagent-delegation wording. That hook was retired 2026-09-28 -- see
+references/worktree-deploy-sync.md -- and removed along with its tests.)
 """
 from __future__ import annotations
 
@@ -32,7 +33,6 @@ import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 HOOK = SCRIPTS_DIR / "enforce-token-reduce-first.py"
-REMIND_HOOK = SCRIPTS_DIR / "remind-token-reduce.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from token_reduce_state import mark_pending, session_key  # noqa: E402
@@ -200,50 +200,3 @@ def test_exploratory_grep_no_path_still_blocks_while_pending(repo: Path) -> None
     }
     result = _run_hook(payload, repo)
     assert result.returncode == 2, "an exploratory Grep with no path must still gate while pending"
-
-
-# --------------------------------------------------------------------------- #
-# 4. Reminder hook surfaces the subagent-delegation path concretely.
-# --------------------------------------------------------------------------- #
-
-
-def _run_remind_hook(payload: dict, repo_root: Path) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
-    env["PYTHONPATH"] = str(SCRIPTS_DIR) + os.pathsep + env.get("PYTHONPATH", "")
-    return subprocess.run(
-        [sys.executable, str(REMIND_HOOK)],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        env=env,
-        cwd=str(repo_root),
-        timeout=30,
-    )
-
-
-def test_broad_discovery_prompt_reminder_mentions_subagent(repo: Path) -> None:
-    payload = {
-        "session_id": "sess-remind-subagent",
-        "prompt": "review the entire repo and find where the auth hook is defined",
-    }
-    result = _run_remind_hook(payload, repo)
-    assert result.returncode == 0, result.stdout
-
-    body = json.loads(result.stdout)
-    message = body.get("systemMessage", "")
-    assert "Agent(" in message, f"reminder should name the Agent tool: {message!r}"
-    assert "Explore" in message, f"reminder should name the Explore subagent: {message!r}"
-    assert "subagent" in message.lower()
-    # No ritual "MUST be a Bash discovery call" framing.
-    assert "MUST be a Bash" not in message
-
-
-def test_non_discovery_prompt_gets_no_reminder(repo: Path) -> None:
-    payload = {
-        "session_id": "sess-remind-none",
-        "prompt": "fix the typo on line 42 of scripts/foo.py",
-    }
-    result = _run_remind_hook(payload, repo)
-    assert result.returncode == 0, result.stdout
-    assert result.stdout.strip() == "" or "systemMessage" not in result.stdout
