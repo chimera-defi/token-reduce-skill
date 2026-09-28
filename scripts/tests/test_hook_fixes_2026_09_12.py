@@ -2,10 +2,10 @@
 
 Root causes fixed (see the task brief this file accompanies):
 
-  RC1 (cold-start block storm): mark_pending() cross-poisoned every session
-      in the repo via a duplicate "default.json" write; the pending gate
-      then default-blocked almost all Bash regardless of cost; pending
-      survived a compliant helper call.
+  RC1 (cold-start block storm, historical): mark_pending() cross-poisoned
+      every session in the repo via a duplicate "default.json" write; the
+      pending gate then default-blocked almost all Bash regardless of cost;
+      pending survived a compliant helper call.
   RC2 (broad-scan counter too aggressive): raw find-root regex ignored
       -maxdepth/specificity; broad patterns matched inside quoted/inert
       text; dual hook-wiring layers double-counted a single tool call.
@@ -14,9 +14,14 @@ Root causes fixed (see the task brief this file accompanies):
       files.
 
 Fixes, by id:
-  F1 - token_reduce_state: no cross-session pending poisoning.
-  F2 - pending gate: same broad/catastrophic classification as non-pending,
-       not a blanket default-block.
+  F1 - (removed 2026-09-28 along with the pending gate itself -- was
+       token_reduce_state: no cross-session pending poisoning.)
+  F2 - broad/catastrophic classification for targeted vs. exploratory Bash.
+       (Originally "the pending gate applies the same classification as
+       non-pending, not a blanket default-block" -- the pending gate was
+       removed 2026-09-28 as dead code once nothing set the marker, see
+       references/worktree-deploy-sync.md, so this classification is now
+       simply the hook's only behavior.)
   F3 - quote-aware broad-pattern matching with command-executor recursion.
   F4 - cost-aware `find -maxdepth <=2 <specific-dir>` is not broad.
   F5 - double-run dedup keyed on tool_use_id (not raw command+time alone).
@@ -24,8 +29,11 @@ Fixes, by id:
   F7 - suggest_rewrite's find->rg rewrite preserves results (--hidden --no-ignore).
   F8 - exit-path / stdout-content audit.
   F9 - TOKEN_REDUCE_ENFORCE_MODE=warn downgrades blocks to telemetry-only.
-  Helper-clears-pending: a clean helper call while pending clears state for
-       that session so the next Grep/Glob/Read isn't gated again.
+  (Helper-clears-pending, C2's "helper must lead segment", and R3's
+  wait-loop-smuggle guard were all pending-gate-only mechanisms, removed
+  2026-09-28 along with the gate; their non-pending assertions, where any
+  existed, are preserved above and in TestF3QuoteAwareBroadMatching /
+  TestR2CompoundSegmentClassification.)
 """
 from __future__ import annotations
 
@@ -120,53 +128,20 @@ def _events(repo_root: Path) -> list[dict]:
 
 
 # --------------------------------------------------------------------------- #
-# F1 - no cross-session pending poisoning
+# F2 - broad/catastrophic classification (targeted vs. genuine scans)
 # --------------------------------------------------------------------------- #
+#
+# F1 (no cross-session pending poisoning) and the "helper clears pending"
+# behavior were retired along with the PreToolUse enforcer's "pending"
+# first-move discovery gate itself (removed 2026-09-28 as dead code once
+# nothing set the marker -- see references/worktree-deploy-sync.md). F2's
+# classification -- targeted commands (which/date/ls <dir>/cat <file>/stat
+# <file>) pass, catastrophic scans still block -- is unconditional today, so
+# the tests below simply drop the pending setup and assert the same
+# outcomes with no state at all.
 
 
-class TestF1CrossSessionPending:
-    def test_session_a_pending_does_not_poison_session_b(self, tmp_path: Path) -> None:
-        trs.mark_pending(tmp_path, "session-a", "explore the repo for hooks")
-        assert trs.is_pending(tmp_path, "session-a") is True
-        assert trs.is_pending(tmp_path, "session-b") is False
-
-    def test_id_less_payload_still_works(self, tmp_path: Path) -> None:
-        # A payload with no session identity normalizes to key "default"
-        # both when marking and when checking -- so it still works without
-        # any cross-session special-casing.
-        trs.mark_pending(tmp_path, "default", "explore the repo for hooks")
-        assert trs.is_pending(tmp_path, "default") is True
-
-    def test_mark_pending_does_not_write_default_json_for_real_session(self, tmp_path: Path) -> None:
-        trs.mark_pending(tmp_path, "session-a", "explore the repo for hooks")
-        assert not trs.state_path(tmp_path, "default").exists()
-
-    def test_clear_pending_scoped_to_key_only(self, tmp_path: Path) -> None:
-        trs.mark_pending(tmp_path, "session-a", "explore the repo")
-        trs.mark_pending(tmp_path, "default", "explore the repo")
-        trs.clear_pending(tmp_path, "session-a")
-        assert trs.is_pending(tmp_path, "session-a") is False
-        # Clearing session-a must not wipe another id-less session's marker.
-        assert trs.is_pending(tmp_path, "default") is True
-
-    def test_live_hook_session_a_prompt_does_not_gate_session_b_bash(self, repo: Path) -> None:
-        """End-to-end: session A's UserPromptSubmit marks pending; session B's
-        PreToolUse for an unrelated Bash command must not be gated by it."""
-        trs.mark_pending(repo, "live-session-a", "where is the auth hook defined")
-        result = _run_hook(_bash_payload("echo hello", session_id="live-session-b"), repo)
-        assert result.returncode == 0, result.stdout
-        assert result.stdout.strip() == ""
-
-
-# --------------------------------------------------------------------------- #
-# F2 - pending gate applies the same broad/catastrophic classification
-# --------------------------------------------------------------------------- #
-
-
-class TestF2PendingGateClassification:
-    def _make_pending(self, repo: Path, session_id: str) -> None:
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-
+class TestF2BashClassification:
     @pytest.mark.parametrize(
         "command",
         [
@@ -174,39 +149,34 @@ class TestF2PendingGateClassification:
             "date",
         ],
     )
-    def test_targeted_commands_pass_while_pending(self, repo: Path, command: str) -> None:
+    def test_targeted_commands_pass(self, repo: Path, command: str) -> None:
         session_id = "sess-f2-targeted"
-        self._make_pending(repo, session_id)
         result = _run_hook(_bash_payload(command, session_id=session_id), repo)
-        assert result.returncode == 0, f"{command!r} should pass while pending, got {result.stdout!r}"
+        assert result.returncode == 0, f"{command!r} should pass, got {result.stdout!r}"
         assert result.stdout.strip() == ""
 
-    def test_ls_specific_dir_passes_while_pending(self, repo: Path) -> None:
+    def test_ls_specific_dir_passes(self, repo: Path) -> None:
         session_id = "sess-f2-ls-dir"
-        self._make_pending(repo, session_id)
         (repo / "scripts").mkdir(exist_ok=True)
         result = _run_hook(_bash_payload("ls -la scripts", session_id=session_id), repo)
         assert result.returncode == 0, result.stdout
 
-    def test_cat_specific_file_passes_while_pending(self, repo: Path) -> None:
+    def test_cat_specific_file_passes(self, repo: Path) -> None:
         session_id = "sess-f2-cat-file"
-        self._make_pending(repo, session_id)
         target = repo / "README.md"
         target.write_text("hello\n")
         result = _run_hook(_bash_payload("cat README.md", session_id=session_id), repo)
         assert result.returncode == 0, result.stdout
 
-    def test_stat_specific_file_passes_while_pending(self, repo: Path) -> None:
+    def test_stat_specific_file_passes(self, repo: Path) -> None:
         session_id = "sess-f2-stat-file"
-        self._make_pending(repo, session_id)
         target = repo / "README.md"
         target.write_text("hello\n")
         result = _run_hook(_bash_payload("stat README.md", session_id=session_id), repo)
         assert result.returncode == 0, result.stdout
 
-    def test_catastrophic_find_root_still_blocks_while_pending(self, repo: Path) -> None:
+    def test_catastrophic_find_root_still_blocks(self, repo: Path) -> None:
         session_id = "sess-f2-catastrophic"
-        self._make_pending(repo, session_id)
         result = _run_hook(_bash_payload("find / -name '*.py'", session_id=session_id), repo)
         assert result.returncode == 2
         decision = json.loads(result.stdout)
@@ -214,74 +184,6 @@ class TestF2PendingGateClassification:
         events = _events(repo)
         cata = [e for e in events if e.get("event") == "hook_block" and (e.get("meta") or {}).get("policy") == "catastrophic"]
         assert cata, events
-
-    def test_broad_but_noncatastrophic_blocks_immediately_while_pending_no_warn_grace(self, repo: Path) -> None:
-        """Unlike the non-pending path, pending gets no warn-once grace --
-        the very first broad attempt blocks outright."""
-        session_id = "sess-f2-no-grace"
-        self._make_pending(repo, session_id)
-        result = _run_hook(_bash_payload("tree .", session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-        decision = json.loads(result.stdout)
-        assert decision["decision"] == "block"
-
-
-# --------------------------------------------------------------------------- #
-# Helper-clears-pending
-# --------------------------------------------------------------------------- #
-
-
-class TestHelperClearsPending:
-    def test_clean_helper_call_clears_pending_for_session(self, repo: Path) -> None:
-        session_id = "sess-helper-clears"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined")
-        assert trs.is_pending(repo, session_id) is True
-
-        result = _run_hook(
-            _bash_payload("./scripts/token-reduce-paths.sh auth hook", session_id=session_id), repo
-        )
-        assert result.returncode == 0, result.stdout
-        assert trs.is_pending(repo, session_id) is False
-
-    def test_next_read_allowed_after_clean_helper_call(self, repo: Path) -> None:
-        session_id = "sess-helper-clears-read"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined")
-        helper_result = _run_hook(
-            _bash_payload("./scripts/token-reduce-paths.sh auth hook", session_id=session_id), repo
-        )
-        assert helper_result.returncode == 0
-
-        target = repo / "auth.py"
-        target.write_text("# auth hook\n")
-        read_payload = {
-            "session_id": session_id,
-            "tool_name": "Read",
-            "tool_input": {"file_path": str(target)},
-        }
-        read_result = _run_hook(read_payload, repo)
-        assert read_result.returncode == 0, read_result.stdout
-
-        grep_payload = {
-            "session_id": session_id,
-            "tool_name": "Grep",
-            "tool_input": {"pattern": "auth", "path": str(target)},
-        }
-        grep_result = _run_hook(grep_payload, repo)
-        assert grep_result.returncode == 0, grep_result.stdout
-
-    def test_dirty_helper_call_does_not_clear_pending(self, repo: Path) -> None:
-        """N2 control: a helper call whose continuation line smuggles a scan
-        must still block, and must NOT clear pending."""
-        session_id = "sess-helper-dirty"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined")
-        result = _run_hook(
-            _bash_payload(
-                "./scripts/token-reduce-paths.sh auth\nfind / -name '*.py'", session_id=session_id
-            ),
-            repo,
-        )
-        assert result.returncode == 2
-        assert trs.is_pending(repo, session_id) is True
 
 
 # --------------------------------------------------------------------------- #
@@ -377,11 +279,10 @@ class TestF3FollowupFdTreeCommandPosition:
             "echo tree",
         ],
     )
-    def test_argument_position_passes_pending_gate_live(self, repo: Path, command: str) -> None:
+    def test_argument_position_passes_live(self, repo: Path, command: str) -> None:
         session_id = f"sess-f3-followup-{hash(command)}"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
         result = _run_hook(_bash_payload(command, session_id=session_id), repo)
-        assert result.returncode == 0, f"{command!r} should pass while pending, got {result.stdout!r}"
+        assert result.returncode == 0, f"{command!r} should pass, got {result.stdout!r}"
         assert result.stdout.strip() == ""
         assert trs.broad_attempt_count(repo, session_id) == 0
 
@@ -395,11 +296,12 @@ class TestF3FollowupFdTreeCommandPosition:
             "cd y && fd",
         ],
     )
-    def test_command_position_still_blocks_pending_gate_live(self, repo: Path, command: str) -> None:
+    def test_command_position_still_blocks_after_repeat_live(self, repo: Path, command: str) -> None:
         session_id = f"sess-f3-followup-block-{hash(command)}"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        result = _run_hook(_bash_payload(command, session_id=session_id), repo)
-        assert result.returncode == 2, f"{command!r} should still block while pending, got {result.stdout!r}"
+        first = _run_hook(_bash_payload(command, session_id=session_id), repo)
+        assert first.returncode == 0, f"{command!r} first attempt should warn-and-allow, got {first.stdout!r}"
+        second = _run_hook(_bash_payload(command, session_id=session_id), repo)
+        assert second.returncode == 2, f"{command!r} repeat attempt should block, got {second.stdout!r}"
 
 
 # --------------------------------------------------------------------------- #
@@ -758,12 +660,6 @@ class TestR2CompoundSegmentClassification:
         second = _run_hook(_bash_payload(self.COMPOUND_CMD, session_id=session_id), repo)
         assert second.returncode == 2, "repeat attempt must escalate to block"
 
-    def test_compound_find_blocks_immediately_while_pending(self, repo: Path) -> None:
-        session_id = "sess-r2-pending"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        result = _run_hook(_bash_payload(self.COMPOUND_CMD, session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-
     def test_both_segments_individually_maxdepth_bounded_is_not_broad(self, tmp_path: Path, repo: Path) -> None:
         """Control: segmentation must not become OVER-eager -- two
         genuinely cost-bounded finds joined by `;` must still pass clean."""
@@ -774,34 +670,6 @@ class TestR2CompoundSegmentClassification:
         cmd = f"find {a} -maxdepth 1; find {b} -maxdepth 1"
         _, broad, _, _ = enforce.classify_bash_command([cmd], repo)
         assert broad is False
-
-
-class TestR3PendingGateWaitLoopRgSmuggle:
-    """The exact R3 repro: `while true; do sleep 5; rg -n foo .; done` used
-    to be ALLOWED while pending -- the wait-loop branch matched, and
-    is_exploratory_rg only fires on a segment-LEADING rg, which the whole
-    (unsegmented) line didn't have (it starts with "while")."""
-
-    def test_wait_loop_smuggled_rg_still_blocks_while_pending(self, repo: Path) -> None:
-        session_id = "sess-r3"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        cmd = "while true; do sleep 5; rg -n foo .; done"
-        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-
-    def test_wait_loop_smuggled_rg_disqualifies_is_non_discovery_command(self, repo: Path) -> None:
-        cmd = "while true; do sleep 5; rg -n foo .; done"
-        assert enforce.is_non_discovery_command(cmd, repo) is False
-
-    def test_genuine_wait_loop_without_scan_still_passes_pending_gate(self, repo: Path) -> None:
-        """Control: a real wait/poll loop with no embedded scan must still
-        bypass the pending gate -- proves R3's fix targets the smuggled
-        scan specifically, not wait loops in general."""
-        session_id = "sess-r3-control"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        cmd = "while true; do sleep 5; echo waiting; done"
-        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert result.returncode == 0, result.stdout
 
 
 class TestR4WrapperStrippedLeadingCommand:
@@ -821,11 +689,12 @@ class TestR4WrapperStrippedLeadingCommand:
     def test_wrapped_fd_still_counts_as_broad(self, command: str) -> None:
         assert enforce.matches_broad_bash(command) is True
 
-    def test_wrapped_fd_blocks_pending_gate_live(self, repo: Path) -> None:
+    def test_wrapped_fd_blocks_after_repeat_live(self, repo: Path) -> None:
         session_id = "sess-r4"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        result = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
+        first = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
+        assert first.returncode == 0, f"first attempt should warn-and-allow, got {first.stdout!r}"
+        second = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
+        assert second.returncode == 2, second.stdout
 
     def test_envsubst_not_mistaken_for_env_wrapper(self) -> None:
         """Guard against an over-eager `env` strip: `envsubst` is a
@@ -928,13 +797,6 @@ class TestC1DoubleQuotedCommandSubstitution:
         decision = json.loads(result.stdout)
         assert "catastrophic" in decision["reason"].lower()
 
-    def test_command_substitution_blocks_while_pending(self, repo: Path) -> None:
-        session_id = "sess-c1-pending"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        cmd = 'echo "$(find / -name x)"'
-        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-
     def test_ls_dash_R_command_substitution_blocked(self, repo: Path) -> None:
         cmd = 'echo "$(ls -R /)"'
         result = _run_hook(_bash_payload(cmd, session_id="sess-c1-lsr"), repo)
@@ -957,46 +819,6 @@ class TestC1DoubleQuotedCommandSubstitution:
         assert any(cr.is_catastrophic(s) for s in surfaces)
         surfaces_single = cr.command_scan_surfaces("echo '$(find / -name x)'")
         assert not any(cr.is_catastrophic(s) for s in surfaces_single)
-
-
-class TestC2HelperMustLeadSegment:
-    """HELPER_COMMAND_RE.search() on the whole first line let a helper
-    mention ANYWHERE credit compliance, even when the actual scan ran in a
-    sibling segment that was never classified."""
-
-    def test_helper_then_scan_via_and_and_blocks(self, repo: Path) -> None:
-        session_id = "sess-c2-andand"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        cmd = "token-reduce-paths auth && find / -name x"
-        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-        assert trs.is_pending(repo, session_id) is True, "pending must NOT be cleared when a scan is present"
-
-    def test_echoed_helper_name_then_scan_via_semicolon_blocks(self, repo: Path) -> None:
-        session_id = "sess-c2-semicolon"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        cmd = "echo token-reduce-paths; find / -name x"
-        result = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert result.returncode == 2, result.stdout
-        assert trs.is_pending(repo, session_id) is True
-
-    def test_plain_helper_invocation_still_allowed_and_clears_pending(self, repo: Path) -> None:
-        session_id = "sess-c2-plain"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        result = _run_hook(
-            _bash_payload("./scripts/token-reduce-paths.sh topic", session_id=session_id), repo
-        )
-        assert result.returncode == 0, result.stdout
-        assert trs.is_pending(repo, session_id) is False
-
-    def test_uv_run_wrapped_helper_still_counts(self, repo: Path) -> None:
-        session_id = "sess-c2-uvrun"
-        trs.mark_pending(repo, session_id, "where is the auth hook defined in this repo")
-        result = _run_hook(
-            _bash_payload("uv run token-reduce-paths.py topic", session_id=session_id), repo
-        )
-        assert result.returncode == 0, result.stdout
-        assert trs.is_pending(repo, session_id) is False
 
 
 class TestC3SymlinkGuardHonorsFollowOptions:
