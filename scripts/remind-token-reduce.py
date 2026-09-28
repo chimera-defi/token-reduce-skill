@@ -88,6 +88,9 @@ RELAY_WRAPPER_RE = re.compile(r"^\s*User:\s*<turn>|</turn>\s*$", re.IGNORECASE)
 # Beyond this, the remaining text is a brief or handoff, not a question; a
 # regex cannot tell broad discovery from targeted work in it, so stay silent.
 MAX_CLASSIFIABLE_CHARS = 500
+# Raw prompts beyond this are never classifiable; skip before the block regexes,
+# whose worst case (many unclosed openers) is quadratic.
+MAX_RAW_PROMPT_CHARS = 50_000
 
 # Tokens that are identifiers (task ids, tool-use ids, hashes, dates), not topics.
 NOISE_TOKEN_RE = re.compile(r"^(?:toolu_\w+|[0-9a-f]{7,}|\S*\d{4,}\S*)$", re.IGNORECASE)
@@ -187,7 +190,12 @@ def main() -> int:
         raw_prompt = extract_prompt(data)
         repo = repo_root()
         key = session_key(data)
-        prompt = "" if is_harness_turn(raw_prompt) else human_text(raw_prompt)
+        if is_harness_turn(raw_prompt):
+            prompt = ""
+        elif len(raw_prompt) > MAX_RAW_PROMPT_CHARS:
+            prompt = raw_prompt  # rejected by the length check below
+        else:
+            prompt = human_text(raw_prompt)
         if not prompt:
             # Harness-generated turn: no human input arrived, so neither emit a
             # reminder nor touch the pending marker the real prompt set.
