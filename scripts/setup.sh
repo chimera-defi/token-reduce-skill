@@ -191,9 +191,9 @@ def _refs_token_reduce(cmd, script):
 hooks = settings.setdefault("hooks", {})
 
 # The UserPromptSubmit reminder hook (remind-token-reduce.py) was retired
-# 2026-09-28 (operator ruling: 93% of firings were on harness turns, and the
-# PreToolUse enforcer below already covers real discovery prompts without
-# it). Drop any leftover entry a prior setup.sh run installed instead of
+# 2026-09-28 (operator ruling: 93% of firings were on harness turns, and its
+# advice duplicated the CLAUDE.md guidance). Drop any leftover entry a prior
+# setup.sh run installed instead of
 # leaving an inert reference behind, but do not install a new one.
 ups = hooks.get("UserPromptSubmit")
 if isinstance(ups, list):
