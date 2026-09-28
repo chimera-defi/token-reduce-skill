@@ -37,7 +37,8 @@ For broad discovery, audits, or "sweep many files" work, the token saver is dele
 bigger manual scan: spawn `Agent(subagent_type="Explore", ...)` for read-only search, or
 `subagent_type="builder"` / `model="sonnet"` for implementation and deep-research fan-out, and
 have it return conclusions + evidence instead of pulling every candidate file into the parent's
-context. Both the `UserPromptSubmit` reminder and the `PreToolUse` block messages name this
-option directly — they no longer only point at the CLI helper. See
+context. The `PreToolUse` block messages name this option directly — not just the CLI helper.
+(There is no separate `UserPromptSubmit` reminder anymore; it was retired 2026-09-28 — see
+`references/worktree-deploy-sync.md`.) See
 `references/subagent-and-brain-integration.md` for the adaptive router's own subagent-emission
 logic (`SUBAGENT_CANDIDATE_THRESHOLD`, `BROAD_SCOPE_TERMS`) once you've run it.

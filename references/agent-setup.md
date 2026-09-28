@@ -106,8 +106,7 @@ token-reduce-manage benchmark-profiles
 
 | Layer | Tool | What it does |
 |-------|------|--------------|
-| Discovery guardrails | `enforce-token-reduce-first.py` | Blocks broad scans before they happen |
-| Prompt steering | `remind-token-reduce.py` | Routes discovery prompts to helpers |
+| Discovery guardrails | `enforce-token-reduce-first.py` | Blocks broad scans before they happen (there is no separate `UserPromptSubmit` reminder hook anymore — retired 2026-09-28) |
 | Adaptive routing | `token-reduce-adaptive.sh` | Auto-promotes paths/snippet/structural tiers from query intent + behavior |
 | Path kickoff | `token-reduce-paths.sh` | QMD BM25 → candidate paths, minimal tokens |
 | Snippet follow-up | `token-reduce-snippet.sh` | Adds one ranked excerpt when path-only results are not enough |

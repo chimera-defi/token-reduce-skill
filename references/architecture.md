@@ -16,7 +16,7 @@ That reduces wasted context and makes host behavior more predictable.
 ```
 +------------------------------------------------------------+
 |  Enforcement                                               |
-|   enforce-token-reduce-first.py   remind-token-reduce.py   |
+|   enforce-token-reduce-first.py                            |
 |   command_rewrites.py   coverage_patterns.py               |
 |   escalation.py   .claude/settings.json                    |
 +------------------------------------------------------------+
@@ -53,7 +53,7 @@ The detailed six-layer cut still applies and is sometimes the more useful slice:
 | Guidance | Tells the host when path-first discovery is worth using | `SKILL.md`, `README.md`, `references/token-reduction-guide.md` |
 | Adaptive routing policy | Promotes/demotes path/snippet/structural tiers and recommendation flags from intent + behavior | `scripts/token_reduce_adaptive.py`, `scripts/token-reduce-adaptive.sh`, `scripts/token_reduce_config.py`, `scripts/rank_paths.py`, `scripts/brain_hint.py` |
 | Retrieval helpers | Return the smallest useful search result first | `scripts/token-reduce-paths.sh`, `scripts/token-reduce-snippet.sh`, `scripts/token-reduce-search.sh`, `scripts/qmd_warm_cache.py` |
-| Host enforcement | Blocks broad discovery patterns and pushes the host back to the helper flow | `scripts/remind-token-reduce.py`, `scripts/enforce-token-reduce-first.py`, `scripts/command_rewrites.py`, `scripts/coverage_patterns.py`, `scripts/escalation.py`, `.claude/settings.json` |
+| Host enforcement | Blocks broad discovery patterns and pushes the host back to the helper flow | `scripts/enforce-token-reduce-first.py`, `scripts/command_rewrites.py`, `scripts/coverage_patterns.py`, `scripts/escalation.py`, `.claude/settings.json` |
 | Integration surfaces | Make the same workflow usable from different hosts | `.claude-plugin/`, `mcp/server.mjs`, `agents/openai.yaml` |
 | Conditional companions | Add opt-in compression, execution, and structural helpers after the first-move workflow is satisfied | `scripts/token-reduce-dependency-health.py`, `references/feature-matrix.md`, `references/headroom-evaluation-2026-06-10.md` |
 | Adoption improvement | Turns workspace audit telemetry into SLOs and per-repo action queues | `scripts/audit_workspace_skills.py`, `scripts/adoption_report.py`, `artifacts/token-reduction/adoption-improvement-*.md` |
@@ -103,8 +103,9 @@ In other words, the value is not just a shell command. It is the workflow plus t
 
 Claude can be steered and partially enforced with hooks:
 
-- `UserPromptSubmit` adds the path-first reminder
 - `PreToolUse` blocks exploratory `Bash`, `Glob`, `Grep`, and pending `Read` paths before the helper runs
+
+(There was previously also a `UserPromptSubmit` reminder hook; it was retired 2026-09-28 — see `references/worktree-deploy-sync.md`.)
 
 This makes Claude much more likely to pivot to the helper, but host approval settings still matter for redirected `Bash` calls.
 
