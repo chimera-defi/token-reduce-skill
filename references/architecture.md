@@ -103,7 +103,10 @@ In other words, the value is not just a shell command. It is the workflow plus t
 
 Claude can be steered and partially enforced with hooks:
 
-- `PreToolUse` blocks exploratory `Bash`, `Glob`, `Grep`, and pending `Read` paths before the helper runs
+- `PreToolUse` blocks catastrophic/broad `Bash` scans (a first non-catastrophic offense warns and
+  allows once per session; a repeat hard-blocks) and exploratory `Glob`/`Grep` calls with no
+  specific path. Targeted work — a known file, a specific grep, `git`/`gh` commands — is never
+  gated, and `Read` is never gated by this hook at all.
 
 (There was previously also a `UserPromptSubmit` reminder hook; it was retired 2026-09-28 — see `references/worktree-deploy-sync.md`.)
 
