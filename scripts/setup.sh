@@ -140,7 +140,7 @@ fi
 HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
 mkdir -p "$HOOK_INSTALL_DIR"
 
-for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py command_rewrites.py coverage_patterns.py remind-token-reduce.py enforce-token-reduce-first.py; do
+for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py command_rewrites.py coverage_patterns.py enforce-token-reduce-first.py; do
   cp "$REPO_ROOT/scripts/$f" "$HOOK_INSTALL_DIR/$f"
 done
 ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
@@ -170,14 +170,11 @@ settings = json.loads(settings_path.read_text()) if settings_path.exists() else 
 hook_dir = str(pathlib.Path.home() / ".claude" / "hooks" / "token-reduce")
 uv_abs = shutil.which("uv") or "uv"
 enforce_script = f"{hook_dir}/enforce-token-reduce-first.py"
-remind_script = f"{hook_dir}/remind-token-reduce.py"
-# Fail-open wrappers (the 2026-08-17 wedge RCA / PR #70): a bare `uv run <script>`
+# Fail-open wrapper (the 2026-08-17 wedge RCA / PR #70): a bare `uv run <script>`
 # lets a uv spawn-failure exit 2 -- indistinguishable from enforce's own
 # intentional-block signal -- and wedge every subsequent tool call. So: wrap in
-# `timeout`, and for the PreToolUse hook honor exit 2 as a block ONLY when the
-# script still exists (otherwise fail open). UserPromptSubmit never blocks, so it
-# fails open unconditionally.
-remind_cmd = f'timeout 20 {uv_abs} run "{remind_script}" || exit 0'
+# `timeout`, and honor exit 2 as a block ONLY when the script still exists
+# (otherwise fail open).
 enforce_cmd = (
     f'T="{enforce_script}"; timeout 20 {uv_abs} run "$T"; ec=$?; '
     f'if [ "$ec" -eq 2 ] && [ -f "$T" ]; then exit 2; fi; exit 0'
@@ -193,12 +190,19 @@ def _refs_token_reduce(cmd, script):
 
 hooks = settings.setdefault("hooks", {})
 
-ups = hooks.setdefault("UserPromptSubmit", [])
-ups[:] = [
-    h for h in ups
-    if not any(_refs_token_reduce(hh.get("command"), remind_script) for hh in h.get("hooks", []))
-]
-ups.append({"hooks": [{"type": "command", "command": remind_cmd}]})
+# The UserPromptSubmit reminder hook (remind-token-reduce.py) was retired
+# 2026-09-28 (operator ruling: 93% of firings were on harness turns, and the
+# PreToolUse enforcer below already covers real discovery prompts without
+# it). Drop any leftover entry a prior setup.sh run installed instead of
+# leaving an inert reference behind, but do not install a new one.
+ups = hooks.get("UserPromptSubmit")
+if isinstance(ups, list):
+    ups[:] = [
+        h for h in ups
+        if not any(_refs_token_reduce(hh.get("command"), "remind-token-reduce.py") for hh in h.get("hooks", []))
+    ]
+    if not ups:
+        hooks.pop("UserPromptSubmit", None)
 
 ptu = hooks.setdefault("PreToolUse", [])
 ptu[:] = [
@@ -218,7 +222,7 @@ if not any(
 settings_path.write_text(json.dumps(settings, indent=2) + "\n")
 print("patched ~/.claude/settings.json with token-reduce global hooks")
 PYEOF
-ok "global Claude Code hooks patched (UserPromptSubmit + PreToolUse + SessionStart)"
+ok "global Claude Code hooks patched (PreToolUse + SessionStart; stale UserPromptSubmit reminder entry removed if present)"
 
 # ── Global helper wrappers for any repo ───────────────────────────────────────
 write_wrapper() {

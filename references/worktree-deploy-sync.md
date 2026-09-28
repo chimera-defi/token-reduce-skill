@@ -82,11 +82,24 @@ the **separate copy** at `~/.claude/hooks/token-reduce/`. Refresh it too:
 # Or, surgically (what the 2026-08-26 live fix did): copy the entrypoints +
 # helpers and confirm ~/.claude/settings.json uses the #70 fail-open wrapper
 # (`timeout 20 uv run "$T"; ec=$?; [ "$ec" -eq 2 ] && [ -f "$T" ] && exit 2; exit 0`).
-for f in enforce-token-reduce-first.py remind-token-reduce.py token_reduce_state.py \
+for f in enforce-token-reduce-first.py token_reduce_state.py \
          token_reduce_telemetry.py token_reduce_config.py command_rewrites.py coverage_patterns.py; do
   cp "<repo>/.worktrees/main/scripts/$f" ~/.claude/hooks/token-reduce/$f
 done
 ```
+
+**Note on `remind-token-reduce.py`:** it is deliberately left out of the copy loop
+above. The `UserPromptSubmit` reminder hook was retired 2026-09-28 (operator
+ruling: 93% of firings were on harness turns, and the enforcer's own
+false-positive tightening made it redundant) — `scripts/setup.sh` no longer
+copies or registers it, and neither should a manual sync. The file itself
+still exists in the repo (as an inert no-op shim) only because
+Etc-mono-repo's `.claude/settings.json` invokes it **raw**, via a symlinked
+copy of this skill's `scripts/` directory
+(`$CLAUDE_PROJECT_DIR/skills/token-reduce/scripts/remind-token-reduce.py`),
+not via the `~/.claude/hooks/token-reduce/` copy this loop maintains — so
+that consumer is unaffected by dropping it here. Do not re-add it to
+`~/.claude/hooks/token-reduce/`.
 
 **Note:** Claude Code caches hook config at **session start**, so a running
 session keeps the old behavior — verify a refresh by invoking the deployed hook

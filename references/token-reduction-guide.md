@@ -95,8 +95,9 @@ Details: `references/profile-presets.md`.
 
 ### Enforced flow
 
-- prompt steering: `scripts/remind-token-reduce.py`
 - broad-scan blocking: `scripts/enforce-token-reduce-first.py`
+
+(There is no separate `UserPromptSubmit` prompt-steering hook anymore — it was retired 2026-09-28 as redundant with the enforcer above. See `references/worktree-deploy-sync.md`.)
 
 ### Telemetry loop
 

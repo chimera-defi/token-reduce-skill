@@ -10,8 +10,7 @@ This document maps the shipped token-reduce feature set to operational controls 
 | Ranked snippet follow-up | on | `./scripts/token-reduce-snippet.sh <topic words>` | n/a | `tool=token_reduce_snippet` helper events | `references/benchmarks/local-benchmark.json` |
 | Adaptive tier router | on (`balanced`/`max-savings`) | `./scripts/token-reduce-adaptive.sh <topic words>` | `routing.adaptive_hint`, `routing.behavior_days`, `routing.rapid_repeat_snippet_threshold`, `routing.enable_structural`, `routing.enable_context_mode_recommendations`, `routing.enable_headroom_recommendations`, `routing.enable_code_review_graph_recommendations` | `tool=token_reduce_adaptive` + `meta.tier`, `meta.context_mode_recommended`, `meta.headroom_recommended`, `meta.code_review_graph_recommended`, behavior ratios | `references/benchmarks/adaptive-tier-benchmark.json` |
 | Structural symbol/impact tier | on (`balanced`/`max-savings`) | `token-reduce-structural --project-root . find-symbol <symbol>` or `change-impact <symbol>` | `routing.enable_structural` | adaptive tier values: `structural_symbol`, `structural_impact`, `structural_search` | `references/benchmarks/composite-benchmark.json` |
-| Pre-tool enforcement | on when hooks installed | `./scripts/setup.sh` (or plugin install) | n/a | hook blocks + compliance rates in `measure`/`review` artifacts | `artifacts/token-reduction/adoption-*.md` |
-| Prompt steering reminder | on when hooks installed | `./scripts/setup.sh` (or plugin install) | `TOKEN_REDUCE_ADAPTIVE_HINT=0` to suppress adaptive hint fallback | pending-state and helper-adoption signals | `artifacts/token-reduction/adoption-*.md` |
+| Pre-tool enforcement | on when hooks installed | `./scripts/setup.sh` (or plugin install) | `TOKEN_REDUCE_ADAPTIVE_HINT=0` to suppress adaptive hint fallback | hook blocks + compliance rates in `measure`/`review` artifacts | `artifacts/token-reduction/adoption-*.md` |
 
 ## Routing Profiles
 
