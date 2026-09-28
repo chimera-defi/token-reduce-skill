@@ -56,6 +56,19 @@ def _run(prompt: str, repo: Path, session_id: str = "sess-harness") -> subproces
     )
 
 
+def _events(repo: Path) -> str:
+    path = repo / "artifacts" / "token-reduction" / "events.jsonl"
+    return path.read_text() if path.exists() else ""
+
+
+def test_huge_pathological_prompt_is_fast_and_silent(repo: Path) -> None:
+    prompt = "where is the auth hook defined " + '<pasted_content id="1">' * 20_000
+    result = _run(prompt, repo)
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert "hook_error" not in _events(repo)
+
+
 def test_fixture_would_match_the_classifier() -> None:
     # Guard: the fixture must exercise the bug, i.e. match a discovery trigger
     # on its own -- so silence below comes from harness detection.
@@ -84,6 +97,8 @@ def test_harness_turn_emits_nothing_and_keeps_pending(repo: Path, prompt: str) -
     assert result.stdout == ""
     # The real prompt's marker survives an interleaved harness turn.
     assert is_pending(repo, key)
+    # Silence came from the harness-skip path, not a fail-open crash.
+    assert "harness_turn_skipped" in _events(repo)
 
 
 def test_harness_turn_does_not_set_pending(repo: Path) -> None:
@@ -110,6 +125,7 @@ def test_long_brief_is_not_classified(repo: Path) -> None:
     result = _run(brief, repo)
     assert result.stdout == ""
     assert not is_pending(repo, key)
+    assert "pending_cleared" in _events(repo) and "hook_error" not in _events(repo)
 
 
 @pytest.mark.parametrize(
