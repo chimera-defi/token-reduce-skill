@@ -45,3 +45,12 @@ context. The `PreToolUse` block messages name this option directly — not just 
 `references/worktree-deploy-sync.md`.) See
 `references/subagent-and-brain-integration.md` for the adaptive router's own subagent-emission
 logic (`SUBAGENT_CANDIDATE_THRESHOLD`, `BROAD_SCOPE_TERMS`) once you've run it.
+
+### Prefer config-backed advisory discovery when block compliance is poor
+`enforcement: "advisory"` now does what the setup wizard advertises: ordinary broad
+Bash/Glob/Grep discovery is recorded as a warning and allowed, while catastrophic scans
+and symlink-root guards remain hard blocks. This is preferable to the legacy
+`TOKEN_REDUCE_ENFORCE_MODE=warn` escape hatch when you want exploration freedom without
+disabling the hard guards. If block telemetry shows agents mostly abandoning or rerouting
+rather than using the suggested helper, advisory discovery avoids spending model turns on
+policy-induced replanning.

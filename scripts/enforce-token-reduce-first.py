@@ -203,6 +203,21 @@ def _record_decision_for(data: dict[str, object], *, blocked: bool, stdout: str)
         pass
 
 
+def _advisory_discovery_mode() -> bool:
+    """Return True when ordinary discovery gates should warn, not block.
+
+    Catastrophic filesystem scans and symlink-root guards remain hard blocks.
+    The host config is intentionally consulted at tool-call time so operators can
+    change this without respawning long-running Claude sessions.
+    """
+    if os.environ.get("TOKEN_REDUCE_DISCOVERY_MODE", "").strip().lower() in {"warn", "advisory"}:
+        return True
+    try:
+        from token_reduce_config import load_config
+        return str(load_config().get("enforcement", "")).strip().lower() in {"advisory", "warn_only"}
+    except Exception:
+        return False
+
 def block(
     reason: str,
     data: dict[str, object] | None = None,
@@ -215,7 +230,12 @@ def block(
     # committed escape hatch someone had already added at the deploy site
     # after an over-blocking incident (a wrapper that turned blocks into
     # stderr warnings). Normal mode (env unset/anything else) is unchanged.
-    warn_mode = os.environ.get("TOKEN_REDUCE_ENFORCE_MODE") == "warn"
+    policy = str((extra_meta or {}).get("policy", ""))
+    hard_guard = policy in {"catastrophic", "symlink_root_guard"}
+    warn_mode = (
+        os.environ.get("TOKEN_REDUCE_ENFORCE_MODE") == "warn"
+        or (_advisory_discovery_mode() and not hard_guard)
+    )
     # Compute the exact bytes/exit-code up front so both the real emission
     # below AND the R5 decision marker record the SAME actual outcome (a
     # replay must reproduce what really happened, not what the policy
