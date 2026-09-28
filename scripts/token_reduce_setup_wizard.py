@@ -33,7 +33,7 @@ _COMPANIONS = {
 _ENFORCEMENT_CHOICES = {
     "1": ("warn_first", "Warn first (recommended) — allow on first occurrence, block on repeat"),
     "2": ("hard_block", "Hard block — immediately block all broad scans"),
-    "3": ("advisory", "Advisory only — never block, only recommend helpers"),
+    "3": ("advisory", "Advisory discovery — warn on broad exploration; keep catastrophic guards"),
 }
 
 _PROFILE_CHOICES = {
