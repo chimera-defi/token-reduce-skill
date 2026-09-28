@@ -9,17 +9,23 @@ delegating to a subagent (Agent tool) rather than only toward a CLI helper.
 These tests exercise:
 
   1. Targeted Bash (git/gh/pytest) is never blocked on a session's first
-     tool call, pending or not.
-  2. Targeted Read/Grep/Glob on a known, exact path is never blocked, even
-     while a broad-discovery prompt has set the session's "pending" marker
-     (the F10 fix: Glob/Grep previously got a blanket block while pending,
-     unlike Read, which already had this exemption).
-  3. Genuinely broad/exploratory Glob/Grep still blocks while pending --
-     control, proving the F10 fix narrows the gate rather than removing it.
+     tool call.
+  2. Targeted Read/Grep/Glob on a known, exact path is never blocked.
+  3. Genuinely broad/exploratory Glob/Grep still blocks -- control, proving
+     targeted-vs-exploratory classification narrows the gate rather than
+     removing it.
 
 (A former section 4 exercised the UserPromptSubmit reminder hook's
 subagent-delegation wording. That hook was retired 2026-09-28 -- see
-references/worktree-deploy-sync.md -- and removed along with its tests.)
+references/worktree-deploy-sync.md -- and removed along with its tests.
+
+The PreToolUse enforcer's "pending" first-move discovery gate -- which used
+to apply a stricter, no-warn-grace variant of this classification while a
+session had a pending discovery marker -- was removed in the same pass as
+dead code, since nothing set the marker once the reminder hook was retired.
+The targeted-vs-exploratory classification below is now simply the hook's
+only behavior, not one exempted from a gate; the former "_while_pending"
+test variants are gone along with the marker they set up.)
 """
 from __future__ import annotations
 
@@ -34,8 +40,6 @@ import pytest
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 HOOK = SCRIPTS_DIR / "enforce-token-reduce-first.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
-
-from token_reduce_state import mark_pending, session_key  # noqa: E402
 
 
 def _init_git_repo(path: Path) -> None:
@@ -68,17 +72,12 @@ def _run_hook(payload: dict, repo_root: Path) -> subprocess.CompletedProcess[str
     )
 
 
-def _make_pending(repo_root: Path, session_id: str) -> None:
-    key = session_key({"session_id": session_id})
-    mark_pending(repo_root, key, "where is the auth hook defined in this repo")
-
-
 def _bash_payload(command: str, session_id: str) -> dict:
     return {"session_id": session_id, "tool_name": "Bash", "tool_input": {"command": command}}
 
 
 # --------------------------------------------------------------------------- #
-# 1. Targeted Bash (git/gh/tests) never blocked, first call, pending or not.
+# 1. Targeted Bash (git/gh/tests) never blocked, first call, no state.
 # --------------------------------------------------------------------------- #
 
 TARGETED_BASH_COMMANDS = [
@@ -93,8 +92,8 @@ TARGETED_BASH_COMMANDS = [
 
 
 @pytest.mark.parametrize("command", TARGETED_BASH_COMMANDS)
-def test_targeted_bash_not_blocked_on_first_call_non_pending(repo: Path, command: str) -> None:
-    session_id = f"sess-targeted-nonpending-{hash(command)}"
+def test_targeted_bash_not_blocked_on_first_call(repo: Path, command: str) -> None:
+    session_id = f"sess-targeted-{hash(command)}"
     result = _run_hook(_bash_payload(command, session_id), repo)
     assert result.returncode == 0, (
         f"targeted command must not be blocked: {command!r}\n"
@@ -103,28 +102,15 @@ def test_targeted_bash_not_blocked_on_first_call_non_pending(repo: Path, command
     assert "decision" not in result.stdout
 
 
-@pytest.mark.parametrize("command", TARGETED_BASH_COMMANDS)
-def test_targeted_bash_not_blocked_while_pending(repo: Path, command: str) -> None:
-    session_id = f"sess-targeted-pending-{hash(command)}"
-    _make_pending(repo, session_id)
-    result = _run_hook(_bash_payload(command, session_id), repo)
-    assert result.returncode == 0, (
-        f"targeted git/gh/test command must not be gated by a pending discovery "
-        f"marker: {command!r}\nstdout={result.stdout!r} stderr={result.stderr!r}"
-    )
-    assert "decision" not in result.stdout
-
-
 # --------------------------------------------------------------------------- #
-# 2. Targeted Read/Grep/Glob on a known path not blocked while pending (F10).
+# 2. Targeted Read/Grep/Glob on a known path not blocked.
 # --------------------------------------------------------------------------- #
 
 
-def test_targeted_read_absolute_path_not_blocked_while_pending(repo: Path) -> None:
+def test_targeted_read_absolute_path_not_blocked(repo: Path) -> None:
     target = repo / "known_file.py"
     target.write_text("# known file\n")
-    session_id = "sess-read-pending"
-    _make_pending(repo, session_id)
+    session_id = "sess-read"
 
     payload = {
         "session_id": session_id,
@@ -135,13 +121,10 @@ def test_targeted_read_absolute_path_not_blocked_while_pending(repo: Path) -> No
     assert result.returncode == 0, result.stdout
 
 
-def test_targeted_grep_on_known_file_not_blocked_while_pending(repo: Path) -> None:
-    """F10: before the fix, ANY Grep call was unconditionally blocked while
-    pending, even one scoped to a single, existing file path."""
+def test_targeted_grep_on_known_file_not_blocked(repo: Path) -> None:
     target = repo / "known_file.py"
     target.write_text("def auth():\n    pass\n")
-    session_id = "sess-grep-pending"
-    _make_pending(repo, session_id)
+    session_id = "sess-grep"
 
     payload = {
         "session_id": session_id,
@@ -150,16 +133,12 @@ def test_targeted_grep_on_known_file_not_blocked_while_pending(repo: Path) -> No
     }
     result = _run_hook(payload, repo)
     assert result.returncode == 0, (
-        f"a Grep scoped to one known file must not be gated while pending, "
-        f"got stdout={result.stdout!r}"
+        f"a Grep scoped to one known file must not be gated, got stdout={result.stdout!r}"
     )
 
 
-def test_targeted_glob_exact_pattern_not_blocked_while_pending(repo: Path) -> None:
-    """F10: before the fix, ANY Glob call was unconditionally blocked while
-    pending, even an exact (non-wildcard) filename."""
-    session_id = "sess-glob-pending"
-    _make_pending(repo, session_id)
+def test_targeted_glob_exact_pattern_not_blocked(repo: Path) -> None:
+    session_id = "sess-glob"
 
     payload = {
         "session_id": session_id,
@@ -168,35 +147,32 @@ def test_targeted_glob_exact_pattern_not_blocked_while_pending(repo: Path) -> No
     }
     result = _run_hook(payload, repo)
     assert result.returncode == 0, (
-        f"a Glob with an exact, non-wildcard pattern must not be gated while "
-        f"pending, got stdout={result.stdout!r}"
+        f"a Glob with an exact, non-wildcard pattern must not be gated, got stdout={result.stdout!r}"
     )
 
 
 # --------------------------------------------------------------------------- #
-# 3. Control: genuinely broad/exploratory Glob/Grep still block while pending.
+# 3. Control: genuinely broad/exploratory Glob/Grep still block.
 # --------------------------------------------------------------------------- #
 
 
-def test_broad_glob_still_blocks_while_pending(repo: Path) -> None:
-    session_id = "sess-glob-broad-pending"
-    _make_pending(repo, session_id)
+def test_broad_glob_still_blocks(repo: Path) -> None:
+    session_id = "sess-glob-broad"
     payload = {
         "session_id": session_id,
         "tool_name": "Glob",
         "tool_input": {"pattern": "**/*.py"},
     }
     result = _run_hook(payload, repo)
-    assert result.returncode == 2, "a genuinely broad Glob must still gate while pending"
+    assert result.returncode == 2, "a genuinely broad Glob must still gate"
 
 
-def test_exploratory_grep_no_path_still_blocks_while_pending(repo: Path) -> None:
-    session_id = "sess-grep-broad-pending"
-    _make_pending(repo, session_id)
+def test_exploratory_grep_no_path_still_blocks(repo: Path) -> None:
+    session_id = "sess-grep-broad"
     payload = {
         "session_id": session_id,
         "tool_name": "Grep",
         "tool_input": {"pattern": "auth"},
     }
     result = _run_hook(payload, repo)
-    assert result.returncode == 2, "an exploratory Grep with no path must still gate while pending"
+    assert result.returncode == 2, "an exploratory Grep with no path must still gate"

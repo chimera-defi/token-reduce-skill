@@ -278,7 +278,7 @@ def test_composite_stack_exact_symbol_falls_back_to_rg(
     step_cmds = [s["command"] for s in composite.get("steps", [])]
 
     # exact_symbol step — must not invoke token-reduce-structural (it's absent)
-    exact_cmds = [c for c in step_cmds if "prompt_requires_helper" in c]
+    exact_cmds = [c for c in step_cmds if "session_key" in c]
     assert exact_cmds, f"exact_symbol step not found in composite_stack steps: {step_cmds}"
     for cmd in exact_cmds:
         assert "token-reduce-structural" not in cmd, (

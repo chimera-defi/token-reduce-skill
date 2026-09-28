@@ -20,9 +20,12 @@ a vague "reduce tokens" nag:
 
 - A hook must not block ordinary targeted work: reading a known file, a specific grep against
   an exact path, `git`/`gh` commands, running tests. `scripts/enforce-token-reduce-first.py`
-  applies the same targeted-vs-exploratory classification to Glob/Grep/Read/Bash whether or not
-  a discovery prompt has set the session's "pending" marker — a specific `Grep(path=..., ...)`
-  or `Glob("exact/name.py")` is never gated just because the prompt looked discovery-shaped.
+  applies a targeted-vs-exploratory classification to Glob/Grep/Bash on every call — a specific
+  `Grep(path=..., ...)` or `Glob("exact/name.py")` is never gated just because a prior prompt
+  looked discovery-shaped. (There used to be a separate "pending" first-move discovery marker
+  that applied a stricter variant of this classification; it was removed 2026-09-28 as dead code
+  once nothing set the marker — see `references/worktree-deploy-sync.md`. `Read` is never gated
+  by this hook at all.)
 - Blocking is reserved for the named anti-patterns above, and even then a first-attempt broad
   Bash scan warns-and-allows once per session before a repeat attempt hard-blocks (see B3 in
   `scripts/enforce-token-reduce-first.py`); genuinely catastrophic patterns (`find /`, `rg

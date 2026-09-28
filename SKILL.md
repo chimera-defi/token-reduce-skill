@@ -202,7 +202,7 @@ Do not force this style when clarity or safety would degrade. This is optional, 
 - `rg --files .` and similar broad inventory commands are treated as violations.
 - Reads stay targeted.
 - Broad discovery, audits, and repo-wide sweeps are delegated to a subagent, not read file-by-file in the parent session.
-- Ordinary targeted work — a known file, a specific grep, git/gh commands, running tests — is never gated by enforcement, pending or not.
+- Ordinary targeted work — a known file, a specific grep, git/gh commands, running tests — is never gated by enforcement.
 - Final summaries cite only the minimum files needed.
 - Repo-level instructions and hooks point at the same first-move workflow.
 - Owned-workspace changes that are more than trivial end on a feature branch with a PR for review and backup.

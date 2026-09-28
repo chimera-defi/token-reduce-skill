@@ -1,11 +1,20 @@
-"""Tests for N1 (python3 -c/-m safe-tool bypass) and N2 (multi-line helper bypass).
+"""Tests for N1 (python3 -c/-m safe-tool bypass) and N2 (multi-line broad-scan
+continuation lines).
 
 N1: _SAFE_TOOL_RE matches `python3` and returns 0 before coverage_hit runs.
     `python3 -c "import os; os.walk('.')"` must be blocked, not allowed.
 
-N2: When pending=True, HELPER_COMMAND_RE match on first line returns 0 without
-    checking continuation lines. `token-reduce-paths.sh foo && find / -name bar`
-    must be blocked when pending=True.
+N2: broad scans on continuation lines of a multi-line Bash command must not
+    be missed just because the first line looks like a harmless helper
+    invocation. `token-reduce-paths.sh foo\\nfind / -name bar` must still
+    block (the second line is a catastrophic scan).
+
+    (N2 was originally specific to the enforcer's now-removed "pending"
+    first-move discovery gate, which cleared its marker on a compliant
+    helper call unless a continuation line hid a scan. That gate was
+    removed 2026-09-28 as dead code once nothing set the marker -- see
+    references/worktree-deploy-sync.md. The underlying multi-line scan
+    detection these tests exercise is unconditional and unaffected.)
 """
 from __future__ import annotations
 
@@ -177,27 +186,15 @@ def test_python3_m_with_broad_pattern_is_blocked(repo: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# N2: multi-line helper bypass when pending=True
+# N2: multi-line continuation-line scan detection
 # ---------------------------------------------------------------------------
 
-import time as _time
 
-
-def _set_pending(repo: Path, session_id: str) -> None:
-    """Prime the repo state to pending=True for the given session."""
-    state_dir = repo / ".claude" / "token-reduce-state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    import re
-    key = re.sub(r"[^A-Za-z0-9_.-]+", "-", session_id).strip("-") or "default"
-    payload = json.dumps({"prompt": "find all files", "created_at": _time.time()}) + "\n"
-    (state_dir / f"{key}.json").write_text(payload)
-    (state_dir / "default.json").write_text(payload)
-
-
-def test_multiline_helper_plus_broad_is_blocked_when_pending(repo: Path) -> None:
-    """N2: `token-reduce-paths.sh foo\\nfind / -name bar` must block when pending=True."""
-    session_id = "sess-n2-pending"
-    _set_pending(repo, session_id)
+def test_multiline_helper_plus_catastrophic_find_is_blocked(repo: Path) -> None:
+    """N2: `token-reduce-paths.sh foo\\nfind / -name bar` must block -- the
+    second line is a catastrophic scan, and continuation lines are always
+    classified alongside the first line."""
+    session_id = "sess-n2-catastrophic"
 
     multi_cmd = "token-reduce-paths.sh foo\nfind / -name bar"
     result = _run_hook(
@@ -207,15 +204,14 @@ def test_multiline_helper_plus_broad_is_blocked_when_pending(repo: Path) -> None
     )
 
     assert result.returncode == 2, (
-        f"multi-line helper+find should be blocked when pending=True; "
+        f"multi-line helper+find should be blocked; "
         f"got rc={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
     )
 
 
-def test_multiline_helper_only_is_allowed_when_pending(repo: Path) -> None:
-    """N2: a pure multi-line helper command (no broad continuation) is allowed when pending."""
+def test_multiline_helper_only_is_allowed(repo: Path) -> None:
+    """N2: a pure multi-line helper command (no broad continuation) is allowed."""
     session_id = "sess-n2-helper-only"
-    _set_pending(repo, session_id)
 
     multi_cmd = "token-reduce-paths.sh foo\necho done"
     result = _run_hook(
@@ -225,6 +221,6 @@ def test_multiline_helper_only_is_allowed_when_pending(repo: Path) -> None:
     )
 
     assert result.returncode == 0, (
-        f"pure helper command should be allowed when pending=True; "
+        f"pure helper command should be allowed; "
         f"got rc={result.returncode} stdout={result.stdout!r}"
     )

@@ -191,7 +191,6 @@ _IMPORTED_HELPER_NAMES = {
         "broad_attempt_count",
         "consume_block",
         "discovery_hint",
-        "is_pending",
         "record_block",
         "record_broad_attempt",
         "repo_root",

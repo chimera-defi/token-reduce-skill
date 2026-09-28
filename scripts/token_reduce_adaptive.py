@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Sequence
 
 from token_reduce_config import load_config
-from token_reduce_state import clear_pending
 from token_reduce_telemetry import load_events, record_event, summarize_events
 
 
@@ -585,9 +584,6 @@ def main() -> int:
         print("# token-reduce: headroom commands:", file=sys.stderr)
         for cmd in decision.headroom_commands:
             print(f"  {cmd}", file=sys.stderr)
-    if exit_code == 0:
-        # Clear pending first-move state on successful adaptive helper kickoff.
-        clear_pending(root)
     return exit_code
 
 
