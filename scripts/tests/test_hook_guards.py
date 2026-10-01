@@ -16,7 +16,6 @@ the live behavior rather than the retired, more permissive one.
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import subprocess
