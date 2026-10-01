@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import sys
-import tempfile
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
