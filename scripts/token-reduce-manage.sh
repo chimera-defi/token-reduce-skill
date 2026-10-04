@@ -11,10 +11,10 @@ _maybe_update_check() {
   local cfg=""
   local enabled="true"
   if command -v uv >/dev/null 2>&1; then
-    cfg="$(uv run "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
+    cfg="$(uv run --no-project "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
   fi
   if [[ -n "$cfg" && -f "$cfg" ]] && command -v uv >/dev/null 2>&1; then
-    enabled=$(uv run python -c "
+    enabled=$(uv run --no-project python -c "
 import json, sys
 try:
     c = json.load(open('$cfg'))
@@ -24,7 +24,7 @@ except Exception:
 " 2>/dev/null || echo "true")
   fi
   if [[ "$enabled" == "true" ]]; then
-    uv run "$SCRIPT_DIR/token-reduce-update-check.py" \
+    uv run --no-project "$SCRIPT_DIR/token-reduce-update-check.py" \
       --notify --quiet-if-current --no-fetch >/dev/null || true
   fi
 }
@@ -98,52 +98,52 @@ case "$cmd" in
     exec "$SCRIPT_DIR/codex-handoff.sh"
     ;;
   benchmark)
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-token-reduce.py"
     ;;
   benchmark-adaptive)
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-adaptive-tiering.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-adaptive-tiering.py"
     ;;
   benchmark-profiles)
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-profile-presets.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-profile-presets.py"
     ;;
   sync-benchmarks)
-    exec uv run "$SCRIPT_DIR/sync-benchmark-readme.py" --repo-root "$SCRIPT_DIR/.."
+    exec uv run --no-project "$SCRIPT_DIR/sync-benchmark-readme.py" --repo-root "$SCRIPT_DIR/.."
     ;;
   benchmark-context-mode-intake)
     if [[ -z "${CONTEXT_MODE_REPO:-}" ]]; then
       echo "set CONTEXT_MODE_REPO to a local context-mode clone path" >&2
       exit 2
     fi
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run "$SCRIPT_DIR/benchmark-context-mode-intake.py" --context-mode-repo "$CONTEXT_MODE_REPO"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project "$SCRIPT_DIR/benchmark-context-mode-intake.py" --context-mode-repo "$CONTEXT_MODE_REPO"
     ;;
   benchmark-code-review-graph-intake)
     if [[ -z "${CODE_REVIEW_GRAPH_REPO:-}" ]]; then
       echo "set CODE_REVIEW_GRAPH_REPO to a local code-review-graph clone path" >&2
       exit 2
     fi
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run "$SCRIPT_DIR/benchmark-code-review-graph-intake.py" --code-review-graph-repo "$CODE_REVIEW_GRAPH_REPO"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project "$SCRIPT_DIR/benchmark-code-review-graph-intake.py" --code-review-graph-repo "$CODE_REVIEW_GRAPH_REPO"
     ;;
   benchmark-token-optimizer-intake)
     if [[ -z "${TOKEN_OPTIMIZER_REPO:-}" ]]; then
       echo "set TOKEN_OPTIMIZER_REPO to a local token-optimizer-mcp clone path" >&2
       exit 2
     fi
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
     ;;
   caliper-summary)
-    exec uv run "$SCRIPT_DIR/caliper_summary.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/caliper_summary.py" "$@"
     ;;
   cost-playbook)
-    exec uv run "$SCRIPT_DIR/cost_playbook.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/cost_playbook.py" "$@"
     ;;
   release-gate)
     exec "$SCRIPT_DIR/release-gate.sh" "$@"
     ;;
   checkpoint)
-    exec uv run "$SCRIPT_DIR/checkpoint_gate.py" --repo-root "$SCRIPT_DIR/.."
+    exec uv run --no-project "$SCRIPT_DIR/checkpoint_gate.py" --repo-root "$SCRIPT_DIR/.."
     ;;
   test-adaptive)
-    exec uv run --with pytest pytest -q "$SCRIPT_DIR/tests"
+    exec uv run --no-project --with pytest pytest -q "$SCRIPT_DIR/tests"
     ;;
   composite)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
@@ -152,26 +152,26 @@ case "$cmd" in
     OUTPUT="$OUT_DIR/composite-repo-$DATE_STAMP.json"
     OUTPUT_MD="$OUT_DIR/composite-repo-$DATE_STAMP.md"
     mkdir -p "$OUT_DIR"
-    exec uv run "$SCRIPT_DIR/composite_token_telemetry.py" \
+    exec uv run --no-project "$SCRIPT_DIR/composite_token_telemetry.py" \
       --scope repo \
       --repo-root "$ROOT" \
       --output "$OUTPUT" \
       --output-md "$OUTPUT_MD"
     ;;
   benchmark-composite)
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
     ;;
   deps-check)
-    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-dependency-health.py"
     ;;
   deps-check-conditional)
-    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional
     ;;
   deps-update)
-    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --apply
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-dependency-health.py" --apply
     ;;
   deps-update-conditional)
-    exec uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional --apply
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-dependency-health.py" --include-conditional --apply
     ;;
   measure)
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope repo
@@ -180,51 +180,51 @@ case "$cmd" in
     exec "$SCRIPT_DIR/baseline-measurement.sh" --scope global
     ;;
   review)
-    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope repo "$@"
+    exec uv run --no-project "$SCRIPT_DIR/review_token_reduction.py" --scope repo "$@"
     ;;
   review-global)
-    exec uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global "$@"
+    exec uv run --no-project "$SCRIPT_DIR/review_token_reduction.py" --scope global "$@"
     ;;
   validate)
-    uv run "$SCRIPT_DIR/validate_skill_package.py"
-    exec uv run "$SCRIPT_DIR/validate-benchmark-artifacts.py"
+    uv run --no-project "$SCRIPT_DIR/validate_skill_package.py"
+    exec uv run --no-project "$SCRIPT_DIR/validate-benchmark-artifacts.py"
     ;;
   doctor)
-    exec uv run "$SCRIPT_DIR/token-reduce-doctor.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-doctor.py" "$@"
     ;;
   review-pass)
-    exec uv run "$SCRIPT_DIR/review_pass.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/review_pass.py" "$@"
     ;;
   telemetry)
-    exec uv run "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14
+    exec uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" summary --days 14
     ;;
   settings)
     if [[ $# -eq 0 ]]; then
       set -- show
     fi
-    exec uv run "$SCRIPT_DIR/token-reduce-settings.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-settings.py" "$@"
     ;;
   telemetry-sync)
-    exec uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-telemetry-sync.py" "$@"
     ;;
   rolling-baseline)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
     OUT_DIR="$ROOT/artifacts/token-reduction"
     DATE_STAMP="$(date +%Y-%m-%d)"
     mkdir -p "$OUT_DIR"
-    exec uv run "$SCRIPT_DIR/rolling_baseline_report.py" \
+    exec uv run --no-project "$SCRIPT_DIR/rolling_baseline_report.py" \
       --output-json "$OUT_DIR/rolling-baseline-$DATE_STAMP.json" \
       --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" \
       "$@"
     ;;
   updates)
-    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-update-check.py" --notify "$@"
     ;;
   auto-update)
-    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update "$@"
     ;;
   workspace-auto-update)
-    exec uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update --workspace-sync "$@"
+    exec uv run --no-project "$SCRIPT_DIR/token-reduce-update-check.py" --notify --auto-update --workspace-sync "$@"
     ;;
   self-improve)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
@@ -236,7 +236,7 @@ case "$cmd" in
     CALIPER_JSON="$OUT_DIR/caliper-summary-$DATE_STAMP.json"
     CALIPER_MD="$OUT_DIR/caliper-summary-$DATE_STAMP.md"
     mkdir -p "$OUT_DIR"
-    CFG_PATH="$(uv run "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
+    CFG_PATH="$(uv run --no-project "$SCRIPT_DIR/token_reduce_config.py" --path 2>/dev/null || true)"
     WORKSPACE_ROOT="/home/agents/workspace"
     WORKSPACE_DAYS="30"
     TELEMETRY_SYNC_TIMEOUT="45"
@@ -244,23 +244,23 @@ case "$cmd" in
     CALIPER_SELF_IMPROVE="true"
     CALIPER_URL="${CALIPER_URL:-http://127.0.0.1:49123}"
     if [[ -n "$CFG_PATH" && -f "$CFG_PATH" ]]; then
-      WORKSPACE_ROOT="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_root') or '/home/agents/workspace')" 2>/dev/null || echo "$WORKSPACE_ROOT")"
-      WORKSPACE_DAYS="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_days') or 30)" 2>/dev/null || echo "$WORKSPACE_DAYS")"
-      TELEMETRY_SYNC_TIMEOUT="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('self_improve_sync_timeout_seconds') or 45)" 2>/dev/null || echo "$TELEMETRY_SYNC_TIMEOUT")"
-      CALIPER_ENABLED="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('enabled', True) else 'false')" 2>/dev/null || echo "$CALIPER_ENABLED")"
-      CALIPER_SELF_IMPROVE="$(uv run python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('self_improve', True) else 'false')" 2>/dev/null || echo "$CALIPER_SELF_IMPROVE")"
-      CALIPER_URL="$(uv run python -c "import json, os; c=json.load(open('$CFG_PATH')); print(os.environ.get('CALIPER_URL') or c.get('companions', {}).get('caliper', {}).get('url') or 'http://127.0.0.1:49123')" 2>/dev/null || echo "$CALIPER_URL")"
+      WORKSPACE_ROOT="$(uv run --no-project python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_root') or '/home/agents/workspace')" 2>/dev/null || echo "$WORKSPACE_ROOT")"
+      WORKSPACE_DAYS="$(uv run --no-project python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('workspace_days') or 30)" 2>/dev/null || echo "$WORKSPACE_DAYS")"
+      TELEMETRY_SYNC_TIMEOUT="$(uv run --no-project python -c "import json; c=json.load(open('$CFG_PATH')); print(c.get('telemetry', {}).get('self_improve_sync_timeout_seconds') or 45)" 2>/dev/null || echo "$TELEMETRY_SYNC_TIMEOUT")"
+      CALIPER_ENABLED="$(uv run --no-project python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('enabled', True) else 'false')" 2>/dev/null || echo "$CALIPER_ENABLED")"
+      CALIPER_SELF_IMPROVE="$(uv run --no-project python -c "import json; c=json.load(open('$CFG_PATH')); print('true' if c.get('companions', {}).get('caliper', {}).get('self_improve', True) else 'false')" 2>/dev/null || echo "$CALIPER_SELF_IMPROVE")"
+      CALIPER_URL="$(uv run --no-project python -c "import json, os; c=json.load(open('$CFG_PATH')); print(os.environ.get('CALIPER_URL') or c.get('companions', {}).get('caliper', {}).get('url') or 'http://127.0.0.1:49123')" 2>/dev/null || echo "$CALIPER_URL")"
     fi
     if [[ ! -d "$WORKSPACE_ROOT" ]]; then
       WORKSPACE_ROOT="/home/agents/workspace"
     fi
 
-    env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
-    uv run "$SCRIPT_DIR/token-reduce-dependency-health.py" || true
+    env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-composite-stack.py"
+    uv run --no-project "$SCRIPT_DIR/token-reduce-dependency-health.py" || true
     "$SCRIPT_DIR/baseline-measurement.sh" --scope global
     CALIPER_REVIEW_ARGS=()
     if [[ "$CALIPER_ENABLED" == "true" && "$CALIPER_SELF_IMPROVE" == "true" ]]; then
-      if uv run "$SCRIPT_DIR/caliper_summary.py" \
+      if uv run --no-project "$SCRIPT_DIR/caliper_summary.py" \
         --url "$CALIPER_URL" \
         --output-json "$CALIPER_JSON" \
         --output-md "$CALIPER_MD" >/dev/null; then
@@ -270,27 +270,27 @@ case "$cmd" in
         echo "caliper summary unavailable at $CALIPER_URL; continuing without spend telemetry" >&2
       fi
     fi
-    uv run "$SCRIPT_DIR/review_token_reduction.py" --scope global "${CALIPER_REVIEW_ARGS[@]}"
-    uv run "$SCRIPT_DIR/audit_workspace_skills.py" \
+    uv run --no-project "$SCRIPT_DIR/review_token_reduction.py" --scope global "${CALIPER_REVIEW_ARGS[@]}"
+    uv run --no-project "$SCRIPT_DIR/audit_workspace_skills.py" \
       --workspace-root "$WORKSPACE_ROOT" \
       --days "$WORKSPACE_DAYS" \
       --output "$WORKSPACE_AUDIT" >/dev/null
-    uv run "$SCRIPT_DIR/adoption_report.py" \
+    uv run --no-project "$SCRIPT_DIR/adoption_report.py" \
       --audit-json "$WORKSPACE_AUDIT" \
       --output-json "$ADOPTION_REPORT_JSON" \
       --output-md "$ADOPTION_REPORT_MD" >/dev/null
-    if ! timeout "${TELEMETRY_SYNC_TIMEOUT}s" uv run "$SCRIPT_DIR/token-reduce-telemetry-sync.py"; then
+    if ! timeout "${TELEMETRY_SYNC_TIMEOUT}s" uv run --no-project "$SCRIPT_DIR/token-reduce-telemetry-sync.py"; then
       echo "telemetry sync skipped or timed out after ${TELEMETRY_SYNC_TIMEOUT}s; continuing" >&2
     fi
-    uv run "$SCRIPT_DIR/rolling_baseline_report.py" \
+    uv run --no-project "$SCRIPT_DIR/rolling_baseline_report.py" \
       --output-json "$OUT_DIR/rolling-baseline-$DATE_STAMP.json" \
       --output-md "$OUT_DIR/rolling-baseline-$DATE_STAMP.md" >/dev/null
-    uv run "$SCRIPT_DIR/token-reduce-update-check.py" --notify
+    uv run --no-project "$SCRIPT_DIR/token-reduce-update-check.py" --notify
     echo "workspace audit snapshot: $WORKSPACE_AUDIT"
     echo "adoption improvement report: $ADOPTION_REPORT_MD"
     ;;
   workspace-audit)
-    exec uv run "$SCRIPT_DIR/audit_workspace_skills.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/audit_workspace_skills.py" "$@"
     ;;
   improve-adoption)
     ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || { cd "$SCRIPT_DIR/.." && pwd; })"
@@ -299,16 +299,16 @@ case "$cmd" in
     mkdir -p "$OUT_DIR"
     OUTPUT_JSON="$OUT_DIR/adoption-improvement-$DATE_STAMP.json"
     OUTPUT_MD="$OUT_DIR/adoption-improvement-$DATE_STAMP.md"
-    exec uv run "$SCRIPT_DIR/adoption_report.py" \
+    exec uv run --no-project "$SCRIPT_DIR/adoption_report.py" \
       --output-json "$OUTPUT_JSON" \
       --output-md "$OUTPUT_MD" \
       "$@"
     ;;
   workspace-install)
-    exec uv run "$SCRIPT_DIR/install_workspace_skill.py" "$@"
+    exec uv run --no-project "$SCRIPT_DIR/install_workspace_skill.py" "$@"
     ;;
   setup)
-    exec uv run python3 "$SCRIPT_DIR/token_reduce_setup_wizard.py" "$@"
+    exec uv run --no-project python3 "$SCRIPT_DIR/token_reduce_setup_wizard.py" "$@"
     ;;
   delegate-health)
     # O2: check installed/missing for each configured delegate and companion
@@ -334,7 +334,7 @@ case "$cmd" in
     ;;
   tools)
     # O5: list all tools with enabled/disabled status from config
-    exec uv run python3 "$SCRIPT_DIR/token_reduce_config.py" --list-tools
+    exec uv run --no-project python3 "$SCRIPT_DIR/token_reduce_config.py" --list-tools
     ;;
   *)
     usage >&2
