@@ -160,7 +160,7 @@ ok "update-check hook written to $HOOK_INSTALL_DIR/token-reduce-update-check.sh"
 
 UPDATE_CHECK_CMD="$HOOK_INSTALL_DIR/token-reduce-update-check.sh"
 
-"$UV_ABS" run python - <<PYEOF
+"$UV_ABS" run --no-project python - <<PYEOF
 import json, pathlib, shutil
 
 settings_path = pathlib.Path.home() / ".claude" / "settings.json"
@@ -340,7 +340,7 @@ if [[ "${TOKEN_REDUCE_SETUP_TELEMETRY_PROMPT:-1}" != "0" ]]; then
     if [[ -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
       onboard_args+=(--endpoint "$TOKEN_REDUCE_TELEMETRY_ENDPOINT")
     fi
-    uv run "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
+    uv run --no-project "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
       || warn "telemetry onboarding prompt failed"
   elif [[ -n "${TOKEN_REDUCE_TELEMETRY_OPT_IN:-}" || -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
     onboard_args=(onboard --non-interactive)
@@ -351,7 +351,7 @@ if [[ "${TOKEN_REDUCE_SETUP_TELEMETRY_PROMPT:-1}" != "0" ]]; then
     if [[ -n "${TOKEN_REDUCE_TELEMETRY_ENDPOINT:-}" ]]; then
       onboard_args+=(--endpoint "$TOKEN_REDUCE_TELEMETRY_ENDPOINT")
     fi
-    uv run "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
+    uv run --no-project "$REPO_ROOT/scripts/token-reduce-settings.py" "${onboard_args[@]}" \
       || warn "non-interactive telemetry onboarding failed"
   fi
 fi

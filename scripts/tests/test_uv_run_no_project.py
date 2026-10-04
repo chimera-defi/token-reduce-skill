@@ -22,8 +22,11 @@ RUNTIME_SCRIPTS = (
     "token-reduce-snippet.sh",
     "token-reduce-adaptive.sh",
     "token-reduce-manage.sh",
+    # reached from token-reduce-manage.sh (measure, release-gate) without a cd
+    "baseline-measurement.sh",
+    "release-gate.sh",
 )
-UV_RUN_RE = re.compile(r"\buv run\b(?! --no-project)")
+UV_RUN_RE = re.compile(r"\buv\s+run\b(?!\s+--no-project\b)")
 
 
 @pytest.mark.parametrize("name", RUNTIME_SCRIPTS)
@@ -50,10 +53,11 @@ def _foreign_repo(path: Path) -> Path:
 def test_paths_sh_does_not_bootstrap_foreign_project(tmp_path: Path) -> None:
     repo = _foreign_repo(tmp_path / "foreign")
     env = dict(os.environ, UV_CACHE_DIR=str(tmp_path / "uv-cache"))
-    subprocess.run(
+    out = subprocess.run(
         ["bash", str(SCRIPTS_DIR / "token-reduce-paths.sh"), "hello"],
         cwd=repo, env=env, capture_output=True, text=True, timeout=180,
     )
+    assert out.returncode == 0, f"paths.sh failed (rc={out.returncode}): {out.stderr[-2000:]}"
     assert not (repo / ".venv").exists(), "token-reduce-paths.sh created .venv in a foreign repo"
     assert not (repo / "uv.lock").exists(), "token-reduce-paths.sh created uv.lock in a foreign repo"
 
@@ -71,4 +75,20 @@ def test_no_project_keeps_inline_script_metadata(tmp_path: Path) -> None:
         cwd=repo, env=env, capture_output=True, text=True, timeout=120,
     )
     assert out.returncode == 0 and "meta-ok" in out.stdout
+    assert not (repo / ".venv").exists()
+
+
+@pytest.mark.skipif(shutil.which("uv") is None, reason="uv not installed")
+def test_no_project_still_enforces_inline_requires_python(tmp_path: Path) -> None:
+    """Proves the metadata block is read under --no-project, not ignored."""
+    repo = _foreign_repo(tmp_path / "foreign")
+    script = tmp_path / "meta_bad.py"
+    script.write_text('# /// script\n# requires-python = ">=99"\n# dependencies = []\n# ///\nprint("ran")\n')
+    env = dict(os.environ, UV_CACHE_DIR=str(tmp_path / "uv-cache"), UV_OFFLINE="1")
+    out = subprocess.run(
+        ["uv", "run", "--no-project", str(script)],
+        cwd=repo, env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert out.returncode != 0 and "ran" not in out.stdout
+    assert "99" in out.stderr
     assert not (repo / ".venv").exists()
