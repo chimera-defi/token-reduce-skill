@@ -15,7 +15,7 @@ if [[ ! -f "$TARGET" ]]; then
 fi
 
 if command -v uv >/dev/null 2>&1; then
-  RUNNER=(uv run "$TARGET")
+  RUNNER=(uv run --no-project "$TARGET")
 elif command -v python3 >/dev/null 2>&1; then
   RUNNER=(python3 "$TARGET")
 else

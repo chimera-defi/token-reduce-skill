@@ -54,10 +54,10 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   if [[ -z "${TOKEN_REDUCE_DISABLE_BRAIN_HINT:-}" ]]; then
     _BRAIN_ERR="$(mktemp 2>/dev/null || true)"
     _BRAIN_RC=0
-    BRAIN_HINT="$(uv run python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}")" || _BRAIN_RC=$?
+    BRAIN_HINT="$(uv run --no-project python3 "$SCRIPT_DIR/brain_hint.py" "$QUERY" 2>"${_BRAIN_ERR:-/dev/null}")" || _BRAIN_RC=$?
     if [[ $_BRAIN_RC -ne 0 && -s "${_BRAIN_ERR:-}" ]]; then
       printf 'token-reduce: brain_hint failed (rc=%s): %s\n' "$_BRAIN_RC" "$(cat "$_BRAIN_ERR")" >&2
-      uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+      uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
         --event brain_hint_error --source helper --tool token_reduce_snippet \
         --status error --query "$QUERY" \
         --meta-json "{\"exit_code\":$_BRAIN_RC}" >/dev/null 2>&1 || true
@@ -85,10 +85,10 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
-  PATHS_META="$(printf '%s\n' "$OUTPUT" | uv run "$SCRIPT_DIR/extract_paths_meta.py")"
-  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["files_returned_count"])')"
-  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
-  uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+  PATHS_META="$(printf '%s\n' "$OUTPUT" | uv run --no-project "$SCRIPT_DIR/extract_paths_meta.py")"
+  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | uv run --no-project python -c 'import json,sys; print(json.load(sys.stdin)["files_returned_count"])')"
+  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | uv run --no-project python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
+  uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \
     --tool token_reduce_snippet \
@@ -118,7 +118,7 @@ else
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
-  uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+  uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \
     --tool token_reduce_snippet \
