@@ -28,7 +28,7 @@ RUNTIME_SCRIPTS = (
     # writes the SessionStart update-check wrapper (generated `$UV_ABS run ...`)
     "setup.sh",
 )
-UV_RUN_RE = re.compile(r"(?:\buv|\$UV_ABS\"?)\s+run\b(?!\s+--no-project\b)")
+UV_RUN_RE = re.compile(r"(?:\buv|\$UV_ABS\"?|\{uv_abs\})\s+run\b(?!\s+--no-project\b)")
 
 
 @pytest.mark.parametrize("name", RUNTIME_SCRIPTS)

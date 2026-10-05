@@ -176,7 +176,7 @@ enforce_script = f"{hook_dir}/enforce-token-reduce-first.py"
 # `timeout`, and honor exit 2 as a block ONLY when the script still exists
 # (otherwise fail open).
 enforce_cmd = (
-    f'T="{enforce_script}"; timeout 20 {uv_abs} run "$T"; ec=$?; '
+    f'T="{enforce_script}"; timeout 20 {uv_abs} run --no-project "$T"; ec=$?; '
     f'if [ "$ec" -eq 2 ] && [ -f "$T" ]; then exit 2; fi; exit 0'
 )
 update_cmd = "${UPDATE_CHECK_CMD}"
