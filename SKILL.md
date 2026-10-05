@@ -38,7 +38,7 @@ Use targeted retrieval and short summaries when paths are unknown, the repo is l
 ## Setup (First Invocation)
 
 On first invocation in a new repo, if no config exists at the path reported by
-`uv run scripts/token_reduce_config.py --path` (override with `TOKEN_REDUCE_CONFIG_PATH`),
+`uv run --no-project scripts/token_reduce_config.py --path` (override with `TOKEN_REDUCE_CONFIG_PATH`),
 run `token-reduce-manage.sh setup` (or `token-reduce-manage.sh setup --non-interactive` in CI)
 and relay the choices to the user via AskUserQuestion. Skip if config already exists.
 
@@ -48,8 +48,8 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
   - `scripts/token-reduce-paths.sh topic words`
   - `scripts/token-reduce-snippet.sh topic words`
 - If the exact symbol is already known and `token-savior` is installed, you may use:
-  - `uv run python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`
-  - `uv run python scripts/token-reduce-structural.py --project-root . change-impact ExactSymbol`
+  - `uv run --no-project python scripts/token-reduce-structural.py --project-root . find-symbol ExactSymbol`
+  - `uv run --no-project python scripts/token-reduce-structural.py --project-root . change-impact ExactSymbol`
 - Prefer `scripts/token-reduce-paths.sh` for the initial path-only kickoff.
 - Prefer the structural helper only for exact symbol or dependency questions; do not use it as the default for vague repo discovery.
 - Use `scripts/token-reduce-snippet.sh` only when the path list is not enough.

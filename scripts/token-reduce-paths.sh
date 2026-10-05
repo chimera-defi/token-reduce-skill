@@ -59,7 +59,7 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
       DISPATCH_ARGS+=(--events-file "$EVENTS_FILE")
     fi
     _DISPATCH_OUT="$(printf '%s\n' "$OUTPUT" | \
-      uv run python3 "$SCRIPT_DIR/token_reduce_dispatch.py" "${DISPATCH_ARGS[@]}")" && {
+      uv run --no-project python3 "$SCRIPT_DIR/token_reduce_dispatch.py" "${DISPATCH_ARGS[@]}")" && {
       if [[ -n "$_DISPATCH_OUT" ]]; then
         OUTPUT="$_DISPATCH_OUT"
         [[ -z "${TOKEN_REDUCE_DISABLE_RANK:-}" ]] && RANK_APPLIED=1
@@ -69,7 +69,7 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
     EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
     RANK_ARGS=(--query "$QUERY" --repo-root "$REPO_ROOT" --rerank-lines)
     [[ -f "$EVENTS_FILE" ]] && RANK_ARGS+=(--events-file "$EVENTS_FILE")
-    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>/dev/null || true)"
+    RANK_RESULT="$(printf '%s\n' "$OUTPUT" | uv run --no-project python3 "$SCRIPT_DIR/rank_paths.py" "${RANK_ARGS[@]}" 2>/dev/null || true)"
     [[ -n "$RANK_RESULT" ]] && { OUTPUT="$RANK_RESULT"; RANK_APPLIED=1; }
   fi
   printf '%s\n' "$OUTPUT"
@@ -89,10 +89,10 @@ if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-searc
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
-  PATHS_META="$(printf '%s\n' "$OUTPUT" | uv run "$SCRIPT_DIR/extract_paths_meta.py")"
-  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.load(sys.stdin)["files_returned_count"])')"
-  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | uv run python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
-  uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+  PATHS_META="$(printf '%s\n' "$OUTPUT" | uv run --no-project "$SCRIPT_DIR/extract_paths_meta.py")"
+  FILES_RETURNED_COUNT="$(printf '%s' "$PATHS_META" | uv run --no-project python -c 'import json,sys; print(json.load(sys.stdin)["files_returned_count"])')"
+  TOP_RETURNED_PATHS="$(printf '%s' "$PATHS_META" | uv run --no-project python -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["top_returned_paths"]))')"
+  uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \
     --tool token_reduce_paths \
@@ -122,7 +122,7 @@ else
   FALLBACK_MS="$(sanitize_number "$(diag_value fallback_ms)")"
   FALLBACK_USED="$(sanitize_number "$(diag_value fallback_used)")"
   PATH_HINT_SHORT_CIRCUIT="$(sanitize_number "$(diag_value path_hint_short_circuit)")"
-  uv run "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
+  uv run --no-project "$SCRIPT_DIR/token_reduce_telemetry.py" --repo-root "$REPO_ROOT" log \
     --event helper_invocation \
     --source helper \
     --tool token_reduce_paths \

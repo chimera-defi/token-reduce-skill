@@ -30,12 +30,12 @@ SUMMARY_MD="${OUTPUT%.json}.md"
 REVIEW_JSON="${OUTPUT%.json}-review.json"
 REVIEW_MD="${OUTPUT%.json}-review.md"
 
-uv run "$SCRIPT_DIR/measure_token_reduction.py" \
+uv run --no-project "$SCRIPT_DIR/measure_token_reduction.py" \
   --scope "$SCOPE" \
   --repo-root "$ROOT" \
   --output "$OUTPUT"
 
-uv run python - "$OUTPUT" "$SUMMARY_MD" <<'PY'
+uv run --no-project python - "$OUTPUT" "$SUMMARY_MD" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -99,7 +99,7 @@ dst.write_text(summary)
 print(summary)
 PY
 
-uv run "$SCRIPT_DIR/review_token_reduction.py" \
+uv run --no-project "$SCRIPT_DIR/review_token_reduction.py" \
   --scope "$SCOPE" \
   --repo-root "$ROOT" \
   --output-json "$REVIEW_JSON" \
