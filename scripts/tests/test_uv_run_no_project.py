@@ -25,8 +25,10 @@ RUNTIME_SCRIPTS = (
     # reached from token-reduce-manage.sh (measure, release-gate) without a cd
     "baseline-measurement.sh",
     "release-gate.sh",
+    # writes the SessionStart update-check wrapper (generated `$UV_ABS run ...`)
+    "setup.sh",
 )
-UV_RUN_RE = re.compile(r"\buv\s+run\b(?!\s+--no-project\b)")
+UV_RUN_RE = re.compile(r"(?:\buv|\$UV_ABS\"?)\s+run\b(?!\s+--no-project\b)")
 
 
 @pytest.mark.parametrize("name", RUNTIME_SCRIPTS)
@@ -34,7 +36,7 @@ def test_runtime_scripts_pass_no_project(name: str) -> None:
     offenders = [
         f"{name}:{i}: {ln.strip()}"
         for i, ln in enumerate((SCRIPTS_DIR / name).read_text().splitlines(), 1)
-        if not ln.strip().startswith("#") and UV_RUN_RE.search(ln)
+        if not ln.strip().startswith(("#", "echo ")) and UV_RUN_RE.search(ln)
     ]
     assert not offenders, "uv run without --no-project:\n" + "\n".join(offenders)
 
