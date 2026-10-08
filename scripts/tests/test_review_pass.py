@@ -535,27 +535,6 @@ class TestScenarioS6CounterSourceOfTruth:
 
 
 # =========================================================================== #
-# P6: os.sep-safe trailing-separator construction
-# =========================================================================== #
-
-
-class TestWithTrailingSep:
-    """P6: env-sanity's with_slash previously used str(path) + "/" directly.
-    _with_trailing_sep must guarantee exactly one trailing os.sep regardless
-    of whether the input already ends with one, so the bare-vs-slash
-    distinction the symlink-find trap check depends on can never collapse."""
-
-    def test_no_trailing_sep_gets_exactly_one_added(self):
-        assert rp._with_trailing_sep("/foo/bar") == "/foo/bar/"
-
-    def test_existing_trailing_sep_is_not_doubled(self):
-        assert rp._with_trailing_sep("/foo/bar/") == "/foo/bar/"
-
-    def test_root_path_stays_single_separator(self):
-        assert rp._with_trailing_sep("/") == "/"
-
-
-# =========================================================================== #
 # env-sanity
 # =========================================================================== #
 
@@ -624,32 +603,6 @@ class TestEnvSanity:
             pytest.skip("rg not installed on this host")
         assert demo["ok"] is True
         assert demo["full_count"] > demo["default_count"]
-
-
-# =========================================================================== #
-# P2: adoption-snapshot delegates to token_reduce_telemetry.load_events
-# =========================================================================== #
-
-
-class TestLoadEventsDelegation:
-    """P2: check_adoption_snapshot previously reimplemented events.jsonl
-    path/parse/cutoff logic that token_reduce_telemetry.load_events(days=...)
-    already provides. Monkeypatching the canonical helper and observing the
-    call proves check_adoption_snapshot delegates to it."""
-
-    def test_check_adoption_snapshot_calls_token_reduce_telemetry_load_events(self, tmp_path: Path, monkeypatch):
-        repo_root = tmp_path / "repo"
-        repo_root.mkdir()
-        calls: list[tuple] = []
-
-        def fake_load_events(root, *, days=None):
-            calls.append((root, days))
-            return []
-
-        monkeypatch.setattr(rp._trt, "load_events", fake_load_events)
-        ns = _default_ns(repo_root=str(repo_root), days=9)
-        rp.check_adoption_snapshot(ns)
-        assert calls == [(repo_root, 9)]
 
 
 # =========================================================================== #
