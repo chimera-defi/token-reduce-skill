@@ -30,6 +30,13 @@ already installed global RTK hooks or an existing Headroom proxy. Starting a
 session outside that proxy or changing hook/server settings requires the operator.
 No global integration is silently changed by this skill.
 
+RTK rewrite contract (verified in 0.50/0.51 source): exit 0 allows the rewrite;
+1 passes through; 2 denies; 3 returns a rewrite that the host must approve.
+`run` prints the rewritten argv and exits 3 without execution in that case.
+After approval of that specific command, use `run --approved-rtk-rewrite -- <argv>`.
+This explicit acknowledgement never overrides exit 2. An enabled layer alone
+does not grant command approval.
+
 `manage.sh status [--events-file /path/events.jsonl]` reports policy, source,
 control scope, RTK gain, and live loopback Headroom stats. Unknown saving is null.
 RTK uses token estimates; Headroom counters are reported by its proxy. Both are

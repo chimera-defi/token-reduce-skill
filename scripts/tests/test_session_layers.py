@@ -55,6 +55,32 @@ def test_rtk_off_never_rewrites(monkeypatch):
     assert run_command([sys.executable, "-c", "pass"]) == 0
 
 
+@pytest.mark.parametrize("rewrite_exit,approved,expected_runs", [(0, False, 1), (3, False, 0), (3, True, 1)])
+def test_rtk_on_handles_rewrite_and_native_approval(monkeypatch, rewrite_exit, approved, expected_runs, capsys):
+    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "on")
+    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: "/fake/rtk")
+    calls = []
+    def fake_run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ["rtk", "rewrite"]:
+            return subprocess.CompletedProcess(argv, rewrite_exit, "rtk git status", "")
+        assert argv == ["rtk", "git", "status"]
+        return subprocess.CompletedProcess(argv, 7)
+    monkeypatch.setattr("token_reduce_layers.subprocess.run", fake_run)
+    assert run_command(["git", "status"], approved_rewrite=approved) == (7 if expected_runs else 3)
+    assert len(calls) == 1 + expected_runs
+    if not expected_runs:
+        assert capsys.readouterr().out.strip() == "rtk git status"
+
+
+def test_rtk_deny_cannot_be_approved(monkeypatch):
+    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "on")
+    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: "/fake/rtk")
+    monkeypatch.setattr("token_reduce_layers.subprocess.run", lambda argv, **kwargs: subprocess.CompletedProcess(argv, 2, "", ""))
+    with pytest.raises(ValueError, match="rewrite failed"):
+        run_command(["git", "status"], approved_rewrite=True)
+
+
 def test_status_no_savings_are_not_zero(monkeypatch):
     monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: None)
     monkeypatch.setattr("token_reduce_layers.headroom_stats", lambda: {"available": False})
