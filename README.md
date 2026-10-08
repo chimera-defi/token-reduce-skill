@@ -183,22 +183,22 @@ directly. (There is no separate `UserPromptSubmit` reminder hook anymore — ret
 
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
-| `broad_inventory` | `1543` | baseline |
+| `broad_inventory` | `1695` | baseline |
 | `guidance_scoped_rg` | `221` | `83.3%` saved |
-| `qmd_files` | `242` | `81.2%` saved |
-| `token_reduce_paths_warm` | `238` | `81.0%` saved |
-| `token_reduce_snippet_warm` | `366` | `71.2%` saved |
+| `qmd_files` | `253` | `81.2%` saved |
+| `token_reduce_paths_warm` | `251` | `81.0%` saved |
+| `token_reduce_snippet_warm` | `381` | `71.2%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
 | Strategy | Tokens | vs broad shell | Status |
 |----------|--------|----------------|--------|
-| `broad_shell` | `2154` | baseline | `ok` |
-| `qmd_only` | `679` | `68.5%` saved | `ok` |
-| `token_reduce_only` | `462` | `78.6%` saved | `quality-fail` |
-| `token_savior_only` | `213` | `90.1%` saved | `quality-fail` |
-| `rtk_only` | `897` | `58.4%` saved | `ok` |
-| `composite_stack` | `447` | `79.2%` saved | `quality-fail` |
+| `broad_shell` | `2615` | baseline | `ok` |
+| `qmd_only` | `690` | `73.6%` saved | `ok` |
+| `token_reduce_only` | `507` | `80.6%` saved | `quality-fail` |
+| `token_savior_only` | `213` | `91.9%` saved | `quality-fail` |
+| `rtk_only` | `1293` | `50.6%` saved | `ok` |
+| `composite_stack` | `459` | `82.4%` saved | `quality-fail` |
 
 This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
 
