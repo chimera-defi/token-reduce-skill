@@ -211,6 +211,8 @@ def main() -> int:
             if layer_mode("context_audit") != "on":
                 return 0
             event = json.load(sys.stdin)
+            if not isinstance(event, dict):
+                raise ValueError("hook input must be an object")
             report = audit(Path(event["transcript_path"]) if event.get("transcript_path") else None,
                            budget=args.budget, max_bytes=args.max_bytes)
             print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": hook_text(report)}}))

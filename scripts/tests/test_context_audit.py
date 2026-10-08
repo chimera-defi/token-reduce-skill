@@ -55,9 +55,12 @@ def test_on_load_hook_is_opt_in_fail_open_and_does_not_write(tmp_path):
         else:
             assert result.stdout == ""
         assert "PRIVATE_PROMPT" not in result.stdout
-    invalid = cli("--hook", env={**os.environ, "TOKEN_REDUCE_LAYER_CONTEXT_AUDIT": "on"}, payload="INVALID_PRIVATE_INPUT")
-    assert invalid.returncode == 0
-    assert "INVALID_PRIVATE_INPUT" not in invalid.stdout + invalid.stderr
+    for payload in ["INVALID_PRIVATE_INPUT", "[]", "null", "42", '"PRIVATE_SCALAR"']:
+        invalid = cli("--hook", env={**os.environ, "TOKEN_REDUCE_LAYER_CONTEXT_AUDIT": "on"}, payload=payload)
+        assert invalid.returncode == 0
+        assert "INVALID_PRIVATE_INPUT" not in invalid.stdout + invalid.stderr
+        assert "PRIVATE_SCALAR" not in invalid.stdout + invalid.stderr
+        assert "Traceback" not in invalid.stderr
     assert {p.name: p.read_bytes() for p in tmp_path.iterdir()} == before
 
 
