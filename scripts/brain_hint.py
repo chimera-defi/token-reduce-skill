@@ -12,6 +12,9 @@ import sys
 
 
 def hint_line(query: str) -> str | None:
+    from token_reduce_config import layer_enabled
+    if not layer_enabled("memory"):
+        return None
     have_qmd = shutil.which("qmd") is not None
     have_gbrain = shutil.which("gbrain") is not None
     if not (have_qmd or have_gbrain):

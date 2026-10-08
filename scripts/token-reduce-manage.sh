@@ -30,7 +30,7 @@ except Exception:
 }
 # Skip preamble for meta/setup commands where it would be redundant or noisy
 case "${1:-}" in
-  updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
+  status|run|layer-action|updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
     ;;
   *)
     _maybe_update_check
@@ -83,6 +83,9 @@ commands:
   setup         Interactive setup wizard (auto-detect delegates/companions, save config)
   delegate-health  Check installed/missing status for each configured delegate and companion
   tools         List all available tools with enabled/disabled status from config
+  status        Read-only session layer policy and measured companion savings
+  run           Run one argv command with optional RTK rewrite (layers.rtk=on)
+  layer-action  Print the enabled Headroom/MCP action contract; no config writes
 EOF
 }
 
@@ -91,6 +94,9 @@ if [[ $# -gt 0 ]]; then
   shift
 fi
 case "$cmd" in
+  status|run|layer-action)
+    exec uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" "$cmd" "$@"
+    ;;
   activate-stack)
     exec "$SCRIPT_DIR/activate-token-reduce-stack.sh"
     ;;

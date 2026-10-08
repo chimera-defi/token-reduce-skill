@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
@@ -658,6 +659,11 @@ class TestLoadEventsDelegation:
 
 class TestAdoptionSnapshot:
     def _write_events(self, repo_root: Path, events: list[dict]) -> None:
+        # Preserve fixture spacing while keeping the batch in the live window.
+        if events and all(e["timestamp"].startswith("2026-09-12") for e in events):
+            newest = max(datetime.fromisoformat(e["timestamp"]) for e in events)
+            offset = datetime.now(timezone.utc) - timedelta(minutes=1) - newest
+            events = [{**e, "timestamp": (datetime.fromisoformat(e["timestamp"]) + offset).isoformat()} for e in events]
         events_dir = repo_root / "artifacts" / "token-reduction"
         events_dir.mkdir(parents=True, exist_ok=True)
         path = events_dir / "events.jsonl"

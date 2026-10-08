@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import json
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
+    "layers": {name: "auto" for name in (
+        "rtk", "headroom_compress", "headroom_retrieve", "search_qmd",
+        "memory", "mcp_trim", "context_audit",
+    )},
     "telemetry": {
         "enabled": False,
         "endpoint": "",
@@ -110,14 +115,34 @@ def deep_merge(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]
 def load_config() -> dict[str, Any]:
     path = config_path()
     if not path.exists():
-        return dict(DEFAULT_CONFIG)
+        return deepcopy(DEFAULT_CONFIG)
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return dict(DEFAULT_CONFIG)
+        return deepcopy(DEFAULT_CONFIG)
     if not isinstance(raw, dict):
-        return dict(DEFAULT_CONFIG)
-    return deep_merge(dict(DEFAULT_CONFIG), raw)
+        return deepcopy(DEFAULT_CONFIG)
+    return deep_merge(deepcopy(DEFAULT_CONFIG), raw)
+
+
+def layer_mode(name: str, config: dict[str, Any] | None = None) -> str:
+    """Session override > config > auto. Never interpret a misspelling as on."""
+    if name not in DEFAULT_CONFIG["layers"]:
+        raise ValueError(f"unknown layer: {name}")
+    config = load_config() if config is None else config
+    value = os.environ.get(f"TOKEN_REDUCE_LAYER_{name.upper()}",
+                           config.get("layers", {}).get(name, "auto"))
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    mode = str(value).strip().lower()
+    if mode not in {"auto", "on", "off"}:
+        raise ValueError(f"invalid {name} layer mode: expected auto/on/off")
+    return mode
+
+
+def layer_enabled(name: str, *, legacy: bool = True) -> bool:
+    mode = layer_mode(name)
+    return legacy if mode == "auto" else mode == "on"
 
 
 def save_config(config: dict[str, Any]) -> Path:
