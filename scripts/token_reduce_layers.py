@@ -92,7 +92,7 @@ def status(events_file: Path | None = None) -> dict:
             "note": "auto inherits legacy behavior; off controls only the stated scope. Unknown savings stay null; counters overlap and must not be summed."}
 
 
-def run_command(argv: list[str]) -> int:
+def run_command(argv: list[str], *, approved_rewrite: bool = False) -> int:
     if argv and argv[0] == "--":
         argv = argv[1:]
     if not argv:
@@ -101,11 +101,18 @@ def run_command(argv: list[str]) -> int:
         if not shutil.which("rtk"):
             raise ValueError("RTK enabled but not installed; no auto-install")
         rewritten = subprocess.run(["rtk", "rewrite", shlex.join(argv)], capture_output=True, text=True, timeout=5)
-        if rewritten.returncode == 0 and rewritten.stdout.strip():
+        if rewritten.returncode in {0, 3} and rewritten.stdout.strip():
             candidate = shlex.split(rewritten.stdout)
             # This API accepts argv, never shell programs or command substitution.
             if candidate and candidate[0] == "rtk":
+                if rewritten.returncode == 3 and not approved_rewrite:
+                    # RTK 0.50/0.51: 3 is a rewrite requiring host approval.
+                    # Return the plan without executing it or overriding rules.
+                    print(shlex.join(candidate))
+                    return 3
                 argv = candidate
+            else:
+                raise ValueError("invalid RTK rewrite output")
         elif rewritten.returncode != 1:
             raise ValueError("RTK rewrite failed")
     return subprocess.run(argv, check=False).returncode
@@ -119,6 +126,8 @@ def main() -> int:
     st = sub.add_parser("status")
     st.add_argument("--events-file", type=Path)
     run = sub.add_parser("run")
+    run.add_argument("--approved-rtk-rewrite", action="store_true",
+                     help="Execute an exit-3 rewrite only after host approval of this command")
     run.add_argument("argv", nargs=argparse.REMAINDER)
     action = sub.add_parser("layer-action")
     action.add_argument("layer", choices=["headroom_compress", "headroom_retrieve", "mcp_trim"])
@@ -127,7 +136,7 @@ def main() -> int:
         if args.command == "mode":
             print(layer_mode(args.layer))
         elif args.command == "run":
-            return run_command(args.argv)
+            return run_command(args.argv, approved_rewrite=args.approved_rtk_rewrite)
         elif args.command == "layer-action":
             mode = layer_mode(args.layer)
             print(json.dumps({"layer": args.layer, "mode": mode, "allowed": mode != "off",
