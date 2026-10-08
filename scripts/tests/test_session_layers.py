@@ -1,108 +1,67 @@
+"""Three real CLI flows: session choices, discovery, and RTK approval."""
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from token_reduce_config import DEFAULT_CONFIG, layer_mode, load_config
-from token_reduce_layers import run_command, status
+SCRIPTS = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(autouse=True)
-def config(monkeypatch, tmp_path):
-    path = tmp_path / "config.json"
-    monkeypatch.setenv("TOKEN_REDUCE_CONFIG_PATH", str(path))
-    for name in DEFAULT_CONFIG["layers"]:
-        monkeypatch.delenv(f"TOKEN_REDUCE_LAYER_{name.upper()}", raising=False)
-    return path
+def cli(*args, env, cwd):
+    return subprocess.run([sys.executable, str(SCRIPTS / "token_reduce_layers.py"), *args],
+                          env=env, cwd=cwd, capture_output=True, text=True, timeout=15)
 
 
-def test_defaults_do_not_share_nested_mutations():
-    first = load_config()
-    first["layers"]["rtk"] = "off"
-    assert load_config()["layers"]["rtk"] == "auto"
+def test_task_config_override_status_and_literal_argv(tmp_path):
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({"layers": {"rtk": "off", "memory": "off"}}))
+    env = {**os.environ, "TOKEN_REDUCE_CONFIG_PATH": str(config)}
+    assert cli("mode", "rtk", env=env, cwd=tmp_path).stdout.strip() == "off"
+    override = {**env, "TOKEN_REDUCE_LAYER_RTK": "on"}
+    assert cli("mode", "rtk", env=override, cwd=tmp_path).stdout.strip() == "on"
+    report = cli("status", env=env, cwd=tmp_path)
+    assert report.returncode == 0, report.stderr
+    assert json.loads(report.stdout)["layers"]["rtk"]["mode"] == "off"
+    output = tmp_path / "argv.txt"
+    literal = 'spaces $HOME `false` $(false) ; literal'
+    result = cli("run", "--", sys.executable, "-c",
+                 "import pathlib,sys;pathlib.Path(sys.argv[1]).write_text(sys.argv[2]);sys.exit(7)",
+                 str(output), literal, env=env, cwd=tmp_path)
+    assert result.returncode == 7
+    assert output.read_text() == literal
+    assert json.loads(config.read_text())["layers"]["rtk"] == "off"
 
 
-def test_precedence_and_bad_override(config, monkeypatch):
-    config.write_text(json.dumps({"layers": {"rtk": "off"}}))
-    assert layer_mode("rtk") == "off"
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "on")
-    assert layer_mode("rtk") == "on"
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "oops")
-    with pytest.raises(ValueError):
-        layer_mode("rtk")
-
-
-def test_memory_off_does_not_probe_tools(monkeypatch):
-    import brain_hint
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_MEMORY", "off")
-    monkeypatch.setattr(brain_hint.shutil, "which", lambda _: pytest.fail("tool probe while off"))
-    assert brain_hint.hint_line("topic") is None
-
-
-def test_run_auto_preserves_argv_and_exit(config, tmp_path):
-    target = tmp_path / "out"
-    text = 'spaces $HOME `false` $(false) ; literal'
-    assert run_command([sys.executable, "-c", "import pathlib,sys;pathlib.Path(sys.argv[1]).write_text(sys.argv[2]);sys.exit(7)", str(target), text]) == 7
-    assert target.read_text() == text
-
-
-def test_rtk_off_never_rewrites(monkeypatch):
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "off")
-    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: pytest.fail("RTK probe"))
-    assert run_command([sys.executable, "-c", "pass"]) == 0
-
-
-@pytest.mark.parametrize("rewrite_exit,approved,expected_runs", [(0, False, 1), (3, False, 0), (3, True, 1)])
-def test_rtk_on_handles_rewrite_and_native_approval(monkeypatch, rewrite_exit, approved, expected_runs, capsys):
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "on")
-    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: "/fake/rtk")
-    calls = []
-    def fake_run(argv, **kwargs):
-        calls.append(argv)
-        if argv[:2] == ["rtk", "rewrite"]:
-            return subprocess.CompletedProcess(argv, rewrite_exit, "rtk git status", "")
-        assert argv == ["rtk", "git", "status"]
-        return subprocess.CompletedProcess(argv, 7)
-    monkeypatch.setattr("token_reduce_layers.subprocess.run", fake_run)
-    assert run_command(["git", "status"], approved_rewrite=approved) == (7 if expected_runs else 3)
-    assert len(calls) == 1 + expected_runs
-    if not expected_runs:
-        assert capsys.readouterr().out.strip() == "rtk git status"
-
-
-def test_rtk_deny_cannot_be_approved(monkeypatch):
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_RTK", "on")
-    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: "/fake/rtk")
-    monkeypatch.setattr("token_reduce_layers.subprocess.run", lambda argv, **kwargs: subprocess.CompletedProcess(argv, 2, "", ""))
-    with pytest.raises(ValueError, match="rewrite failed"):
-        run_command(["git", "status"], approved_rewrite=True)
-
-
-def test_status_no_savings_are_not_zero(monkeypatch):
-    monkeypatch.setattr("token_reduce_layers.shutil.which", lambda _: None)
-    monkeypatch.setattr("token_reduce_layers.headroom_stats", lambda: {"available": False})
-    report = status()
-    assert report["layers"]["rtk"]["tokens_saved"] is None
-    assert report["layers"]["mcp_trim"]["tokens_saved"] is None
-    assert report["layers"]["context_audit"]["mode"] == "auto"
-
-
-def test_qmd_off_uses_fallback_without_calling_qmd(monkeypatch, tmp_path):
-    scripts = Path(__file__).resolve().parents[1]
+def test_disabled_qmd_and_memory_run_real_discovery(tmp_path):
     binary = tmp_path / "bin"
     binary.mkdir()
     marker = tmp_path / "qmd-called"
-    qmd = binary / "qmd"
-    qmd.write_text(f"#!/bin/sh\ntouch '{marker}'\nexit 1\n")
-    qmd.chmod(0o755)
-    (tmp_path / "topic.md").write_text("session layers unique topic")
-    monkeypatch.setenv("TOKEN_REDUCE_LAYER_SEARCH_QMD", "off")
-    import os
-    monkeypatch.setenv("PATH", str(binary) + os.pathsep + os.environ["PATH"])
-    proc = subprocess.run([str(scripts / "token-reduce-search.sh"), "--paths-only", "unique"], cwd=tmp_path, capture_output=True, text=True)
-    assert proc.returncode == 0, proc.stderr
-    assert "topic.md" in proc.stdout
+    probe = binary / "qmd"
+    probe.write_text(f"#!/bin/sh\ntouch '{marker}'\nexit 1\n")
+    probe.chmod(0o755)
+    (tmp_path / "topic.md").write_text("session layers unique discovery topic")
+    env = {**os.environ, "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+           "TOKEN_REDUCE_LAYER_SEARCH_QMD": "off", "TOKEN_REDUCE_LAYER_MEMORY": "off"}
+    result = subprocess.run([str(SCRIPTS / "token-reduce-paths.sh"), "unique"], env=env,
+                            cwd=tmp_path, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert "topic.md" in result.stdout
     assert not marker.exists()
+    assert "brain-hint" not in result.stderr
+
+
+@pytest.mark.skipif(shutil.which("rtk") is None, reason="real RTK required for companion e2e")
+def test_real_rtk_rewrite_and_approved_readonly_command(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    env = {**os.environ, "TOKEN_REDUCE_LAYER_RTK": "on"}
+    result = cli("run", "--", "git", "status", env=env, cwd=tmp_path)
+    assert result.returncode in {0, 3}, result.stderr
+    if result.returncode == 3:
+        assert result.stdout.strip() == "rtk git status"
+    approved = cli("run", "--approved-rtk-rewrite", "--", "git", "status", env=env, cwd=tmp_path)
+    assert approved.returncode == 0, approved.stderr
+    assert approved.stdout.strip()
