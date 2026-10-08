@@ -36,34 +36,19 @@ if command -v qmd >/dev/null 2>&1; then
   fi
   ok "qmd already installed ($qmd_version)"
 else
-  if command -v bun >/dev/null 2>&1; then
-    bun install -g https://github.com/tobi/qmd
-    ok "qmd installed"
-  else
-    warn "bun not found — skipping qmd install. Install bun first: https://bun.sh then re-run this script."
-  fi
+  warn "QMD 2.8.3 candidate held by dependency intake; see references/dependency-compatibility-20261009.md. No automatic install."
 fi
 
 # ── RTK (command output compressor) ──────────────────────────────────────────
 if command -v rtk >/dev/null 2>&1; then
   ok "rtk already installed ($(rtk --version 2>/dev/null | head -1))"
 else
-  if command -v brew >/dev/null 2>&1; then
-    brew install rtk
+  if command -v cargo >/dev/null 2>&1; then
+    cargo install --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked
+    ok "rtk installed (v0.51.0)"
   else
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-    # Add to PATH for this session if installed to ~/.local/bin
-    export PATH="$HOME/.local/bin:$PATH"
+    warn "cargo not found — install qualified RTK v0.51.0 manually"
   fi
-  ok "rtk installed"
-fi
-
-# ── Wire RTK hook into Claude Code (global, graceful if rtk missing) ─────────
-if command -v rtk >/dev/null 2>&1; then
-  rtk init --global --auto-patch >/dev/null 2>&1 && ok "rtk hook wired (global ~/.claude/settings.json)" \
-    || warn "rtk init failed — run 'rtk init -g' manually"
-else
-  warn "rtk not in PATH after install — run 'rtk init -g' manually after adding rtk to PATH"
 fi
 
 # ── AXI companion CLIs (agent-native GitHub/browser interfaces) ──────────────
@@ -105,10 +90,10 @@ if [[ "$EXTENDED_STACK" == "1" ]]; then
       if [[ ! -x "$HEADROOM_PYTHON" ]]; then
         HEADROOM_PYTHON="python3.12"
       fi
-      if uv tool install --python "$HEADROOM_PYTHON" 'headroom-ai[proxy]==0.24.0' >/dev/null 2>&1; then
+      if uv tool install --upgrade --python "$HEADROOM_PYTHON" 'headroom-ai[proxy]==0.40.0' >/dev/null 2>&1; then
         ok "headroom installed"
       else
-        warn "headroom install failed — run \"uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'\" manually"
+        warn "headroom install failed — run \"uv tool install --upgrade --python /usr/bin/python3.12 'headroom-ai[proxy]==0.40.0'\" manually"
       fi
     else
       warn "uv not found — skipping headroom install"
