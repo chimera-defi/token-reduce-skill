@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# token-reduce full setup — installs QMD, RTK, AXI companions, and wires hooks.
+# token-reduce setup — installs qualified companions and wires token-reduce hooks.
 # Optional extended companions can be enabled with TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1.
 # Run once per machine. Safe to re-run.
 set -euo pipefail
@@ -145,8 +145,8 @@ ok "update-check hook written to $HOOK_INSTALL_DIR/token-reduce-update-check.sh"
 
 UPDATE_CHECK_CMD="$HOOK_INSTALL_DIR/token-reduce-update-check.sh"
 
-"$UV_ABS" run --no-project python - <<PYEOF
-import json, pathlib, shutil
+"$UV_ABS" run --no-project python - "$UPDATE_CHECK_CMD" <<'PYEOF'
+import json, pathlib, shutil, sys
 
 settings_path = pathlib.Path.home() / ".claude" / "settings.json"
 settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -164,7 +164,7 @@ enforce_cmd = (
     f'T="{enforce_script}"; timeout 20 {uv_abs} run --no-project "$T"; ec=$?; '
     f'if [ "$ec" -eq 2 ] && [ -f "$T" ]; then exit 2; fi; exit 0'
 )
-update_cmd = "${UPDATE_CHECK_CMD}"
+update_cmd = sys.argv[1]
 
 
 def _refs_token_reduce(cmd, script):
