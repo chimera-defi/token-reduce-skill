@@ -20,6 +20,10 @@ from command_rewrites import (  # noqa: E402
     is_catastrophic,
     suggest_rewrite,
 )
+from token_reduce_state import (  # noqa: E402
+    broad_attempt_count,
+    record_broad_attempt,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -109,3 +113,26 @@ def test_is_catastrophic_find_deep_scoped_path_not_catastrophic() -> None:
 # --------------------------------------------------------------------------- #
 
 
+def test_broad_attempt_counter_is_per_session(tmp_path: Path) -> None:
+    record_broad_attempt(tmp_path, "session-a")
+    record_broad_attempt(tmp_path, "session-a")
+    record_broad_attempt(tmp_path, "session-b")
+    assert broad_attempt_count(tmp_path, "session-a") == 2
+    assert broad_attempt_count(tmp_path, "session-b") == 1
+
+
+def test_block_message_includes_rewrite_one_line() -> None:
+    from command_rewrites import format_block_message
+
+    msg = format_block_message(
+        reason="broad scan",
+        command='find . -name "*.py"',
+        helper_hint="token-reduce-paths",
+    )
+    # one logical line: no double newlines, ends without trailing newline
+    assert "\n\n" not in msg
+    # includes the rewrite hint
+    assert "rg" in msg
+    assert "token-reduce" in msg.lower()
+    # length sane — under 240 chars to keep block output tight
+    assert len(msg) <= 240

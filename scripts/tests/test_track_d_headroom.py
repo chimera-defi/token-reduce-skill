@@ -83,17 +83,9 @@ def _decide(query: str) -> object:
 # --------------------------------------------------------------------------- #
 
 
-
-
 def test_d1_decision_includes_literal_health_check() -> None:
     decision = _decide("tool_result payload too large")
     assert any("headroom install status" in cmd for cmd in decision.headroom_commands)
-
-
-
-
-
-
 
 
 # --------------------------------------------------------------------------- #
@@ -103,16 +95,6 @@ def test_d1_decision_includes_literal_health_check() -> None:
 
 def test_d2_trigger_tool_result() -> None:
     assert _decide("tool_result blob is enormous").headroom_recommended is True
-
-
-
-
-
-
-
-
-
-
 
 
 def test_d2_plain_query_does_not_recommend_headroom() -> None:
@@ -125,45 +107,8 @@ def test_d2_plain_query_does_not_recommend_headroom() -> None:
 # --------------------------------------------------------------------------- #
 
 
-
-
-
-
 # --------------------------------------------------------------------------- #
 # D4 — per-companion conversion funnel
 # --------------------------------------------------------------------------- #
-
-
-def _fake_report() -> dict:
-    return {
-        "adoption": {
-            "caveman_mentions": 12,
-            "caveman_command_sessions": 4,
-            "caveman_command_pct": 33.3,
-            "headroom_mentions": 9,
-            "headroom_command_sessions": 3,
-            "headroom_command_pct": 33.3,
-            "axi_tool_sessions": 5,
-            "axi_tool_sessions_pct": 25.0,
-            "gh_axi_sessions": 3,
-            "chrome_devtools_axi_sessions": 2,
-            "session_count": 20,
-        },
-        "telemetry": {
-            "companion_recommendations": {
-                "headroom_recommended_events": 7,
-                "context_mode_recommended_events": 4,
-                "code_review_graph_recommended_events": 2,
-            },
-        },
-    }
-
-
-
-
-
-
-
-
 
 
