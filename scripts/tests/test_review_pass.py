@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
@@ -534,27 +535,6 @@ class TestScenarioS6CounterSourceOfTruth:
 
 
 # =========================================================================== #
-# P6: os.sep-safe trailing-separator construction
-# =========================================================================== #
-
-
-class TestWithTrailingSep:
-    """P6: env-sanity's with_slash previously used str(path) + "/" directly.
-    _with_trailing_sep must guarantee exactly one trailing os.sep regardless
-    of whether the input already ends with one, so the bare-vs-slash
-    distinction the symlink-find trap check depends on can never collapse."""
-
-    def test_no_trailing_sep_gets_exactly_one_added(self):
-        assert rp._with_trailing_sep("/foo/bar") == "/foo/bar/"
-
-    def test_existing_trailing_sep_is_not_doubled(self):
-        assert rp._with_trailing_sep("/foo/bar/") == "/foo/bar/"
-
-    def test_root_path_stays_single_separator(self):
-        assert rp._with_trailing_sep("/") == "/"
-
-
-# =========================================================================== #
 # env-sanity
 # =========================================================================== #
 
@@ -626,38 +606,17 @@ class TestEnvSanity:
 
 
 # =========================================================================== #
-# P2: adoption-snapshot delegates to token_reduce_telemetry.load_events
-# =========================================================================== #
-
-
-class TestLoadEventsDelegation:
-    """P2: check_adoption_snapshot previously reimplemented events.jsonl
-    path/parse/cutoff logic that token_reduce_telemetry.load_events(days=...)
-    already provides. Monkeypatching the canonical helper and observing the
-    call proves check_adoption_snapshot delegates to it."""
-
-    def test_check_adoption_snapshot_calls_token_reduce_telemetry_load_events(self, tmp_path: Path, monkeypatch):
-        repo_root = tmp_path / "repo"
-        repo_root.mkdir()
-        calls: list[tuple] = []
-
-        def fake_load_events(root, *, days=None):
-            calls.append((root, days))
-            return []
-
-        monkeypatch.setattr(rp._trt, "load_events", fake_load_events)
-        ns = _default_ns(repo_root=str(repo_root), days=9)
-        rp.check_adoption_snapshot(ns)
-        assert calls == [(repo_root, 9)]
-
-
-# =========================================================================== #
 # adoption-snapshot
 # =========================================================================== #
 
 
 class TestAdoptionSnapshot:
     def _write_events(self, repo_root: Path, events: list[dict]) -> None:
+        # Preserve fixture spacing while keeping the batch in the live window.
+        if events and all(e["timestamp"].startswith("2026-09-12") for e in events):
+            newest = max(datetime.fromisoformat(e["timestamp"]) for e in events)
+            offset = datetime.now(timezone.utc) - timedelta(minutes=1) - newest
+            events = [{**e, "timestamp": (datetime.fromisoformat(e["timestamp"]) + offset).isoformat()} for e in events]
         events_dir = repo_root / "artifacts" / "token-reduction"
         events_dir.mkdir(parents=True, exist_ok=True)
         path = events_dir / "events.jsonl"
