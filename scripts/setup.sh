@@ -344,7 +344,7 @@ fi
 echo ""
 echo "Setup complete. What each layer does:"
 echo "  token-reduce hooks  →  block wasteful discovery before it happens"
-echo "  RTK hook            →  compress output of commands that do run"
+echo "  RTK hook            →  not wired by setup; run 'rtk init -g' (operator-approved)"
 echo "  QMD                 →  BM25 search backend for path helpers"
 echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn tool usage"
 if [[ "$EXTENDED_STACK" == "1" ]]; then
