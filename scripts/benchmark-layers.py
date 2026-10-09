@@ -98,9 +98,11 @@ def bench_search(repo: Path) -> list[dict]:
         if repo != ROOT:
             continue  # expected files only exist in this repo
         naive, naive_ms, _ = run(RG_NAIVE.format(words=" ".join(f"-e {w}" for w in words.split())), repo, shell=True)
-        for mode, env in (("qmd", {}), ("rg_fallback", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "off"})):
+        for mode, env in (("qmd", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "on"}), ("rg_fallback", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "off"})):
             out, ms, _ = run([str(helper), *words.split()], repo, env=env)
-            paths = [ln for ln in out.splitlines() if ln and not ln.startswith("#")]
+            # qmd hits look like "#id,score,qmd://repo/path"; the brain-hint line starts "# brain-hint"
+            paths = [ln.rsplit(",", 1)[-1] if ln.startswith("#") and "," in ln else ln
+                     for ln in out.splitlines() if ln and not ln.startswith("# ")]
             rows.append({
                 "layer": f"search/{mode}", "repo": repo.name, "case": words,
                 "off_tokens": count(naive), "on_tokens": count(out), "off_ms": naive_ms, "on_ms": ms,
@@ -158,7 +160,10 @@ def main() -> int:
     ap.add_argument("--repo", action="append", type=Path)
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
-    repos = [r for r in (args.repo or DEFAULT_REPOS) if r.is_dir()]
+    wanted = args.repo or DEFAULT_REPOS
+    repos = [r for r in wanted if r.is_dir()]
+    for missing in set(wanted) - set(repos):
+        print(f"note: skipping missing repo {missing}", file=__import__("sys").stderr)
     rows: list[dict] = []
     for repo in repos:
         rows += bench_rtk(repo) + bench_search(repo)
