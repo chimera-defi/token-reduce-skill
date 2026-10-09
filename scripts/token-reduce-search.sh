@@ -23,6 +23,14 @@ fi
 QUERY="$1"
 GLOB="${2:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Only a fixed mode is printed; no config text is evaluated as shell code.
+if command -v uv >/dev/null 2>&1; then
+  QMD_LAYER="$(uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" mode search_qmd)"
+else
+  # No uv: keep the plain rg fallback working; honor only the session override.
+  QMD_LAYER="${TOKEN_REDUCE_LAYER_SEARCH_QMD:-auto}"
+fi
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
@@ -528,7 +536,7 @@ elif [[ "$PREFER_SCRIPT_CONTENT" -eq 1 ]]; then
   CONTENT_HINTS="$(content_hits)"
 fi
 
-if command -v qmd >/dev/null 2>&1; then
+if [[ "$QMD_LAYER" != "off" ]] && command -v qmd >/dev/null 2>&1; then
   if [[ "$NEEDS_PATH_HINT" -eq 1 && -n "$PATH_HINTS" ]]; then
     debug "[token-reduce-search] rg path hits"
     BACKEND="rg_path_hint"
