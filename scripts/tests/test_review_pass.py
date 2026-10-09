@@ -437,3 +437,48 @@ class TestHookContractComposition:
         assert result.tool_error is False
         assert any("deployed copy behind repo" in f for f in result.findings)
         assert not any("regression in scripts/" in f for f in result.findings)
+
+    def test_repo_copy_unavailable_is_a_tool_error(self):
+        repo = _fake_copy_result(False, {}, summary="repo copy missing enforce/remind scripts at /nope")
+        deployed = _fake_copy_result(True, {"S1": True})
+        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
+        assert result.tool_error is True
+        assert result.exit_code == rp.EXIT_TOOL_ERROR
+        assert "repo copy missing enforce/remind scripts" in " ".join(result.findings)
+
+
+class TestScenarioS6CounterSourceOfTruth:
+    """P1 (masking risk): S6 previously reimplemented the session-key slug +
+    state path + {"count": int} schema by hand. If that hand-rolled copy
+    ever drifted from token_reduce_state's real layout, it would silently
+    read a missing file, return 0, and `count <= 1` would stay green --
+    masking the exact double-increment regression the tool exists to catch.
+    S6 must now delegate to token_reduce_state.broad_attempt_count() and
+    require count == 1 exactly (not just <= 1)."""
+
+    def test_requires_exact_count_one_not_just_le_one(self, tmp_path: Path):
+        stub_root = tmp_path / "stub"
+        _write_stub_copy(stub_root)  # always-allow: never writes state, never emits dedup event
+        copy = rp.HookCopy("stub", stub_root)
+        result, _steps = rp._scenario_s6(copy)
+        # count stays 0 (no state ever written) -- must FAIL, not silently
+        # pass as it would under the old `count <= 1` check.
+        assert result.passed is False
+        assert "broad_attempt_count=0" in result.detail
+
+    def test_marker_present_but_counter_zero_still_fails(self, tmp_path: Path, monkeypatch):
+        # Isolates the count==1 clause: marker_seen is True, only the counter is wrong.
+        stub_root = tmp_path / "stub"
+        _write_stub_copy(stub_root)
+        orig = rp._run_enforce
+
+        def with_marker(copy, root, *args, **kwargs):
+            state = rp._trs.state_dir(root)
+            state.mkdir(parents=True, exist_ok=True)
+            (state / "decision_x.json").write_text("{}")
+            return orig(copy, root, *args, **kwargs)
+
+        monkeypatch.setattr(rp, "_run_enforce", with_marker)
+        result, _steps = rp._scenario_s6(rp.HookCopy("stub", stub_root))
+        assert result.passed is False
+        assert "decision_marker_seen=True" in result.detail
