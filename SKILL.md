@@ -74,7 +74,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | Strategy | Measured Savings | When |
 |----------|-----------------|------|
 | Concise responses | 89% | Always |
-| QMD BM25 search | 71–83% vs broad file listing (local/composite benchmarks); much higher vs reading file contents naively | Finding which files to read |
+| QMD BM25 search | 68–86% vs broad file listing (local/composite benchmarks); much higher vs reading file contents naively | Finding which files to read |
 | Targeted reads | 33% | Large files |
 | Parallel calls | 20% | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
@@ -82,7 +82,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | AI delegate router (`delegate-skill`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Let the router pick the delegate: devin (browser/sandbox), kimi (cheap research/review), grok (large codebase), spark (local Codex write-mode) |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent; recommends context-mode, Headroom, or code-review-graph when matching companions are installed | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
-| Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
+| Headroom companion (optional pilot) | 24-33% saved in a June tool-result smoke test; live proxy removed ~3% of tokens (2026-10-09) | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
 | Cost Caliper companion (optional) | Adds Claude Code spend/session/model-tier/cache telemetry to token-reduce review output | Periodic meta-review of expensive sessions, not first-move discovery |
 | Adoption improvement loop | Tracks active-repo helper usage SLOs and prioritized repo interventions from workspace telemetry | When helper usage appears weak despite install/docs compliance |
 | Databricks cost playbook scorecard | Warning-only coverage report for model efficiency, routing, visibility, budgets, token overhead, and gateway gaps | When reviewing AI coding cost governance across repos or tools |
@@ -112,7 +112,7 @@ Use Headroom only when `headroom install status` or `/readyz` shows a healthy lo
 
 Two modes — pick based on payload size:
 
-- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% reduction on tool-result-heavy workloads.
+- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% in a June tool-result smoke test; ~3% live (2026-10-09).
 - **Active MCP compress** (>20k-token result): call `headroom_compress` directly on large blobs before reasoning over them.
 
 Trigger cues — run the corresponding command verbatim:
@@ -137,10 +137,6 @@ Optional, exact-symbol only — do not auto-install. Run `uv tool install token-
 ## Output-hook over-compression workaround
 
 If a global PostToolUse hook compresses `pytest` output, redirect to a file and `Read` it: `pytest ... > /tmp/pytest.out 2>&1`. See: `references/known-issues.md`.
-
-## QMD warm cache (H1)
-
-Session-scoped read-through cache for QMD collection listings and first-page results (`scripts/qmd_warm_cache.py`, 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`). See: `references/architecture.md`.
 
 ## Cost Caliper Companion (Optional)
 
