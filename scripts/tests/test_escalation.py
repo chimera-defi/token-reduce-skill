@@ -44,6 +44,10 @@ class TestCountIgnoredRecommendations:
         events = [{"meta": "not-a-dict"}]
         assert count_ignored_recommendations(events, companion="headroom") == 0
 
+    def test_recommended_with_missing_used_counts_as_ignored(self):
+        events = [_make_event("headroom", recommended=True)]
+        assert count_ignored_recommendations(events, companion="headroom") == 1
+
 
 
 class TestEscalate:

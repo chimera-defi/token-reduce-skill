@@ -10,6 +10,8 @@ Covers:
 from __future__ import annotations
 
 import sys
+
+import pytest
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
@@ -57,6 +59,11 @@ def test_suggest_rewrite_returns_none_when_no_pattern_matches() -> None:
 # --------------------------------------------------------------------------- #
 # B3 — catastrophic detection
 # --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("command", ["ls -R /", "ls -lR /", "rg --files .", "rg --files ./"])
+def test_is_catastrophic_ls_and_rg_files_at_root(command: str) -> None:
+    assert is_catastrophic(command) is True
 
 
 def test_is_catastrophic_find_root() -> None:

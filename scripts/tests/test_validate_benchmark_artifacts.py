@@ -13,6 +13,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
@@ -72,6 +74,15 @@ class TestValidateArtifactFreshness:
         assert "missing benchmark artifact" in errors[0]
 
 
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [({"other": "data"}, "missing generated_at"), ({"generated_at": "bad-date"}, "invalid generated_at")],
+    )
+    def test_malformed_generated_at_returns_error(self, tmp_path: Path, content: dict, expected: str):
+        path = tmp_path / "benchmark.json"
+        path.write_text(json.dumps(content), encoding="utf-8")
+        assert any(expected in e for e in validate_artifact_freshness(path, 14))
 
     def test_fresh_artifact_returns_no_errors(self, tmp_path: Path):
         path = tmp_path / "benchmark.json"

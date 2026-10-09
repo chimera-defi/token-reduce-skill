@@ -266,6 +266,10 @@ class TestF4CostAwareFind:
         target = tmp_path / "some" / "specific" / "dir"
         assert cr.is_broad_find(f"find {target} -type d") is True
 
+    def test_maxdepth_three_is_still_broad(self, tmp_path: Path) -> None:
+        target = tmp_path / "some" / "specific" / "dir"
+        assert cr.is_broad_find(f"find {target} -maxdepth 3") is True
+
 
 
 
@@ -445,6 +449,14 @@ class TestF9WarnMode:
         assert result.returncode == 0, result.stdout
         assert result.stdout == ""
 
+    def test_warn_mode_env_value_other_than_warn_is_normal_mode(self, repo: Path) -> None:
+        result = _run_hook(
+            _bash_payload("find / -name x", session_id="sess-f9-other-env"),
+            repo,
+            env_extra={"TOKEN_REDUCE_ENFORCE_MODE": "block"},
+        )
+        assert result.returncode == 2
+
 
 
 
@@ -562,3 +574,24 @@ class TestC3SymlinkGuardHonorsFollowOptions:
         link.symlink_to(real_dir)
         msg = enforce.find_symlink_guard(f"find -H {link} -name x")
         assert msg is None
+
+
+class TestR7PostBlockClassifierQuoteAware:
+
+    def test_post_block_escape_not_fooled_by_quoted_payload(self, repo: Path) -> None:
+        """R7(c): the post-block Bash escape classifier must use
+        quote-aware surfaces, not raw lines -- an inert quoted payload
+        containing broad-looking text (e.g. an echoed JSON blob) must not
+        be misclassified as an escape attempt."""
+        session_id = "sess-r7c"
+        _run_hook(_bash_payload("find / -name x", session_id=session_id), repo)
+        payload = _bash_payload(
+            "echo '{\"command\":\"find /x\"}'",
+            session_id=session_id,
+        )
+        result = _run_hook(payload, repo)
+        assert result.returncode == 0
+
+        events = _events(repo)
+        escapes = [e for e in events if e.get("event") == "post_block_escape"]
+        assert not escapes, f"quoted inert text must not be classified as an escape, got {events}"
