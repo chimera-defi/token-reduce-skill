@@ -33,7 +33,7 @@ claude plugin install token-reduce@chimera-defi
 ```
 
 The plugin wires the token-reduce enforcement hooks automatically.
-For RTK output compression on top, run `scripts/setup.sh` or `rtk init -g` separately.
+For RTK output compression on top, install the RTK binary with `scripts/setup.sh`, then wire its hook with `rtk init -g` (an operator-approved step: it edits Claude settings).
 
 ### Repo-Level Hook Wiring
 
