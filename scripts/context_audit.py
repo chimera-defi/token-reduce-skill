@@ -71,57 +71,61 @@ def audit(transcript: Path | None, *, budget: int | None = None, max_bytes: int 
                 if not isinstance(row, dict):
                     errors += 1
                     continue
-                stamp = row.get("timestamp")
-                attachment = row.get("attachment") or {}
-                if not isinstance(attachment, dict):
-                    attachment = {}
-                kind = attachment.get("type")
-                if kind == "prompt_snapshot":
-                    snapshots["system_prompt"] = (text_of(attachment.get("systemPrompt")), stamp)
-                elif kind == "skill_listing":
-                    snapshots["skill_catalog"] = (text_of(attachment.get("content")), stamp)
-                elif kind == "instructions":
-                    for item in attachment.get("files", []):
-                        if isinstance(item, dict):
-                            path = str(item.get("path", "unknown"))
-                            category = "memory" if "memory" in path.lower() else "rules_claude_md"
-                            instructions[path] = (category, text_of(item.get("content")), stamp)
-                elif kind == "invoked_skills":
-                    for item in attachment.get("skills", []):
-                        if isinstance(item, dict):
-                            skills[str(item.get("name", "unknown"))] = (text_of(item.get("content")), stamp)
-                elif kind == "deferred_tools_record":
-                    for tool in attachment.get("entries", []):
-                        if isinstance(tool, dict) and isinstance(tool.get("name"), str) and "input_schema" in tool:
-                            definitions[tool["name"]] = (tool, stamp)
-                elif kind == "deferred_tools_delta":
-                    for name in attachment.get("removedNames", []):
-                        deferred_lines.pop(name, None)
-                        definitions.pop(name, None)
-                    for name, line in zip(attachment.get("addedNames", []), attachment.get("addedLines", [])):
-                        deferred_lines[str(name)] = (text_of(line), stamp)
-                message = row.get("message") or {}
-                if not isinstance(message, dict):
-                    continue
-                if row.get("type") == "assistant":
-                    content = message.get("content", [])
-                    if isinstance(content, list):
-                        for block in content:
-                            if isinstance(block, dict) and block.get("type") == "tool_use":
-                                identity = block.get("id") or (row.get("uuid"), str(block.get("name")))
-                                if identity not in seen_tool_calls:
-                                    seen_tool_calls.add(identity)
-                                    calls[str(block.get("name", "unknown"))] += 1
-                    usage = message.get("usage")
-                    if isinstance(usage, dict):
-                        fields = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
-                        if all(isinstance(usage.get(k, 0), int) for k in fields):
-                            # Provider input occupancy includes cached input, once per response.
-                            item = {"timestamp": stamp, "input_tokens": sum(usage.get(k, 0) for k in fields),
-                                    "fields": {k: usage.get(k, 0) for k in fields}, "model": message.get("model")}
-                            key = message.get("id") or row.get("uuid") or str(len(usages))
-                            usages[key] = item
-                            latest = item
+                try:
+                    stamp = row.get("timestamp")
+                    attachment = row.get("attachment") or {}
+                    if not isinstance(attachment, dict):
+                        attachment = {}
+                    kind = attachment.get("type")
+                    if kind == "prompt_snapshot":
+                        snapshots["system_prompt"] = (text_of(attachment.get("systemPrompt")), stamp)
+                    elif kind == "skill_listing":
+                        snapshots["skill_catalog"] = (text_of(attachment.get("content")), stamp)
+                    elif kind == "instructions":
+                        for item in attachment.get("files", []):
+                            if isinstance(item, dict):
+                                path = str(item.get("path", "unknown"))
+                                category = "memory" if "memory" in path.lower() else "rules_claude_md"
+                                instructions[path] = (category, text_of(item.get("content")), stamp)
+                    elif kind == "invoked_skills":
+                        for item in attachment.get("skills", []):
+                            if isinstance(item, dict):
+                                skills[str(item.get("name", "unknown"))] = (text_of(item.get("content")), stamp)
+                    elif kind == "deferred_tools_record":
+                        for tool in attachment.get("entries", []):
+                            if isinstance(tool, dict) and isinstance(tool.get("name"), str) and "input_schema" in tool:
+                                definitions[tool["name"]] = (tool, stamp)
+                    elif kind == "deferred_tools_delta":
+                        for name in attachment.get("removedNames", []):
+                            deferred_lines.pop(name, None)
+                            definitions.pop(name, None)
+                        for name, line in zip(attachment.get("addedNames", []), attachment.get("addedLines", [])):
+                            deferred_lines[str(name)] = (text_of(line), stamp)
+                    message = row.get("message") or {}
+                    if not isinstance(message, dict):
+                        continue
+                    if row.get("type") == "assistant":
+                        content = message.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_use":
+                                    identity = block.get("id") or (row.get("uuid"), str(block.get("name")))
+                                    if identity not in seen_tool_calls:
+                                        seen_tool_calls.add(identity)
+                                        calls[str(block.get("name", "unknown"))] += 1
+                        usage = message.get("usage")
+                        if isinstance(usage, dict):
+                            fields = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+                            if all(isinstance(usage.get(k, 0), int) for k in fields):
+                                # Provider input occupancy includes cached input, once per response.
+                                item = {"timestamp": stamp, "input_tokens": sum(usage.get(k, 0) for k in fields),
+                                        "fields": {k: usage.get(k, 0) for k in fields}, "model": message.get("model")}
+                                key = message.get("id") or row.get("uuid") or str(len(usages))
+                                usages[key] = item
+                                latest = item
+                except (TypeError, AttributeError, ValueError):
+                    # Malformed record shapes are skipped and counted, never fatal.
+                    errors += 1
 
     def measured(text: str, stamp=None):
         return {"bytes": len(text.encode("utf-8")), "tokens": count(text), "measurement": method,
