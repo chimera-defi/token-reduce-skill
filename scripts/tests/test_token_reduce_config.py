@@ -230,3 +230,12 @@ class TestLoadSaveConfig:
             assert saved_path.exists()
         finally:
             del os.environ["TOKEN_REDUCE_CONFIG_PATH"]
+
+
+def test_null_layers_in_config_means_defaults(tmp_path, monkeypatch):
+    cfg = tmp_path / "config.json"
+    cfg.write_text('{"layers": null}')
+    monkeypatch.setenv("TOKEN_REDUCE_CONFIG_PATH", str(cfg))
+    monkeypatch.delenv("TOKEN_REDUCE_LAYER_SEARCH_QMD", raising=False)
+    import token_reduce_config as c
+    assert c.layer_mode("search_qmd") == "auto"
