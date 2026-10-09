@@ -52,11 +52,17 @@ def audit(transcript: Path | None, *, budget: int | None = None, max_bytes: int 
     processed = 0
     if transcript is not None:
         with transcript.open("rb") as stream:
-            for raw in stream:
-                processed += len(raw)
-                if processed > max_bytes:
+            while True:
+                # Never read past the allowance (+1 byte to detect truncation),
+                # so one huge record cannot defeat --max-bytes.
+                remaining = max_bytes - processed
+                raw = stream.readline(remaining + 1)
+                if not raw:
+                    break
+                if len(raw) > remaining:
                     truncated = True
                     break
+                processed += len(raw)
                 try:
                     row = json.loads(raw)
                 except (ValueError, UnicodeDecodeError):
