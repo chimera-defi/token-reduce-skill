@@ -7,12 +7,12 @@ Fixed cases: 6 read-only commands x 2 repos (this repo, SharedStake-ui); 9 topic
 | Layer | Off (tokens) | On (tokens) | Effect | Decision |
 |---|---|---|---|---|
 | rtk | 155,873 | 43,340 | -72.2%, same exit codes, +~27 ms/cmd | keep on (raise: nothing to add) |
-| search, rg fallback | naive `rg -n` 238,115 | 935 | -99.6%, 8/9 top-5 hits, ~0.45 s/query | default path |
-| search, qmd (forced on) | naive 238,115 | 1,477 | 8/9 top-5 hits (same as rg), +56% tokens vs rg (1,477 vs 948), ~4.8 s/query (10x) | **off** on this host (`layers.search_qmd=off`): no quality gain on a ~150-file repo, slower and larger |
+| search, rg fallback | naive `rg -n` 239,217 | 955 | -99.6%, 8/9 top-5 hits, ~0.47 s/query | default path |
+| search, qmd (forced on) | naive 239,217 | 1,482 | 8/9 top-5 hits (same as rg; misses differ), +55% tokens vs rg (955), ~0.9 s/query vs 0.47 s after the stamp fix (was ~5.8 s: `qmd collection list` ran before the fresh-stamp check) | leave on `auto`; fixed the ordering in `token-reduce-search.sh` instead of turning it off |
 | memory hint | - | 9 | one line per search | keep |
 | context audit | - | 515 | one report per load, 0.3 s | keep (cost trivial; savings not attributable) |
 | headroom (live proxy, 0.39.1->0.40.0) | 16.0M in | 478k removed | -3.0% tokens, $2.51 measured saved vs $26.87 provider-cache discount | keep on; savings are small, cache hits dominate |
 
-Left alone: headroom_retrieve, mcp_trim (no per-case data yet), memory (cost is 28 tokens).
+Left alone: search_qmd stays `auto` (first measurement showed 10x latency; the cause was a script ordering bug, fixed here); headroom_retrieve, mcp_trim (no per-case data yet), memory (cost is 28 tokens).
 Caveat: qmd may still win on very large repos or fuzzy/semantic queries; not measured here.
 Caveat: nothing here measures task success end to end; search quality is top-5 file hit on known targets.

@@ -99,7 +99,9 @@ def bench_search(repo: Path) -> list[dict]:
             continue  # expected files only exist in this repo
         naive, naive_ms, _ = run(RG_NAIVE.format(words=" ".join(f"-e {w}" for w in words.split())), repo, shell=True)
         for mode, env in (("qmd", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "on"}), ("rg_fallback", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "off"})):
-            out, ms, _ = run([str(helper), *words.split()], repo, env=env)
+            out, ms, rc = run([str(helper), *words.split()], repo, env=env)
+            if rc == 124:
+                continue  # a timed-out query has no honest count
             # qmd hits look like "#id,score,qmd://repo/path"; the brain-hint line starts "# brain-hint"
             paths = [ln.rsplit(",", 1)[-1] if ln.startswith("#") and "," in ln else ln
                      for ln in out.splitlines() if ln and not ln.startswith("# ")]
