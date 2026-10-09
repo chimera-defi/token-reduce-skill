@@ -130,8 +130,10 @@ def layer_mode(name: str, config: dict[str, Any] | None = None) -> str:
     if name not in DEFAULT_CONFIG["layers"]:
         raise ValueError(f"unknown layer: {name}")
     config = load_config() if config is None else config
-    value = os.environ.get(f"TOKEN_REDUCE_LAYER_{name.upper()}",
-                           config.get("layers", {}).get(name, "auto"))
+    layers = config.get("layers")
+    if not isinstance(layers, dict):  # null/garbage layers = defaults
+        layers = {}
+    value = os.environ.get(f"TOKEN_REDUCE_LAYER_{name.upper()}", layers.get(name, "auto"))
     if isinstance(value, bool):
         return "on" if value else "off"
     mode = str(value).strip().lower()

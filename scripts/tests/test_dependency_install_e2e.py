@@ -78,3 +78,19 @@ def test_setup_and_update_keep_qmd_held_and_use_only_pinned_rtk(tmp_path):
         ["install", "--force", "--git", "https://github.com/rtk-ai/rtk", "--tag", "v0.51.0", "--locked"],
     ]
     assert not forbidden.exists(), forbidden.read_text() if forbidden.exists() else ""
+
+
+def test_failed_rtk_build_warns_and_setup_continues(tmp_path):
+    """Run just setup.sh's RTK block with a cargo that fails."""
+    text = (SCRIPTS / "setup.sh").read_text()
+    block = text[text.index("# ── RTK"):text.index("# ── AXI")]
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "cargo").write_text("#!/bin/sh\nexit 101\n")
+    (fake / "cargo").chmod(0o755)
+    script = ('set -euo pipefail\nwarn() { echo "WARN $*"; }\nok() { echo "OK $*"; }\n'
+              + block + 'echo CONTINUED rtk_failed=${RTK_INSTALL_FAILED:-0}\n')
+    env = {**os.environ, "PATH": f"{fake}:/usr/bin:/bin"}
+    out = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, timeout=15)
+    assert out.returncode == 0, out.stderr
+    assert "WARN RTK build failed" in out.stdout and "CONTINUED rtk_failed=1" in out.stdout
