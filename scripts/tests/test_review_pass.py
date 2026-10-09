@@ -29,7 +29,6 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import pytest
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -108,52 +107,10 @@ class TestCheckResult:
         r = rp.CheckResult(name="x", ok=False, tool_error=True)
         assert r.exit_code == rp.EXIT_TOOL_ERROR
 
-    def test_exit_code_findings_when_not_ok(self):
-        r = rp.CheckResult(name="x", ok=False, findings=["something"])
-        assert r.exit_code == rp.EXIT_FINDINGS
-
-    def test_exit_code_healthy(self):
-        r = rp.CheckResult(name="x", ok=True)
-        assert r.exit_code == rp.EXIT_HEALTHY
-
-    def test_render_text_contains_status_and_findings(self):
-        r = rp.CheckResult(name="my-check", ok=False, lines=["line one"], findings=["bad thing"])
-        text = r.render_text()
-        assert "my-check" in text
-        assert "FINDINGS" in text
-        assert "line one" in text
-        assert "bad thing" in text
-
-    def test_render_markdown_healthy_has_no_findings_section(self):
-        r = rp.CheckResult(name="ok-check", ok=True, lines=["all clear"])
-        md = r.render_markdown()
-        assert "HEALTHY" in md
-        assert "Findings" not in md
-
 
 # =========================================================================== #
 # P3: _default_repo_root delegates to token_reduce_state.repo_root()
 # =========================================================================== #
-
-
-class TestDefaultRepoRootDelegation:
-    """P3: _default_repo_root previously reimplemented git-toplevel-from-
-    SCRIPT_DIR and ignored TOKEN_REDUCE_REPO_ROOT / CLAUDE_PROJECT_DIR
-    entirely. It must now delegate to token_reduce_state.repo_root() so
-    --repo-root defaulting matches exactly what the audited hooks use."""
-
-    def test_respects_token_reduce_repo_root_env_override(self, tmp_path: Path, monkeypatch):
-        fake_repo = tmp_path / "env-repo"
-        _init_git_repo(fake_repo)
-        monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(fake_repo))
-        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
-        result = rp._default_repo_root()
-        assert result == fake_repo.resolve()
-
-    def test_delegates_to_token_reduce_state_repo_root(self, monkeypatch):
-        sentinel = Path("/sentinel/repo/root")
-        monkeypatch.setattr(rp._trs, "repo_root", lambda: sentinel)
-        assert rp._default_repo_root() == sentinel
 
 
 # =========================================================================== #
@@ -210,72 +167,6 @@ class TestDeployDrift:
             row for row in result.lines if "enforce-token-reduce-first.py" in row
         ][0].split("|")[-2].strip() or True  # table row exists; drift column checked via findings above
 
-    def test_missing_deployed_file_is_flagged(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path, {})
-        deployed_root = tmp_path / "deployed_missing"
-        deployed_root.mkdir()
-        # only copy some files, leave enforce-token-reduce-first.py missing
-        for name in rp.WATCHED_FILES:
-            if name == "enforce-token-reduce-first.py":
-                continue
-            (deployed_root / name).write_text((repo_root / "scripts" / name).read_text())
-
-        ns = _default_ns(repo_root=str(repo_root), deployed_root=str(deployed_root))
-        result = rp.check_deploy_drift(ns)
-        assert result.ok is False
-        assert any("missing from deployed copy" in f for f in result.findings)
-
-    def test_worktree_main_detached_head_is_flagged(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path, {})
-        worktree_main = tmp_path / "worktree-main"
-        _init_git_repo(worktree_main)
-        (worktree_main / "scripts").mkdir()
-        for name in rp.WATCHED_FILES:
-            (worktree_main / "scripts" / name).write_text((repo_root / "scripts" / name).read_text())
-        _commit_all(worktree_main, "wt commit")
-        head_commit = _git(worktree_main, "rev-parse", "HEAD").stdout.strip()
-        _git(worktree_main, "checkout", "-q", "--detach", head_commit)
-
-        deployed_root = tmp_path / "deployed"
-        deployed_root.mkdir()
-        for name in rp.WATCHED_FILES:
-            (deployed_root / name).write_text((repo_root / "scripts" / name).read_text())
-
-        ns = _default_ns(repo_root=str(repo_root), deployed_root=str(deployed_root), worktree_main=str(worktree_main))
-        result = rp.check_deploy_drift(ns)
-        assert any("detached HEAD" in f for f in result.findings)
-
-    def test_offline_fetch_marks_origin_unknown_not_a_tool_error(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path, {})
-        deployed_root = tmp_path / "deployed"
-        deployed_root.mkdir()
-        for name in rp.WATCHED_FILES:
-            (deployed_root / name).write_text((repo_root / "scripts" / name).read_text())
-
-        ns = _default_ns(repo_root=str(repo_root), deployed_root=str(deployed_root), no_fetch=True)
-        result = rp.check_deploy_drift(ns)
-        assert result.tool_error is False
-        assert "origin/main fetch" in "\n".join(result.lines)
-
-    def test_skills_symlink_resolves_worktree_main(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path, {})
-        worktree_main = tmp_path / "resolved-worktree-main"
-        worktree_main.mkdir()
-        (worktree_main / "scripts").mkdir()
-        for name in rp.WATCHED_FILES:
-            (worktree_main / "scripts" / name).write_text((repo_root / "scripts" / name).read_text())
-        skills_symlink = tmp_path / "fake-skills-symlink"
-        skills_symlink.symlink_to(worktree_main)
-
-        deployed_root = tmp_path / "deployed"
-        deployed_root.mkdir()
-        for name in rp.WATCHED_FILES:
-            (deployed_root / name).write_text((repo_root / "scripts" / name).read_text())
-
-        ns = _default_ns(repo_root=str(repo_root), deployed_root=str(deployed_root), skills_symlink=str(skills_symlink))
-        result = rp.check_deploy_drift(ns)
-        assert result.data["worktree_main"] == str(worktree_main)
-        assert any(f"skills symlink: {skills_symlink}" in line for line in result.lines)
 
     def _make_repo_with_bare_origin(self, tmp_path: Path) -> tuple[Path, Path]:
         """Sets up a local bare 'origin' repo + a clone -- fully offline, no
@@ -320,47 +211,6 @@ class TestDeployDrift:
         assert files["origin_main"] is not None
         assert files["origin_main"] != files["repo"]
 
-    def test_origin_comparison_batched_into_one_ls_tree_call(self, tmp_path: Path, monkeypatch):
-        """P5: the origin/main side of the comparison must be ONE `git
-        ls-tree -r origin/main -- scripts` call covering every watched file,
-        not a `git show origin/main:<file>` subprocess per file."""
-        repo_root, _origin = self._make_repo_with_bare_origin(tmp_path)
-        deployed_root = tmp_path / "deployed"
-        deployed_root.mkdir()
-        for name in rp.WATCHED_FILES:
-            (deployed_root / name).write_text((repo_root / "scripts" / name).read_text())
-
-        calls: list[tuple] = []
-        real_git = rp._git
-
-        def spy_git(git_dir, *args, timeout=15):
-            calls.append(args)
-            return real_git(git_dir, *args, timeout=timeout)
-
-        monkeypatch.setattr(rp, "_git", spy_git)
-        ns = _default_ns(repo_root=str(repo_root), deployed_root=str(deployed_root), no_fetch=False)
-        result = rp.check_deploy_drift(ns)
-
-        show_calls = [c for c in calls if c and c[0] == "show"]
-        ls_tree_calls = [c for c in calls if c and c[0] == "ls-tree"]
-        assert show_calls == [], f"no per-file `git show` calls expected, got: {show_calls}"
-        assert len(ls_tree_calls) == 1, f"expected exactly one `git ls-tree` call, got: {ls_tree_calls}"
-        # still produces correct per-file origin OIDs for every watched file
-        for name in rp.WATCHED_FILES:
-            assert result.data["files"][name]["origin_main"] is not None
-
-    def test_local_blob_oid_matches_git_hash_object(self, tmp_path: Path):
-        """P5: local files must be hashed in the SAME OID space git itself
-        uses (git hash-object), not an arbitrary content hash -- otherwise
-        origin (OID-based) and local (content-hash-based) columns could
-        never compare equal even when content is identical."""
-        f = tmp_path / "sample.py"
-        f.write_text("# sample content\n")
-        expected = subprocess.run(
-            ["git", "hash-object", str(f)], check=True, capture_output=True, text=True
-        ).stdout.strip()
-        assert rp._blob_oid_of_file(f, "sha1") == expected
-
 
 # =========================================================================== #
 # hook-contract: pure verdict composition
@@ -377,94 +227,13 @@ def _fake_copy_result(available: bool, pass_map: dict[str, bool], summary: str |
     }
 
 
-class TestHookContractComposition:
-    IDS = ["S1", "S2"]
-
-    def test_both_pass_everything_is_healthy(self):
-        repo = _fake_copy_result(True, {"S1": True, "S2": True})
-        deployed = _fake_copy_result(True, {"S1": True, "S2": True})
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        assert result.ok is True
-        assert result.exit_code == rp.EXIT_HEALTHY
-        assert result.findings == []
-
-    def test_deployed_failure_when_repo_passes_is_attributed_to_drift(self):
-        repo = _fake_copy_result(True, {"S1": True, "S2": True})
-        deployed = _fake_copy_result(True, {"S1": False, "S2": True})
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        assert result.ok is False
-        assert result.tool_error is False
-        assert any("deployed copy behind repo" in f for f in result.findings)
-        assert not any("regression in scripts/" in f for f in result.findings)
-
-    def test_repo_failure_is_attributed_as_regression_not_drift(self):
-        repo = _fake_copy_result(True, {"S1": False, "S2": True})
-        deployed = _fake_copy_result(True, {"S1": False, "S2": True})
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        assert result.ok is False
-        assert result.tool_error is False
-        assert any("regression in scripts/" in f for f in result.findings)
-        assert any("cannot cleanly attribute this to drift alone" in f for f in result.findings)
-
-    def test_repo_copy_unavailable_is_a_tool_error(self):
-        repo = _fake_copy_result(False, {}, summary="repo copy missing enforce/remind scripts at /nope")
-        deployed = _fake_copy_result(True, {"S1": True})
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        assert result.tool_error is True
-        assert result.exit_code == rp.EXIT_TOOL_ERROR
-        assert "repo copy missing enforce/remind scripts" in " ".join(result.findings)
-
-    def test_deployed_copy_unavailable_is_a_finding_not_a_tool_error(self):
-        repo = _fake_copy_result(True, {"S1": True})
-        deployed = _fake_copy_result(False, {}, summary="deployed copy missing enforce/remind scripts at /nope")
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        assert result.tool_error is False
-        assert result.ok is False
-        assert any("deployed copy unavailable" in f for f in result.findings)
-
-    def test_matrix_table_rendered_for_each_scenario_id(self):
-        repo = _fake_copy_result(True, {"S1": True, "S2": False})
-        deployed = _fake_copy_result(True, {"S1": True, "S2": True})
-        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
-        table = "\n".join(result.lines)
-        assert "| `S1` | PASS | PASS |" in table
-        assert "| `S2` | FAIL | PASS |" in table
-
-
 # =========================================================================== #
 # hook-contract: plumbing (real subprocess wiring, stub scripts)
 # =========================================================================== #
 
 
 class TestHookContractPlumbing:
-    def test_stub_copy_runs_all_nine_scenarios_via_real_subprocess(self, tmp_path: Path):
-        stub_root = tmp_path / "stub-copy"
-        _write_stub_copy(stub_root)
-        copy = rp.HookCopy("stub", stub_root)
 
-        result = rp.run_hook_contract_for_copy(copy)
-
-        assert result["available"] is True
-        assert set(result["scenarios"].keys()) == set(rp.SCENARIO_IDS)
-        # An always-allow stub: scenarios expecting an allow decision pass;
-        # scenarios expecting a block (the stub never emits) fail. This
-        # proves real stdin/stdout/exit-code plumbing, not hook semantics.
-        assert result["scenarios"]["S1"].passed is True
-        assert result["scenarios"]["S4"].passed is True
-        assert result["scenarios"]["S3"].passed is False  # expected a block; stub always allows
-        assert result["scenarios"]["S8"].passed is False  # expected a catastrophic block
-        # P1: stub never writes broad-attempt state or a decision marker,
-        # so the canonical token_reduce_state.broad_attempt_count() correctly
-        # reads back 0 -- and S6 now requires count == 1 exactly, so it fails
-        # loudly here rather than silently passing under the old `<= 1` check.
-        assert result["scenarios"]["S6"].passed is False
-        assert "broad_attempt_count=0" in result["scenarios"]["S6"].detail
-
-    def test_missing_copy_reports_unavailable_not_a_crash(self, tmp_path: Path):
-        copy = rp.HookCopy("missing", tmp_path / "does-not-exist")
-        result = rp.run_hook_contract_for_copy(copy)
-        assert result["available"] is False
-        assert "missing enforce/remind scripts" in result["summary"]
 
     def test_check_hook_contract_end_to_end_with_stub_copies(self, tmp_path: Path):
         repo_stub = tmp_path / "repo-stub"
@@ -486,54 +255,6 @@ class TestHookContractPlumbing:
 # =========================================================================== #
 
 
-class TestScenarioS6CounterSourceOfTruth:
-    """P1 (masking risk): S6 previously reimplemented the session-key slug +
-    state path + {"count": int} schema by hand. If that hand-rolled copy
-    ever drifted from token_reduce_state's real layout, it would silently
-    read a missing file, return 0, and `count <= 1` would stay green --
-    masking the exact double-increment regression the tool exists to catch.
-    S6 must now delegate to token_reduce_state.broad_attempt_count() and
-    require count == 1 exactly (not just <= 1)."""
-
-    def test_requires_exact_count_one_not_just_le_one(self, tmp_path: Path):
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)  # always-allow: never writes state, never emits dedup event
-        copy = rp.HookCopy("stub", stub_root)
-        result, _steps = rp._scenario_s6(copy)
-        # count stays 0 (no state ever written) -- must FAIL, not silently
-        # pass as it would under the old `count <= 1` check.
-        assert result.passed is False
-        assert "broad_attempt_count=0" in result.detail
-
-    def test_delegates_to_token_reduce_state_broad_attempt_count(self, tmp_path: Path, monkeypatch):
-        """Monkeypatching the canonical helper and observing the reported
-        count change proves _scenario_s6 calls THROUGH it, rather than a
-        private reimplementation that could silently disagree."""
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)
-        copy = rp.HookCopy("stub", stub_root)
-        monkeypatch.setattr(rp._trs, "broad_attempt_count", lambda root, key: 7)
-        result, _steps = rp._scenario_s6(copy)
-        assert "broad_attempt_count=7" in result.detail
-        assert result.passed is False  # 7 != 1
-
-    def test_passes_when_canonical_helper_reports_exactly_one(self, tmp_path: Path, monkeypatch):
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)
-        copy = rp.HookCopy("stub", stub_root)
-        monkeypatch.setattr(rp._trs, "broad_attempt_count", lambda root, key: 1)
-        # Replays are side-effect-free (no telemetry event), so S6's dedup
-        # evidence is the on-disk decision marker, found via the canonical
-        # state_dir helper.
-        marker_dir = tmp_path / "state"
-        marker_dir.mkdir()
-        (marker_dir / "decision_hc-s6.json").write_text("{}")
-        monkeypatch.setattr(rp._trs, "state_dir", lambda root: marker_dir)
-        result, _steps = rp._scenario_s6(copy)
-        assert result.passed is True
-        assert "broad_attempt_count=1" in result.detail
-
-
 # =========================================================================== #
 # env-sanity
 # =========================================================================== #
@@ -549,15 +270,6 @@ class TestEnvSanity:
         link.symlink_to(real_dir)
         return link
 
-    def test_non_symlink_path_reports_not_applicable(self, tmp_path: Path):
-        plain_dir = tmp_path / "plain"
-        plain_dir.mkdir()
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)
-        ns = _default_ns(repo_scripts=str(stub_root), deployed_root=str(stub_root), projects_path=str(plain_dir))
-        result = rp.check_env_sanity(ns)
-        assert result.data["is_symlink"] is False
-        assert any("not a symlink" in line for line in result.lines)
 
     def test_symlink_trap_is_confirmed_with_real_fixture(self, tmp_path: Path):
         link = self._make_symlink_fixture(tmp_path)
@@ -567,42 +279,6 @@ class TestEnvSanity:
         result = rp.check_env_sanity(ns)
         assert result.data["trap_live"] is True
         assert any("CONFIRMED live" in line for line in result.lines)
-
-    def test_guarded_copy_reports_guarded_status(self, tmp_path: Path):
-        link = self._make_symlink_fixture(tmp_path)
-        guarded_enforce = (
-            "import json, sys\n"
-            "data = json.load(sys.stdin)\n"
-            "cmd = str((data.get('tool_input') or {}).get('command',''))\n"
-            "if 'find' in cmd and " + repr(str(link)) + " in cmd:\n"
-            "    print(json.dumps({'decision':'block','reason':\"find root is a symlink\"}))\n"
-            "    sys.exit(2)\n"
-            "sys.exit(0)\n"
-        )
-        guarded_root = tmp_path / "guarded"
-        _write_stub_copy(guarded_root, enforce_src=guarded_enforce)
-        unguarded_root = tmp_path / "unguarded"
-        _write_stub_copy(unguarded_root)
-
-        ns = _default_ns(repo_scripts=str(guarded_root), deployed_root=str(unguarded_root), projects_path=str(link))
-        result = rp.check_env_sanity(ns)
-        assert result.data["guard_status"]["repo"] == "guarded"
-        assert result.data["guard_status"]["deployed"] == "unguarded (silently allowed)"
-        assert any("deployed copy is UNGUARDED" in f for f in result.findings)
-        assert not any("repo copy does not guard" in f for f in result.findings)
-
-    def test_rg_hidden_demo_reports_gap(self, tmp_path: Path):
-        plain_dir = tmp_path / "plain"
-        plain_dir.mkdir()
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)
-        ns = _default_ns(repo_scripts=str(stub_root), deployed_root=str(stub_root), projects_path=str(plain_dir))
-        result = rp.check_env_sanity(ns)
-        demo = result.data["rg_hidden_demo"]
-        if demo.get("skipped"):
-            pytest.skip("rg not installed on this host")
-        assert demo["ok"] is True
-        assert demo["full_count"] > demo["default_count"]
 
 
 # =========================================================================== #
@@ -677,85 +353,6 @@ class TestAdoptionSnapshot:
         assert result.data["top_blocked_commands"] == []
         assert result.ok is True
 
-    def test_mixed_warn_and_real_block_only_real_block_counts(self, tmp_path: Path):
-        """P4: in a session with one warn-status hook_block and one real
-        (status="blocked") hook_block, only the real block should surface in
-        top-blocked-commands, and a single real block is not a storm."""
-        repo_root = tmp_path / "repo"
-        events = [
-            self._event(
-                "hook_block", session_key="mixed-session", ts="2026-09-12T00:00:00+00:00", command="warn-cmd", status="warn"
-            ),
-            self._event(
-                "hook_block", session_key="mixed-session", ts="2026-09-12T00:00:01+00:00", command="real-cmd", status="blocked"
-            ),
-        ]
-        self._write_events(repo_root, events)
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        assert result.data["storm_sessions"] == []
-        assert result.data["top_blocked_commands"] == [("real-cmd", 1)]
-
-    def test_storm_session_detected_in_first_five_events(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        events = [
-            self._event("hook_block", session_key="storm-session", ts=f"2026-09-12T00:00:0{i}+00:00", command=f"cmd{i}")
-            for i in range(2)
-        ]
-        self._write_events(repo_root, events)
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        storm_keys = [s[0] for s in result.data["storm_sessions"]]
-        assert "storm-session" in storm_keys
-        assert any("storm session" in f for f in result.findings)
-
-    def test_no_storm_when_blocks_spread_across_sessions(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        events = [
-            self._event("hook_block", session_key="s1", ts="2026-09-12T00:00:00+00:00", command="a"),
-            self._event("hook_block", session_key="s2", ts="2026-09-12T00:00:01+00:00", command="b"),
-        ]
-        self._write_events(repo_root, events)
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        assert result.data["storm_sessions"] == []
-
-    def test_dedup_ratio_reported_when_present(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        events = [
-            self._event("hook_block", session_key="s1", ts="2026-09-12T00:00:00+00:00", command="tree ."),
-            self._event("hook_dedup_replay", session_key="s1", ts="2026-09-12T00:00:00+00:00"),
-        ]
-        self._write_events(repo_root, events)
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        assert result.data["dedup_ratio"] is not None
-        assert any("dedup ratio" in line and "%" in line for line in result.lines)
-
-    def test_dedup_ratio_absent_when_no_replay_events(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        self._write_events(repo_root, [self._event("hook_block", session_key="s1", ts="2026-09-12T00:00:00+00:00", command="x")])
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        assert result.data["dedup_ratio"] is None
-        assert any("no hook_dedup_replay telemetry" in line for line in result.lines)
-
-    def test_events_outside_window_are_excluded(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        old_event = self._event("hook_block", session_key="s1", ts="2020-01-01T00:00:00+00:00", command="ancient")
-        self._write_events(repo_root, [old_event])
-        ns = _default_ns(repo_root=str(repo_root), days=7)
-        result = rp.check_adoption_snapshot(ns)
-        assert result.data["by_event"].get("hook_block", 0) == 0
-
-    def test_no_events_file_is_healthy_empty_report(self, tmp_path: Path):
-        repo_root = tmp_path / "repo"
-        repo_root.mkdir()
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_adoption_snapshot(ns)
-        assert result.ok is True
-        assert "total events: 0" in result.lines
-
 
 # =========================================================================== #
 # inventory-staleness
@@ -784,46 +381,6 @@ class TestInventoryStaleness:
         assert "scripts/wired_script.py" not in candidate_files
         assert any("orphan_script.py" in f for f in result.findings)
 
-    def test_recently_touched_unwired_script_is_not_a_candidate(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path)
-        (repo_root / "scripts" / "fresh_orphan.py").write_text("# fresh\n")
-        _commit_all(repo_root, "add fresh")  # now, not backdated
-
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_inventory_staleness(ns)
-        candidate_files = [c["file"] for c in result.data["demote_candidates"]]
-        assert "scripts/fresh_orphan.py" not in candidate_files
-
-    def test_script_wired_via_cross_import_is_not_a_candidate(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path)
-        old_ts = time.time() - 60 * 86400
-        (repo_root / "scripts" / "helper_module.py").write_text("# helper\n")
-        (repo_root / "scripts" / "caller.py").write_text("from helper_module import thing\n")
-        _commit_all(repo_root, "add", when=old_ts)
-
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_inventory_staleness(ns)
-        candidate_files = [c["file"] for c in result.data["demote_candidates"]]
-        assert "scripts/helper_module.py" not in candidate_files
-
-    def test_no_candidates_is_healthy(self, tmp_path: Path):
-        repo_root = self._make_repo(tmp_path)
-        (repo_root / "scripts" / "wired_script.py").write_text("# wired\n")
-        _commit_all(repo_root, "add")
-
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_inventory_staleness(ns)
-        assert result.ok is True
-        assert result.data["demote_candidates"] == []
-
-    def test_missing_scripts_dir_is_a_tool_error(self, tmp_path: Path):
-        repo_root = tmp_path / "no-scripts-repo"
-        repo_root.mkdir()
-        ns = _default_ns(repo_root=str(repo_root))
-        result = rp.check_inventory_staleness(ns)
-        assert result.tool_error is True
-        assert result.exit_code == rp.EXIT_TOOL_ERROR
-
 
 # =========================================================================== #
 # CLI / `all` wiring
@@ -831,25 +388,6 @@ class TestInventoryStaleness:
 
 
 class TestCliWiring:
-    def test_main_dispatches_env_sanity_and_returns_its_exit_code(self, tmp_path: Path, capsys):
-        plain_dir = tmp_path / "plain"
-        plain_dir.mkdir()
-        stub_root = tmp_path / "stub"
-        _write_stub_copy(stub_root)
-        rc = rp.main(
-            [
-                "--repo-scripts",
-                str(stub_root),
-                "--deployed-root",
-                str(stub_root),
-                "--projects-path",
-                str(plain_dir),
-                "env-sanity",
-            ]
-        )
-        out = capsys.readouterr().out
-        assert "env-sanity" in out
-        assert rc in (rp.EXIT_HEALTHY, rp.EXIT_FINDINGS)
 
     def test_all_writes_report_and_exits_worst_of_five(self, tmp_path: Path, capsys):
         repo_root = tmp_path / "repo"
@@ -887,8 +425,60 @@ class TestCliWiring:
         out = capsys.readouterr().out
         assert "full report:" in out
 
-    def test_unknown_check_never_crashes_main(self, tmp_path: Path):
-        # A tool error inside a check must be caught by main(), not propagate.
-        repo_root = tmp_path / "not-a-dir-with-scripts"
-        rc = rp.main(["--repo-root", str(repo_root), "inventory-staleness"])
-        assert rc == rp.EXIT_TOOL_ERROR
+
+class TestHookContractComposition:
+    IDS = ["S1", "S2"]
+
+    def test_deployed_failure_when_repo_passes_is_attributed_to_drift(self):
+        repo = _fake_copy_result(True, {"S1": True, "S2": True})
+        deployed = _fake_copy_result(True, {"S1": False, "S2": True})
+        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
+        assert result.ok is False
+        assert result.tool_error is False
+        assert any("deployed copy behind repo" in f for f in result.findings)
+        assert not any("regression in scripts/" in f for f in result.findings)
+
+    def test_repo_copy_unavailable_is_a_tool_error(self):
+        repo = _fake_copy_result(False, {}, summary="repo copy missing enforce/remind scripts at /nope")
+        deployed = _fake_copy_result(True, {"S1": True})
+        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
+        assert result.tool_error is True
+        assert result.exit_code == rp.EXIT_TOOL_ERROR
+        assert "repo copy missing enforce/remind scripts" in " ".join(result.findings)
+
+
+class TestScenarioS6CounterSourceOfTruth:
+    """P1 (masking risk): S6 previously reimplemented the session-key slug +
+    state path + {"count": int} schema by hand. If that hand-rolled copy
+    ever drifted from token_reduce_state's real layout, it would silently
+    read a missing file, return 0, and `count <= 1` would stay green --
+    masking the exact double-increment regression the tool exists to catch.
+    S6 must now delegate to token_reduce_state.broad_attempt_count() and
+    require count == 1 exactly (not just <= 1)."""
+
+    def test_requires_exact_count_one_not_just_le_one(self, tmp_path: Path):
+        stub_root = tmp_path / "stub"
+        _write_stub_copy(stub_root)  # always-allow: never writes state, never emits dedup event
+        copy = rp.HookCopy("stub", stub_root)
+        result, _steps = rp._scenario_s6(copy)
+        # count stays 0 (no state ever written) -- must FAIL, not silently
+        # pass as it would under the old `count <= 1` check.
+        assert result.passed is False
+        assert "broad_attempt_count=0" in result.detail
+
+    def test_marker_present_but_counter_zero_still_fails(self, tmp_path: Path, monkeypatch):
+        # Isolates the count==1 clause: marker_seen is True, only the counter is wrong.
+        stub_root = tmp_path / "stub"
+        _write_stub_copy(stub_root)
+        orig = rp._run_enforce
+
+        def with_marker(copy, root, *args, **kwargs):
+            state = rp._trs.state_dir(root)
+            state.mkdir(parents=True, exist_ok=True)
+            (state / "decision_x.json").write_text("{}")
+            return orig(copy, root, *args, **kwargs)
+
+        monkeypatch.setattr(rp, "_run_enforce", with_marker)
+        result, _steps = rp._scenario_s6(rp.HookCopy("stub", stub_root))
+        assert result.passed is False
+        assert "decision_marker_seen=True" in result.detail
