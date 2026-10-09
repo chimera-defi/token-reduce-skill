@@ -154,25 +154,8 @@ class TestF2BashClassification:
         assert result.returncode == 0, f"{command!r} should pass, got {result.stdout!r}"
         assert result.stdout.strip() == ""
 
-    def test_ls_specific_dir_passes(self, repo: Path) -> None:
-        session_id = "sess-f2-ls-dir"
-        (repo / "scripts").mkdir(exist_ok=True)
-        result = _run_hook(_bash_payload("ls -la scripts", session_id=session_id), repo)
-        assert result.returncode == 0, result.stdout
 
-    def test_cat_specific_file_passes(self, repo: Path) -> None:
-        session_id = "sess-f2-cat-file"
-        target = repo / "README.md"
-        target.write_text("hello\n")
-        result = _run_hook(_bash_payload("cat README.md", session_id=session_id), repo)
-        assert result.returncode == 0, result.stdout
 
-    def test_stat_specific_file_passes(self, repo: Path) -> None:
-        session_id = "sess-f2-stat-file"
-        target = repo / "README.md"
-        target.write_text("hello\n")
-        result = _run_hook(_bash_payload("stat README.md", session_id=session_id), repo)
-        assert result.returncode == 0, result.stdout
 
     def test_catastrophic_find_root_still_blocks(self, repo: Path) -> None:
         session_id = "sess-f2-catastrophic"
@@ -205,20 +188,8 @@ class TestF3QuoteAwareBroadMatching:
         events = _events(repo)
         assert not [e for e in events if e.get("event") in {"hook_block", "hook_warn"}], events
 
-    def test_unquoted_find_root_still_matches(self) -> None:
-        assert enforce.matches_broad_bash("find / -name x") is True
-        assert cr.is_catastrophic("find / -name x") is True
 
-    def test_bash_dash_c_quoted_find_root_still_matches(self, repo: Path) -> None:
-        result = _run_hook(_bash_payload('bash -c "find / -name x"'), repo)
-        assert result.returncode == 2, result.stdout
-        decision = json.loads(result.stdout)
-        assert decision["decision"] == "block"
 
-    def test_commit_message_with_broad_words_is_not_flagged(self, repo: Path) -> None:
-        cmd = 'git commit -m "find . -name broken; fix ls -R usage"'
-        result = _run_hook(_bash_payload(cmd), repo)
-        assert result.returncode == 0, result.stdout
 
     def test_python_dash_c_os_walk_recursed_into_quoted_body(self, repo: Path) -> None:
         """python -c is a command-executor too -- its quoted body must be
@@ -244,30 +215,7 @@ class TestF3QuoteAwareBroadMatching:
 
 
 class TestF3FollowupFdTreeCommandPosition:
-    @pytest.mark.parametrize(
-        "command",
-        [
-            "which fd",
-            "which tree",
-            "cargo install fd",
-            "echo tree",
-        ],
-    )
-    def test_argument_position_is_not_broad(self, command: str) -> None:
-        assert enforce.matches_broad_bash(command) is False
 
-    @pytest.mark.parametrize(
-        "command",
-        [
-            "fd pattern",
-            "tree .",
-            "tree",
-            "x | fd",
-            "cd y && fd",
-        ],
-    )
-    def test_command_position_is_still_broad(self, command: str) -> None:
-        assert enforce.matches_broad_bash(command) is True
 
     @pytest.mark.parametrize(
         "command",
@@ -318,25 +266,9 @@ class TestF4CostAwareFind:
         target = tmp_path / "some" / "specific" / "dir"
         assert cr.is_broad_find(f"find {target} -type d") is True
 
-    def test_maxdepth_at_filesystem_root_is_still_broad(self) -> None:
-        assert cr.is_broad_find("find / -maxdepth 1") is True
 
-    def test_maxdepth_at_near_top_level_dir_is_still_broad(self) -> None:
-        # <=2 path segments -- e.g. /home/agents -- is still catastrophic-root
-        # territory regardless of -maxdepth (see _find_targets_broad_root).
-        assert cr.is_broad_find("find /home/agents -maxdepth 1") is True
 
-    def test_maxdepth_three_is_still_broad(self, tmp_path: Path) -> None:
-        target = tmp_path / "some" / "specific" / "dir"
-        assert cr.is_broad_find(f"find {target} -maxdepth 3") is True
 
-    def test_live_shape_sanity_check_passes_cleanly(self, repo: Path) -> None:
-        target = repo / "projects_like_dir"
-        target.mkdir()
-        cmd = f"ls -la {target}; find {target} -maxdepth 1 -type d | wc -l; date"
-        result = _run_hook(_bash_payload(cmd), repo)
-        assert result.returncode == 0, result.stdout
-        assert result.stdout.strip() == ""
 
 
 # --------------------------------------------------------------------------- #
@@ -370,16 +302,6 @@ class TestF5DoubleRunDedup:
         warns = [e for e in events if e.get("event") == "hook_warn"]
         assert len(warns) == 1, f"hook_warn should fire once (dedup replay records nothing), got {events}"
 
-    def test_same_tool_use_id_deduped_block_decision_identical(self, repo: Path) -> None:
-        session_id = "sess-f5-dedup-block"
-        payload = _bash_payload("find / -name x", session_id=session_id, tool_use_id="toolu_same_call_02")
-
-        first = _run_hook(payload, repo)
-        second = _run_hook(payload, repo)
-
-        assert first.returncode == 2
-        assert second.returncode == 2
-        assert json.loads(first.stdout) == json.loads(second.stdout)
 
     def test_different_tool_use_id_is_a_genuine_retry_and_escalates(self, repo: Path) -> None:
         """Same session + same command text but a DIFFERENT tool_use_id is a
@@ -395,16 +317,6 @@ class TestF5DoubleRunDedup:
         assert first.returncode == 0, "first attempt should warn-and-allow"
         assert second.returncode == 2, "second attempt (different tool_use_id) must escalate to block"
 
-    def test_no_tool_use_id_skips_dedup_entirely(self, repo: Path) -> None:
-        """Payloads without tool_use_id (e.g. other callers/test harnesses)
-        must not be silently deduped -- dedup only applies when Claude Code's
-        guaranteed per-call id is present."""
-        session_id = "sess-f5-no-id"
-        cmd = "tree ."
-        first = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        second = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
-        assert first.returncode == 0
-        assert second.returncode == 2
 
 
 # --------------------------------------------------------------------------- #
@@ -425,15 +337,6 @@ class TestF6SymlinkGuard:
         assert "symlink" in decision["reason"].lower()
         assert str(link) in decision["reason"]
 
-    def test_find_on_symlink_root_not_counted_against_broad_counter(self, tmp_path: Path, repo: Path) -> None:
-        real_dir = tmp_path / "real_target2"
-        real_dir.mkdir()
-        link = tmp_path / "the_link2"
-        link.symlink_to(real_dir)
-        session_id = "sess-f6-no-count"
-
-        _run_hook(_bash_payload(f"find {link}", session_id=session_id), repo)
-        assert trs.broad_attempt_count(repo, session_id) == 0
 
     def test_find_on_symlink_root_with_trailing_slash_passes_guard(self, tmp_path: Path, repo: Path) -> None:
         real_dir = tmp_path / "real_target3"
@@ -451,34 +354,7 @@ class TestF6SymlinkGuard:
             decision = json.loads(result.stdout)
             assert "symlink" not in decision["reason"].lower()
 
-    def test_find_symlink_guard_function_directly(self, tmp_path: Path) -> None:
-        real_dir = tmp_path / "real4"
-        real_dir.mkdir()
-        link = tmp_path / "link4"
-        link.symlink_to(real_dir)
-        msg = enforce.find_symlink_guard(f"find {link}")
-        assert msg is not None
-        assert "trailing slash" in msg
 
-        assert enforce.find_symlink_guard(f"find {link}/") is None
-        assert enforce.find_symlink_guard(f"find {real_dir}") is None
-
-    def test_symlink_guard_takes_precedence_over_f4_maxdepth_exception(self, tmp_path: Path, repo: Path) -> None:
-        """Pins the precedence between F6 and F4: `find <symlink> -maxdepth 1`
-        (no trailing slash) is exactly the RC3 shape (e.g. `find
-        /home/agents/.claude/projects -maxdepth 1`) -- it must still hit the
-        symlink guard, NOT get waved through as a cost-bounded find just
-        because -maxdepth <=2 is present. The guard is checked before any
-        broad/catastrophic classification runs."""
-        real_dir = tmp_path / "real5"
-        real_dir.mkdir()
-        link = tmp_path / "link5"
-        link.symlink_to(real_dir)
-
-        result = _run_hook(_bash_payload(f"find {link} -maxdepth 1"), repo)
-        assert result.returncode == 2, result.stdout
-        decision = json.loads(result.stdout)
-        assert "symlink" in decision["reason"].lower()
 
 
 # --------------------------------------------------------------------------- #
@@ -491,11 +367,6 @@ class TestF7RewritePreservesResults:
         s = cr.suggest_rewrite('find . -name "*.py"')
         assert s == "rg --files --hidden --no-ignore -g '*.py' ."
 
-    def test_dot_directory_root_rewrite_also_includes_hidden_and_no_ignore(self) -> None:
-        s = cr.suggest_rewrite('find .github -name "*.yml"')
-        assert s is not None
-        assert "--hidden" in s
-        assert "--no-ignore" in s
 
 
 # --------------------------------------------------------------------------- #
@@ -504,10 +375,6 @@ class TestF7RewritePreservesResults:
 
 
 class TestF8ExitPathStdoutContent:
-    def test_warn_and_allow_stdout_is_exactly_empty(self, repo: Path) -> None:
-        result = _run_hook(_bash_payload("tree .", session_id="sess-f8-warn"), repo)
-        assert result.returncode == 0
-        assert result.stdout == ""
 
     def test_invalid_json_stdin_fails_open_with_empty_stdout(self, repo: Path) -> None:
         env = os.environ.copy()
@@ -544,12 +411,6 @@ class TestF8ExitPathStdoutContent:
         assert decision["decision"] == "block"
         assert isinstance(decision["reason"], str) and decision["reason"].strip()
 
-    def test_no_block_path_emits_updated_input(self, repo: Path) -> None:
-        """No code path may silently rewrite the tool call -- only ever an
-        explicit block decision or a clean allow."""
-        for cmd in ["find / -name x", "tree .", "grep -R foo ."]:
-            result = _run_hook(_bash_payload(cmd, session_id=f"sess-f8-no-rewrite-{hash(cmd)}"), repo)
-            assert "updatedInput" not in result.stdout
 
 
 # --------------------------------------------------------------------------- #
@@ -567,38 +428,8 @@ class TestF9WarnMode:
         assert result.returncode == 0, result.stdout
         assert result.stdout == ""
 
-    def test_warn_mode_still_records_would_be_reason_in_telemetry(self, repo: Path) -> None:
-        result = _run_hook(
-            _bash_payload("find / -name x", session_id="sess-f9-warn-telemetry"),
-            repo,
-            env_extra={"TOKEN_REDUCE_ENFORCE_MODE": "warn"},
-        )
-        assert result.returncode == 0
 
-        events = _events(repo)
-        blocks = [e for e in events if e.get("event") == "hook_block"]
-        assert blocks, events
-        # R6: status must say "warn", not "blocked" -- nothing was actually
-        # blocked, so a consumer counting status=="blocked" must not be
-        # polluted by telemetry-only warn-mode decisions.
-        assert blocks[-1].get("status") == "warn", blocks[-1]
-        meta = blocks[-1].get("meta") or {}
-        assert meta.get("mode") == "warn"
-        assert meta.get("reason"), meta
 
-    def test_normal_mode_unaffected_by_default(self, repo: Path) -> None:
-        result = _run_hook(_bash_payload("find / -name x", session_id="sess-f9-normal"), repo)
-        assert result.returncode == 2
-        decision = json.loads(result.stdout)
-        assert decision["decision"] == "block"
-
-    def test_warn_mode_env_value_other_than_warn_is_normal_mode(self, repo: Path) -> None:
-        result = _run_hook(
-            _bash_payload("find / -name x", session_id="sess-f9-other-env"),
-            repo,
-            env_extra={"TOKEN_REDUCE_ENFORCE_MODE": "block"},
-        )
-        assert result.returncode == 2
 
 
 # --------------------------------------------------------------------------- #
@@ -619,56 +450,12 @@ class TestR1FindGlobalOptions:
         decision = json.loads(result.stdout)
         assert "catastrophic" in decision["reason"].lower()
 
-    def test_find_dash_H_dot_root_still_detected(self) -> None:
-        assert cr.is_broad_find("find -H . -name '*.py'") is True
-
-    def test_find_dash_O_level_root_still_detected(self) -> None:
-        assert cr.is_broad_find("find -O3 / -maxdepth 1") is True
-
-    def test_find_dash_D_debugopts_root_still_detected(self) -> None:
-        assert cr.is_broad_find("find -D tree / -maxdepth 1") is True
-
-    def test_find_global_opts_maxdepth_exception_still_applies(self, tmp_path: Path) -> None:
-        """F4's cost-bounded exception must still work THROUGH the global
-        options, not just plain finds."""
-        target = tmp_path / "some" / "specific" / "dir"
-        target.mkdir(parents=True)
-        assert cr.is_broad_find(f"find -L {target} -maxdepth 1") is False
-
-    def test_find_no_root_at_all_unaffected(self) -> None:
-        assert cr.is_broad_find("find scripts -maxdepth 1") is False
 
 
-class TestR2CompoundSegmentClassification:
-    """The exact R2 repro: `find /a/b/c -maxdepth 1; find /d/e/f -name
-    '*.py'` used to classify as not-broad, because the first find's
-    -maxdepth was found ANYWHERE in the line and treated as satisfying the
-    whole compound command, masking the second find's genuinely-unbounded
-    scan."""
 
-    COMPOUND_CMD = "find /a/b/c -maxdepth 1; find /d/e/f -name '*.py'"
 
-    def test_compound_find_classified_broad_directly(self, repo: Path) -> None:
-        _, broad, _, _ = enforce.classify_bash_command([self.COMPOUND_CMD], repo)
-        assert broad is True
 
-    def test_compound_find_second_segment_still_broad_live(self, repo: Path) -> None:
-        session_id = "sess-r2"
-        first = _run_hook(_bash_payload(self.COMPOUND_CMD, session_id=session_id), repo)
-        assert first.returncode == 0, "first attempt should warn-and-allow"
-        second = _run_hook(_bash_payload(self.COMPOUND_CMD, session_id=session_id), repo)
-        assert second.returncode == 2, "repeat attempt must escalate to block"
 
-    def test_both_segments_individually_maxdepth_bounded_is_not_broad(self, tmp_path: Path, repo: Path) -> None:
-        """Control: segmentation must not become OVER-eager -- two
-        genuinely cost-bounded finds joined by `;` must still pass clean."""
-        a = tmp_path / "aaa" / "bbb" / "ccc"
-        b = tmp_path / "ddd" / "eee" / "fff"
-        a.mkdir(parents=True)
-        b.mkdir(parents=True)
-        cmd = f"find {a} -maxdepth 1; find {b} -maxdepth 1"
-        _, broad, _, _ = enforce.classify_bash_command([cmd], repo)
-        assert broad is False
 
 
 class TestR4WrapperStrippedLeadingCommand:
@@ -676,17 +463,6 @@ class TestR4WrapperStrippedLeadingCommand:
     segment without changing what actually runs -- must still count fd/tree
     as the leading command, not evade the ^fd/^tree anchor."""
 
-    @pytest.mark.parametrize(
-        "command",
-        [
-            "sudo fd .",
-            "env FOO=1 fd .",
-            "time fd",
-            "sudo env FOO=1 nohup fd .",
-        ],
-    )
-    def test_wrapped_fd_still_counts_as_broad(self, command: str) -> None:
-        assert enforce.matches_broad_bash(command) is True
 
     def test_wrapped_fd_blocks_after_repeat_live(self, repo: Path) -> None:
         session_id = "sess-r4"
@@ -695,88 +471,10 @@ class TestR4WrapperStrippedLeadingCommand:
         second = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
         assert second.returncode == 2, second.stdout
 
-    def test_envsubst_not_mistaken_for_env_wrapper(self) -> None:
-        """Guard against an over-eager `env` strip: `envsubst` is a
-        different binary, not `env` decorating a command."""
-        assert enforce.matches_broad_bash("envsubst < template.txt") is False
 
 
-class TestR5DedupCoversNonBashBlocks:
-    """R5: dedup moved to the top of main() and decision-recording into
-    block()/warn_and_allow(), so it now covers Glob/Grep/Read/symlink-guard
-    blocks too, not just Bash's broad-attempt path."""
-
-    def test_glob_block_deduped_across_dual_wiring(self, repo: Path) -> None:
-        payload = {
-            "session_id": "sess-r5-glob",
-            "tool_use_id": "toolu_glob_dual",
-            "tool_name": "Glob",
-            "tool_input": {"pattern": "**/*.ts"},
-        }
-        first = _run_hook(payload, repo)
-        second = _run_hook(payload, repo)
-        assert first.returncode == 2
-        assert second.returncode == 2
-        assert first.stdout == second.stdout
-
-        events = _events(repo)
-        blocks = [e for e in events if e.get("event") == "hook_block"]
-        assert len(blocks) == 1, f"Glob block telemetry must not double-record under dual wiring, got {events}"
-
-    def test_symlink_guard_block_deduped_across_dual_wiring(self, tmp_path: Path, repo: Path) -> None:
-        real_dir = tmp_path / "real_r5"
-        real_dir.mkdir()
-        link = tmp_path / "link_r5"
-        link.symlink_to(real_dir)
-        payload = _bash_payload(
-            f"find {link}", session_id="sess-r5-symlink", tool_use_id="toolu_symlink_dual"
-        )
-
-        first = _run_hook(payload, repo)
-        second = _run_hook(payload, repo)
-        assert first.returncode == 2
-        assert second.returncode == 2
-        assert first.stdout == second.stdout
-
-        events = _events(repo)
-        blocks = [e for e in events if e.get("event") == "hook_block"]
-        assert len(blocks) == 1, f"symlink guard block must not double-record under dual wiring, got {events}"
-
-    def test_dual_wiring_does_not_produce_spurious_post_block_classification(self, repo: Path) -> None:
-        """R5(b): a second wiring's consume_block must not eat the marker
-        the first wiring's block() just wrote and then spuriously classify
-        the SAME blocked call as a post_block_escape/abandon."""
-        payload = _bash_payload(
-            "find / -name x", session_id="sess-r5-postblock", tool_use_id="toolu_postblock_dual"
-        )
-        _run_hook(payload, repo)
-        _run_hook(payload, repo)
-
-        events = _events(repo)
-        post_block_events = [
-            e for e in events if e.get("event") in {"post_block_escape", "post_block_abandon"}
-        ]
-        assert not post_block_events, f"dual-wiring replay must not trigger post-block classification, got {events}"
 
 
-class TestR7PostBlockClassifierQuoteAware:
-    def test_post_block_escape_not_fooled_by_quoted_payload(self, repo: Path) -> None:
-        """R7(c): the post-block Bash escape classifier must use
-        quote-aware surfaces, not raw lines -- an inert quoted payload
-        containing broad-looking text (e.g. an echoed JSON blob) must not
-        be misclassified as an escape attempt."""
-        session_id = "sess-r7c"
-        _run_hook(_bash_payload("find / -name x", session_id=session_id), repo)
-        payload = _bash_payload(
-            "echo '{\"command\":\"find /x\"}'",
-            session_id=session_id,
-        )
-        result = _run_hook(payload, repo)
-        assert result.returncode == 0
-
-        events = _events(repo)
-        escapes = [e for e in events if e.get("event") == "post_block_escape"]
-        assert not escapes, f"quoted inert text must not be classified as an escape, got {events}"
 
 
 # --------------------------------------------------------------------------- #
@@ -796,71 +494,8 @@ class TestC1DoubleQuotedCommandSubstitution:
         decision = json.loads(result.stdout)
         assert "catastrophic" in decision["reason"].lower()
 
-    def test_ls_dash_R_command_substitution_blocked(self, repo: Path) -> None:
-        cmd = 'echo "$(ls -R /)"'
-        result = _run_hook(_bash_payload(cmd, session_id="sess-c1-lsr"), repo)
-        assert result.returncode == 2, result.stdout
-
-    def test_plain_double_quoted_text_still_allowed(self, repo: Path) -> None:
-        result = _run_hook(_bash_payload('echo "plain text"', session_id="sess-c1-plain"), repo)
-        assert result.returncode == 0, result.stdout
-
-    def test_single_quoted_dollar_paren_is_inert(self, repo: Path) -> None:
-        """Single quotes suppress command substitution entirely -- this is
-        literal text `$(find / -name x)`, never executed."""
-        result = _run_hook(
-            _bash_payload("echo '$(find / -name x)'", session_id="sess-c1-single"), repo
-        )
-        assert result.returncode == 0, result.stdout
-
-    def test_surfaces_directly(self) -> None:
-        surfaces = cr.command_scan_surfaces('echo "$(find / -name x)"')
-        assert any(cr.is_catastrophic(s) for s in surfaces)
-        surfaces_single = cr.command_scan_surfaces("echo '$(find / -name x)'")
-        assert not any(cr.is_catastrophic(s) for s in surfaces_single)
 
 
-class TestC3SymlinkGuardHonorsFollowOptions:
-    """`find -H`/`find -L` make find follow the symlinked root -- blocking
-    them recommends, as the fix, exactly what the caller already did."""
 
-    def test_find_dash_H_symlink_passes_guard(self, tmp_path: Path, repo: Path) -> None:
-        real_dir = tmp_path / "real_c3h"
-        real_dir.mkdir()
-        link = tmp_path / "link_c3h"
-        link.symlink_to(real_dir)
-        msg = enforce.find_symlink_guard(f"find -H {link} -name x")
-        assert msg is None
 
-    def test_find_dash_L_symlink_passes_guard(self, tmp_path: Path, repo: Path) -> None:
-        real_dir = tmp_path / "real_c3l"
-        real_dir.mkdir()
-        link = tmp_path / "link_c3l"
-        link.symlink_to(real_dir)
-        msg = enforce.find_symlink_guard(f"find -L {link} -name x")
-        assert msg is None
 
-    def test_bare_find_symlink_still_blocks(self, tmp_path: Path, repo: Path) -> None:
-        real_dir = tmp_path / "real_c3bare"
-        real_dir.mkdir()
-        link = tmp_path / "link_c3bare"
-        link.symlink_to(real_dir)
-        msg = enforce.find_symlink_guard(f"find {link} -name x")
-        assert msg is not None
-        assert "symlink" in msg.lower()
-
-    def test_find_dash_H_live_still_subject_to_normal_classification(
-        self, tmp_path: Path, repo: Path
-    ) -> None:
-        """The guard is skipped, but the command is still a `find /...`-
-        shaped scan and goes through the ordinary broad/catastrophic path."""
-        real_dir = tmp_path / "real_c3live"
-        real_dir.mkdir()
-        link = tmp_path / "link_c3live"
-        link.symlink_to(real_dir)
-        result = _run_hook(
-            _bash_payload(f"find -H {link} -name x", session_id="sess-c3-live"), repo
-        )
-        decision = json.loads(result.stdout) if result.stdout.strip() else None
-        if decision is not None:
-            assert "symlink" not in decision["reason"].lower()

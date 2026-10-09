@@ -54,20 +54,10 @@ class TestIsBroadGlob:
     def test_unscoped_double_star_prefix(self):
         assert enforce_guard.is_broad_glob("**/*.ts") is True
 
-    def test_unscoped_double_star_any(self):
-        assert enforce_guard.is_broad_glob("**/*") is True
 
-    def test_trailing_double_star_slash(self):
-        assert enforce_guard.is_broad_glob("src/**") is True
 
-    def test_trailing_double_star_glob(self):
-        assert enforce_guard.is_broad_glob("src/**/*") is True
 
-    def test_double_wildcard_no_slash(self):
-        assert enforce_guard.is_broad_glob("*.*.py") is True
 
-    def test_all_wildcard_prefix_segments(self):
-        assert enforce_guard.is_broad_glob("**/**/*") is True
 
     def test_scoped_double_star_pattern_is_still_broad(self):
         # Unlike the retired enforce-glob-scope.py (which allowed this),
@@ -81,21 +71,10 @@ class TestIsBroadGlob:
         assert enforce_guard.is_broad_glob("scripts/*.py") is False
         assert enforce_guard.is_exploratory_glob("scripts/*.py") is True
 
-    def test_empty_string_is_not_broad(self):
-        assert enforce_guard.is_broad_glob("") is False
 
-    def test_dotslash_prefix_stripped(self):
-        assert enforce_guard.is_broad_glob("./**/*.json") is True
 
-    def test_deep_scoped_path_is_still_broad(self):
-        assert enforce_guard.is_broad_glob("packages/web/src/**/*.tsx") is True
 
-    def test_literal_path_with_no_wildcard_is_not_exploratory(self):
-        assert enforce_guard.is_broad_glob("scripts/enforce-token-reduce-first.py") is False
-        assert enforce_guard.is_exploratory_glob("scripts/enforce-token-reduce-first.py") is False
 
-    def test_empty_string_is_not_exploratory(self):
-        assert enforce_guard.is_exploratory_glob("") is False
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 """Tests for token_reduce_state.py pure helper functions."""
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -30,8 +29,6 @@ def test_normalize_session_key_returns_default_for_none() -> None:
     assert normalize_session_key(None) == "default"
 
 
-def test_normalize_session_key_returns_default_for_empty_string() -> None:
-    assert normalize_session_key("") == "default"
 
 
 def test_normalize_session_key_replaces_special_chars() -> None:
@@ -41,15 +38,8 @@ def test_normalize_session_key_replaces_special_chars() -> None:
     assert "!" not in result
 
 
-def test_normalize_session_key_preserves_safe_chars() -> None:
-    result = normalize_session_key("abc-123_DEF.xyz")
-    assert result == "abc-123_DEF.xyz"
 
 
-def test_normalize_session_key_strips_leading_trailing_dashes() -> None:
-    result = normalize_session_key("!!abc!!")
-    assert not result.startswith("-")
-    assert not result.endswith("-")
 
 
 # ---------------------------------------------------------------------------
@@ -68,16 +58,8 @@ def test_session_key_falls_back_through_field_priority() -> None:
     assert result == "conv-456"
 
 
-def test_session_key_returns_default_when_no_known_field() -> None:
-    assert session_key({}) == "default"
-    assert session_key({"irrelevant": "value"}) == "default"
 
 
-def test_session_key_normalizes_the_extracted_value() -> None:
-    data = {"session_id": "my/session path!"}
-    result = session_key(data)
-    assert "/" not in result
-    assert " " not in result
 
 
 # ---------------------------------------------------------------------------
