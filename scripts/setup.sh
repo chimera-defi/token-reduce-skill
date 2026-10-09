@@ -44,8 +44,12 @@ if command -v rtk >/dev/null 2>&1; then
   ok "rtk already installed ($(rtk --version 2>/dev/null | head -1))"
 else
   if command -v cargo >/dev/null 2>&1; then
-    cargo install --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked
-    ok "rtk installed (v0.51.0)"
+    if cargo install --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked; then
+      ok "rtk installed (v0.51.0)"
+    else
+      RTK_INSTALL_FAILED=1
+      warn "RTK build failed — continuing setup without RTK (retry: cargo install --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked)"
+    fi
   else
     warn "cargo not found — install qualified RTK v0.51.0 manually"
   fi
@@ -344,7 +348,11 @@ fi
 echo ""
 echo "Setup complete. What each layer does:"
 echo "  token-reduce hooks  →  block wasteful discovery before it happens"
-echo "  RTK hook            →  not wired by setup; run 'rtk init -g' (operator-approved)"
+if [[ "${RTK_INSTALL_FAILED:-0}" == "1" ]]; then
+  echo "  RTK                 →  NOT installed (build failed; see warning above)"
+else
+  echo "  RTK hook            →  not wired by setup; run 'rtk init -g' (operator-approved)"
+fi
 echo "  QMD                 →  BM25 search backend for path helpers"
 echo "  AXI companions      →  gh-axi / chrome-devtools-axi for lower-turn tool usage"
 if [[ "$EXTENDED_STACK" == "1" ]]; then

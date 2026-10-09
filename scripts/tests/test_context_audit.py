@@ -74,3 +74,12 @@ def test_bounded_cli_scan_reports_missing_evidence_without_guessing(tmp_path):
     assert report["scan_truncated"]
     assert report["context_budget"]["tokens"] is None
     assert report["categories"]["mcp_tool_schemas"]["tokens"] is None
+
+
+def test_malformed_record_shapes_are_counted_not_fatal(tmp_path):
+    path = tmp_path / "bad.jsonl"
+    rows = [{"attachment": {"type": "invoked_skills", "skills": 5}}, [1], {"attachment": {"type": "instructions", "files": "x"}}]
+    path.write_text("\n".join(json.dumps(r) for r in rows) + "\nnot json\n")
+    result = cli("--transcript", str(path))
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["malformed_records"] >= 3

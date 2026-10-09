@@ -87,3 +87,10 @@ class TestMain:
         out = capsys.readouterr().out
         assert "qmd" in out
         assert "my topic" in out
+
+
+def test_search_qmd_off_suppresses_qmd_hint(monkeypatch):
+    monkeypatch.setenv("TOKEN_REDUCE_LAYER_SEARCH_QMD", "off")
+    with patch("brain_hint.shutil.which", return_value="/usr/bin/x"):
+        result = hint_line("q")
+    assert result is not None and "qmd" not in result and "gbrain" in result
