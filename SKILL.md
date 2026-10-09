@@ -73,16 +73,16 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 
 | Strategy | Measured Savings | When |
 |----------|-----------------|------|
-| Concise responses | 89% | Always |
-| QMD BM25 search | 71–83% vs broad file listing (local/composite benchmarks); much higher vs reading file contents naively | Finding which files to read |
-| Targeted reads | 33% | Large files |
-| Parallel calls | 20% | Independent lookups |
+| Concise responses | large response-token reduction | Always |
+| QMD BM25 search | 68–85% vs broad file listing (local/composite benchmarks); much higher vs reading file contents naively | Finding which files to read |
+| Targeted reads | avoids loading irrelevant file sections | Large files |
+| Parallel calls | fewer round-trips (unmeasured) | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
 | AI delegate router (`delegate-skill`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Let the router pick the delegate: devin (browser/sandbox), kimi (cheap research/review), grok (large codebase), spark (local Codex write-mode) |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent; recommends context-mode, Headroom, or code-review-graph when matching companions are installed | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
-| Headroom companion (optional pilot) | 24-33% saved in local tool-result smoke tests; live proxy/MCP can reduce long-session tool context | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
+| Headroom companion (optional pilot) | 24-33% saved in a June tool-result smoke test; live proxy removed ~3% of tokens (2026-10-09) | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |
 | Cost Caliper companion (optional) | Adds Claude Code spend/session/model-tier/cache telemetry to token-reduce review output | Periodic meta-review of expensive sessions, not first-move discovery |
 | Adoption improvement loop | Tracks active-repo helper usage SLOs and prioritized repo interventions from workspace telemetry | When helper usage appears weak despite install/docs compliance |
 | Databricks cost playbook scorecard | Warning-only coverage report for model efficiency, routing, visibility, budgets, token overhead, and gateway gaps | When reviewing AI coding cost governance across repos or tools |
@@ -100,7 +100,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 4. If you need a low-token path-only kickoff, use `scripts/token-reduce-paths.sh topic words`.
 5. If you need one ranked excerpt after the kickoff, use `scripts/token-reduce-snippet.sh topic words`.
 6. If a file is large, read only the relevant section.
-7. If the search space stays broad, stop expanding and ask the user to narrow it.
+7. If the search space stays broad, stop expanding and delegate the sweep to a subagent (see First Move).
 8. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
 9. When routing behavior should be formally constrained, apply a profile (`minimal-load`, `balanced`, `max-savings`) via `token-reduce-manage.sh settings profile apply <name>`.
 
@@ -112,7 +112,7 @@ Use Headroom only when `headroom install status` or `/readyz` shows a healthy lo
 
 Two modes — pick based on payload size:
 
-- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% reduction on tool-result-heavy workloads.
+- **Passive proxy/wrap**: `headroom wrap claude` or `headroom wrap codex` — compresses old tool turns in flight. 24–33% in a June tool-result smoke test; ~3% live (2026-10-09).
 - **Active MCP compress** (>20k-token result): call `headroom_compress` directly on large blobs before reasoning over them.
 
 Trigger cues — run the corresponding command verbatim:
@@ -128,19 +128,15 @@ See `references/headroom-evaluation-2026-06-10.md` for evidence and rollback cav
 
 ## Subagent / gstack / Brain-First Hints
 
-For broad discovery, audits, or "sweep many files" work, delegating to a subagent — not a bigger manual scan — is the token saver: spawn `Agent(subagent_type="Explore", ...)` for read-only search, or `subagent_type="builder"`/`model="sonnet"` for implementation and deep-research fan-out, and have it report conclusions + evidence instead of pulling every candidate file into the parent's context. The adaptive router formalizes this: it emits a ready-to-copy subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. The enforcement hook's block messages surface the same subagent option directly, before you ever run the router, so the choice doesn't wait on a first CLI call. (There is no separate `UserPromptSubmit` reminder hook anymore — retired 2026-09-28.) See: `references/subagent-and-brain-integration.md`.
+For broad discovery, audits, or "sweep many files" work, delegating to a subagent — not a bigger manual scan — is the token saver: spawn `Agent(subagent_type="Explore", ...)` for read-only search, or `subagent_type="builder"`/`model="sonnet"` for implementation and deep-research fan-out, and have it report conclusions + evidence instead of pulling every candidate file into the parent's context. The adaptive router formalizes this: it emits a ready-to-copy subagent snippet when results >5 files or the query has broad-scope cues, a `/create-session` hint when sibling repos are named (with `gstack-session-spawn` installed), and a stderr brain-hint pointing at `qmd search` / `gbrain search` when either is on PATH. The enforcement hook's block messages surface the same subagent option directly, before you ever run the router, so the choice doesn't wait on a first CLI call. See: `references/subagent-and-brain-integration.md`.
 
 ## Structural backend (`token-savior`)
 
-Optional, exact-symbol only — do not auto-install. Run `uv tool install token-savior` only when you need `find-symbol` / `change-impact` on a known symbol; the path helper covers >90% of discovery without it. See: `references/token-savior-evaluation.md` and `references/tier-value-profile.md`.
+Optional, exact-symbol only — do not auto-install. Run `uv tool install token-savior` only when you need `find-symbol` / `change-impact` on a known symbol. See: `references/token-savior-evaluation.md` and `references/tier-value-profile.md`.
 
 ## Output-hook over-compression workaround
 
 If a global PostToolUse hook compresses `pytest` output, redirect to a file and `Read` it: `pytest ... > /tmp/pytest.out 2>&1`. See: `references/known-issues.md`.
-
-## QMD warm cache (H1)
-
-Session-scoped read-through cache for QMD collection listings and first-page results (`scripts/qmd_warm_cache.py`, 10-min TTL, persisted under `.claude/token-reduce-state/qmd-cache/`). See: `references/architecture.md`.
 
 ## Cost Caliper Companion (Optional)
 
@@ -222,7 +218,7 @@ Semantic QMD and GBrain memory are optional. Stay on BM25 (`qmd search`) for che
 
 ## AI Delegate Call Reduction
 
-Route delegation through the `delegate-skill` router (never hand-pick a delegate or call raw wrappers). Six tactics — batch, reference don't quote, constrain output, pre-compress context, never `&`, build envelope with `--print-envelope` — typically cut delegate token cost 40-70%. See: `references/delegate-call-reduction.md` for the full routing table, examples, and rules.
+Route delegation through the `delegate-skill` router (never hand-pick a delegate or call raw wrappers). Six tactics — batch, reference don't quote, constrain output, pre-compress context, never `&`, build envelope with `--print-envelope` — can cut delegate token cost 30-70% (estimates). See: `references/delegate-call-reduction.md` for the full routing table, examples, and rules.
 
 ---
 See `references/INDEX.md` for the full reference index.

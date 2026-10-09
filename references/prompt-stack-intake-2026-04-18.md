@@ -134,8 +134,7 @@ Interpretation: it is high-value for larger dependency-rich repos; not guarantee
 
 ### token-optimizer-mcp intake benchmark
 
-Artifact: `references/benchmarks/token-optimizer-mcp-intake.json`  
-Runner: `TOKEN_OPTIMIZER_REPO=/tmp/token-reduce-intake/token-optimizer-mcp ./scripts/token-reduce-manage.sh benchmark-token-optimizer-intake`
+Artifact and runner removed 2026-10-10 (tool excluded from routing).
 
 Key outcomes:
 - inventory task:

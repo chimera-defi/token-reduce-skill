@@ -50,7 +50,6 @@ commands:
   sync-benchmarks  Sync README benchmark token rows from benchmark artifacts
   benchmark-context-mode-intake  Validate and benchmark context-mode companion intake
   benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
-  benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
   caliper-summary  Summarize a running Cost Caliper Control Tower API
   cost-playbook  Compare current controls against the Databricks AI coding cost playbook
   release-gate  Run benchmark suite + keep/drop verdict for major change sets
@@ -132,13 +131,6 @@ case "$cmd" in
       exit 2
     fi
     exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project "$SCRIPT_DIR/benchmark-code-review-graph-intake.py" --code-review-graph-repo "$CODE_REVIEW_GRAPH_REPO"
-    ;;
-  benchmark-token-optimizer-intake)
-    if [[ -z "${TOKEN_OPTIMIZER_REPO:-}" ]]; then
-      echo "set TOKEN_OPTIMIZER_REPO to a local token-optimizer-mcp clone path" >&2
-      exit 2
-    fi
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
     ;;
   caliper-summary)
     exec uv run --no-project "$SCRIPT_DIR/caliper_summary.py" "$@"
