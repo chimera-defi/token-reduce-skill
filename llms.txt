@@ -1,6 +1,6 @@
 # token-reduce
 
-> Reduce token burn in Claude Code and Codex by 60-90%. Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional companions (AXI, caveman, context-mode, headroom, code-review-graph).
+> Reduce token burn in Claude Code and Codex by ~58-86% (local benchmarks). Routes discovery through BM25 path helpers (QMD), compresses command output (RTK), and supports optional companions (AXI, caveman, context-mode, headroom, code-review-graph).
 
 ## Install (run this once, then restart Claude Code)
 
@@ -90,9 +90,9 @@ After paths returned?      → Grep or Read on exact paths only
 
 Once installed, the hooks enforce this automatically:
 
-- `enforce-token-reduce-first.py` (PreToolUse) — blocks broad Bash scans (`find .`, `ls -R`, `rg --files`), broad Glob patterns, and directory-wide Grep until a path helper has run
+- `enforce-token-reduce-first.py` (PreToolUse) — blocks broad Bash scans (`find .`, `ls -R`, `rg --files`), broad Glob patterns, and directory-wide Grep (warns on the first broad attempt, blocks repeats; catastrophic scans block at once)
 
-(There is no `UserPromptSubmit` reminder hook anymore — it was retired 2026-09-28; the enforcer above is the only hook.)
+setup.sh also wires a SessionStart update check.
 
 If you see "Blocked broad exploratory Bash scan", run `token-reduce-paths.sh` first.
 

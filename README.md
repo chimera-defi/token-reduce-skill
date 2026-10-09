@@ -62,7 +62,7 @@ What `setup.sh` does automatically:
 
 - installs/configures core tools (`qmd`, `rtk`) when possible
 - runs initial QMD indexing for docs+code (`**/*.{md,txt,rst,py,sh,...}`), which can take longer on first run
-- wires Claude hooks for prompt steering + pre-tool enforcement
+- wires Claude hooks: PreToolUse enforcement + SessionStart update check
 - links global wrappers (`token-reduce-adaptive`, `token-reduce-paths`, `token-reduce-snippet`, `token-reduce-manage`)
 - links the Codex skill and companion skills when present
 
@@ -103,12 +103,7 @@ TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.s
 
 ### Claude Code
 
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
-./tools/token-reduce-skill/scripts/setup.sh
-```
-
-The skill is then available as `/token-reduce` in any Claude Code session rooted in the repo.
+Run `setup.sh` as above, or `claude plugin install token-reduce@chimera-defi`.
 
 ### Codex
 
