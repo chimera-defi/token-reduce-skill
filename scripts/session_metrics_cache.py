@@ -20,8 +20,7 @@ still matches what's on disk, the cached metrics are reused verbatim and the
 file(s) are not read again. If the fingerprint differs (or there is no
 entry), the file is parsed fresh and the result is cached for next time.
 
-Follows this repo's existing on-disk JSON cache conventions:
-- ``qmd_warm_cache.py`` for the load/get/set/flush shape.
+Follows this repo's on-disk cache conventions:
 - ``token-reduce-search.sh``'s ``QMD_STAMP_DIR=$REPO_ROOT/artifacts`` /
   ``stamp_is_fresh()`` for storing cache/stamp state under the repo's
   gitignored ``artifacts/`` directory.
