@@ -354,6 +354,23 @@ class TestF6SymlinkGuard:
             decision = json.loads(result.stdout)
             assert "symlink" not in decision["reason"].lower()
 
+    def test_symlink_guard_takes_precedence_over_f4_maxdepth_exception(self, tmp_path: Path, repo: Path) -> None:
+        """Pins the precedence between F6 and F4: `find <symlink> -maxdepth 1`
+        (no trailing slash) is exactly the RC3 shape (e.g. `find
+        /home/agents/.claude/projects -maxdepth 1`) -- it must still hit the
+        symlink guard, NOT get waved through as a cost-bounded find just
+        because -maxdepth <=2 is present. The guard is checked before any
+        broad/catastrophic classification runs."""
+        real_dir = tmp_path / "real5"
+        real_dir.mkdir()
+        link = tmp_path / "link5"
+        link.symlink_to(real_dir)
+
+        result = _run_hook(_bash_payload(f"find {link} -maxdepth 1"), repo)
+        assert result.returncode == 2, result.stdout
+        decision = json.loads(result.stdout)
+        assert "symlink" in decision["reason"].lower()
+
 
 
 
@@ -495,7 +512,53 @@ class TestC1DoubleQuotedCommandSubstitution:
         assert "catastrophic" in decision["reason"].lower()
 
 
+class TestR5DedupCoversNonBashBlocks:
+    """R5: dedup moved to the top of main() and decision-recording into
+    block()/warn_and_allow(), so it now covers Glob/Grep/Read/symlink-guard
+    blocks too, not just Bash's broad-attempt path."""
+
+    def test_dual_wiring_does_not_produce_spurious_post_block_classification(self, repo: Path) -> None:
+        """R5(b): a second wiring's consume_block must not eat the marker
+        the first wiring's block() just wrote and then spuriously classify
+        the SAME blocked call as a post_block_escape/abandon."""
+        payload = _bash_payload(
+            "find / -name x", session_id="sess-r5-postblock", tool_use_id="toolu_postblock_dual"
+        )
+        _run_hook(payload, repo)
+        _run_hook(payload, repo)
+
+        events = _events(repo)
+        post_block_events = [
+            e for e in events if e.get("event") in {"post_block_escape", "post_block_abandon"}
+        ]
+        assert not post_block_events, f"dual-wiring replay must not trigger post-block classification, got {events}"
+
+    def test_glob_block_deduped_across_dual_wiring(self, repo: Path) -> None:
+        payload = {
+            "session_id": "sess-r5-glob",
+            "tool_use_id": "toolu_glob_dual",
+            "tool_name": "Glob",
+            "tool_input": {"pattern": "**/*.ts"},
+        }
+        first = _run_hook(payload, repo)
+        second = _run_hook(payload, repo)
+        assert first.returncode == 2
+        assert second.returncode == 2
+        assert first.stdout == second.stdout
+
+        events = _events(repo)
+        blocks = [e for e in events if e.get("event") == "hook_block"]
+        assert len(blocks) == 1, f"Glob block telemetry must not double-record under dual wiring, got {events}"
 
 
+class TestC3SymlinkGuardHonorsFollowOptions:
+    """`find -H`/`find -L` make find follow the symlinked root -- blocking
+    them recommends, as the fix, exactly what the caller already did."""
 
-
+    def test_find_dash_H_symlink_passes_guard(self, tmp_path: Path, repo: Path) -> None:
+        real_dir = tmp_path / "real_c3h"
+        real_dir.mkdir()
+        link = tmp_path / "link_c3h"
+        link.symlink_to(real_dir)
+        msg = enforce.find_symlink_guard(f"find -H {link} -name x")
+        assert msg is None

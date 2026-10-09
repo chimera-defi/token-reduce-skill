@@ -19,12 +19,6 @@ from rolling_baseline_report import (
 
 
 # ---------------------------------------------------------------------------
-# parse_frontmatter
-# ---------------------------------------------------------------------------
-
-
-
-# ---------------------------------------------------------------------------
 # validate
 # ---------------------------------------------------------------------------
 
@@ -70,13 +64,6 @@ class TestValidate:
         assert errors == []
 
 
-
-
-
-
-
-
-
     def test_multiple_errors_accumulated(self, tmp_path):
         # Missing two frontmatter fields and missing openai.yaml
         text = (
@@ -102,29 +89,8 @@ class TestValidate:
 
 
 # ---------------------------------------------------------------------------
-# window_split
-# ---------------------------------------------------------------------------
-
-def _make_rows(n: int) -> list[dict]:
-    """Create n dummy rows (content doesn't matter for split logic)."""
-    return [{"i": i} for i in range(n)]
-
-
-
-
-# ---------------------------------------------------------------------------
 # metric_stats
 # ---------------------------------------------------------------------------
-
-def _row_with_global(value: float) -> dict:
-    return {"global_measure_summary": {"helper_sessions_pct": value}}
-
-
-_SIMPLE_SPEC = MetricSpec(
-    key="helper_sessions_pct",
-    label="Helper Usage %",
-    paths=(("global_measure_summary", "helper_sessions_pct"),),
-)
 
 
 
@@ -148,9 +114,6 @@ def _make_timestamped_rows(n: int) -> list[dict]:
 class TestBuildReport:
 
 
-
-
-
     def test_delta_is_post_minus_pre(self, tmp_path):
         rows = _make_timestamped_rows(4)
         source = tmp_path / "data.jsonl"
@@ -158,8 +121,6 @@ class TestBuildReport:
         for m in report["metrics"]:
             expected = round(m["post_avg"] - m["pre_avg"], 2)
             assert m["delta"] == expected
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -189,14 +150,9 @@ def _minimal_report() -> dict:
 class TestRenderMarkdown:
 
 
-
-
-
     def test_contains_pre_and_post_avgs(self):
         result = render_markdown(_minimal_report())
         assert "42.0" in result
         assert "55.0" in result
-
-
 
 

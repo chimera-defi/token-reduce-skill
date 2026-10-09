@@ -108,15 +108,9 @@ class TestCheckResult:
         assert r.exit_code == rp.EXIT_TOOL_ERROR
 
 
-
-
-
-
 # =========================================================================== #
 # P3: _default_repo_root delegates to token_reduce_state.repo_root()
 # =========================================================================== #
-
-
 
 
 # =========================================================================== #
@@ -174,9 +168,6 @@ class TestDeployDrift:
         ][0].split("|")[-2].strip() or True  # table row exists; drift column checked via findings above
 
 
-
-
-
     def _make_repo_with_bare_origin(self, tmp_path: Path) -> tuple[Path, Path]:
         """Sets up a local bare 'origin' repo + a clone -- fully offline, no
         real network call, but real git plumbing for `git fetch`/`git
@@ -221,8 +212,6 @@ class TestDeployDrift:
         assert files["origin_main"] != files["repo"]
 
 
-
-
 # =========================================================================== #
 # hook-contract: pure verdict composition
 # =========================================================================== #
@@ -236,8 +225,6 @@ def _fake_copy_result(available: bool, pass_map: dict[str, bool], summary: str |
         "scenarios": scenarios,
         "summary": summary,
     }
-
-
 
 
 # =========================================================================== #
@@ -268,8 +255,6 @@ class TestHookContractPlumbing:
 # =========================================================================== #
 
 
-
-
 # =========================================================================== #
 # env-sanity
 # =========================================================================== #
@@ -294,8 +279,6 @@ class TestEnvSanity:
         result = rp.check_env_sanity(ns)
         assert result.data["trap_live"] is True
         assert any("CONFIRMED live" in line for line in result.lines)
-
-
 
 
 # =========================================================================== #
@@ -371,13 +354,6 @@ class TestAdoptionSnapshot:
         assert result.ok is True
 
 
-
-
-
-
-
-
-
 # =========================================================================== #
 # inventory-staleness
 # =========================================================================== #
@@ -404,10 +380,6 @@ class TestInventoryStaleness:
         assert "scripts/orphan_script.py" in candidate_files
         assert "scripts/wired_script.py" not in candidate_files
         assert any("orphan_script.py" in f for f in result.findings)
-
-
-
-
 
 
 # =========================================================================== #
@@ -453,3 +425,15 @@ class TestCliWiring:
         out = capsys.readouterr().out
         assert "full report:" in out
 
+
+class TestHookContractComposition:
+    IDS = ["S1", "S2"]
+
+    def test_deployed_failure_when_repo_passes_is_attributed_to_drift(self):
+        repo = _fake_copy_result(True, {"S1": True, "S2": True})
+        deployed = _fake_copy_result(True, {"S1": False, "S2": True})
+        result = rp._compose_hook_contract_result(repo, deployed, self.IDS)
+        assert result.ok is False
+        assert result.tool_error is False
+        assert any("deployed copy behind repo" in f for f in result.findings)
+        assert not any("regression in scripts/" in f for f in result.findings)

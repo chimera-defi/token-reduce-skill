@@ -175,3 +175,41 @@ def test_composite_stack_available_without_token_savior(
     )
 
 
+def test_while_read_includes_last_token_without_underscore(tmp_path: Path) -> None:
+    """Behavioral: last word token in path_pattern() word-fallback must not be dropped.
+
+    When a query has no underscore-containing tokens, symbol_like_pattern() returns
+    exit 1 and path_pattern() falls through to its own while-read word-tokenizer loop
+    (the second of the three bug sites).  Use a pure-word query so that code path runs.
+    """
+    _init_git_repo(tmp_path)
+    # File matches only the *last* word of the query (not the first).
+    (tmp_path / "zebra.sh").write_text("# stub\n")
+
+    env = {
+        **os.environ,
+        "PATH": _path_without("qmd"),
+        "TOKEN_REDUCE_TELEMETRY_CONTEXT": "test",
+    }
+    result = subprocess.run(
+        [
+            "bash",
+            str(SCRIPTS_DIR / "token-reduce-search.sh"),
+            "--paths-only",
+            # No underscore → symbol_like_pattern() fails → word-tokenizer runs.
+            # 'mango' is first token (≥4 chars); 'zebra' is last (≥4 chars).
+            # Without fix: printf '%s' emits no trailing newline, zebra is dropped.
+            "mango zebra",
+        ],
+        cwd=str(tmp_path),
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert "zebra" in result.stdout, (
+        "Last word token 'zebra' absent — trailing-newline bug in path_pattern() "
+        "word-tokenizer fallback (second while-read site).\n"
+        f"stdout: {result.stdout!r}\nstderr: {result.stderr!r}"
+    )
