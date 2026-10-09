@@ -18,7 +18,7 @@ That reduces wasted context and makes host behavior more predictable.
 |  Enforcement                                               |
 |   enforce-token-reduce-first.py                            |
 |   command_rewrites.py   coverage_patterns.py               |
-|   escalation.py   .claude/settings.json                    |
+|                   .claude/settings.json                    |
 +------------------------------------------------------------+
             |  blocks / warns / hints
             v
@@ -34,7 +34,7 @@ That reduces wasted context and makes host behavior more predictable.
 +------------------------------------------------------------+
 |  State + Telemetry                                         |
 |   token_reduce_state.py     token_reduce_telemetry.py      |
-|   token_reduce_adaptive.py  qmd_warm_cache.py              |
+|   token_reduce_adaptive.py                                 |
 |   token_reduce_config.py    artifacts/token-reduction/     |
 +------------------------------------------------------------+
             |  events.jsonl + state snapshots
@@ -64,9 +64,7 @@ The detailed six-layer cut still applies and is sometimes the more useful slice:
 |--------|-------|---------|
 | `scripts/rank_paths.py` | Adaptive routing policy | Re-rank path-only helper output using query + prior `events.jsonl` hits |
 | `scripts/cost_ledger.py` | Reporting | Per-source token-savings ledger (with DELETE-BY annotations on F2 aliases) |
-| `scripts/escalation.py` | Host enforcement | Closed-loop escalation when the helper is ignored ≥3 times in a session |
 | `scripts/coverage_patterns.py` | Host enforcement | Advisory broad-pattern detection (unscoped rg, whole-dir cat, etc.) |
-| `scripts/qmd_warm_cache.py` | Retrieval helpers | Session-scoped read-through cache for QMD collection listings + first-page results |
 | `scripts/brain_hint.py` | Adaptive routing policy | Standalone `qmd`/`gbrain` hint helper (no `token_reduce_adaptive` import) |
 | `scripts/command_rewrites.py` | Host enforcement | Rewrite suggestions + `is_catastrophic` / `estimate_output_tokens` classifiers |
 

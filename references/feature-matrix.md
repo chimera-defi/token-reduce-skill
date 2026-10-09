@@ -39,9 +39,7 @@ Profile benchmark artifact:
 |---|---|---|---|
 | `scripts/rank_paths.py` | Adaptive routing policy | `TOKEN_REDUCE_DISABLE_RANK=1` to skip | `meta.rank_applied` on `token_reduce_paths` |
 | `scripts/cost_ledger.py` | Reporting | n/a | per-source rows in `review` markdown |
-| `scripts/escalation.py` | Host enforcement | n/a | `event=hook_block` with escalation context |
 | `scripts/coverage_patterns.py` | Host enforcement | n/a | folded into `hook_warn` / `hook_block` events |
-| `scripts/qmd_warm_cache.py` | Retrieval helpers | TTL constant in module; cache dir `.claude/token-reduce-state/qmd-cache/` | `meta.qmd_collection_action`, `meta.qmd_ensure_ms` |
 | `scripts/brain_hint.py` | Adaptive routing policy | `TOKEN_REDUCE_DISABLE_BRAIN_HINT=1` to skip in helpers | stderr-only hint line; no helper event field |
 | `scripts/command_rewrites.py` | Host enforcement | n/a | `meta.estimated_output_tokens`, `meta.rewrite` on warn/block |
 
