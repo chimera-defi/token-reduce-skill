@@ -41,6 +41,10 @@ Before selecting optional layers, run `scripts/token-reduce-manage.sh status`.
 Respect session layer policy in [session-layers](references/session-layers.md):
 environment overrides > config > `auto` (legacy behavior). Never invoke a disabled
 Headroom MCP action. MCP/rules cleanup remains a recommendation for operator approval.
+When `context_audit` is `on`, run `scripts/token-reduce-manage.sh context-audit`
+on load with the current `--transcript` when available; otherwise report unobserved
+categories. See [context-audit](references/context-audit.md). Do not guess provider
+schema occupancy from deferred inventory or edit host settings to apply cleanups.
 
 On first invocation in a new repo, if no config exists at the path reported by
 `uv run --no-project scripts/token_reduce_config.py --path` (override with `TOKEN_REDUCE_CONFIG_PATH`),

@@ -30,7 +30,7 @@ except Exception:
 }
 # Skip preamble for meta/setup commands where it would be redundant or noisy
 case "${1:-}" in
-  status|run|layer-action|updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
+  context-audit|status|run|layer-action|updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
     ;;
   *)
     _maybe_update_check
@@ -86,6 +86,7 @@ commands:
   status        Read-only session layer policy and measured companion savings
   run           Run one argv command with optional RTK rewrite (layers.rtk=on)
   layer-action  Print the enabled Headroom/MCP action contract; no config writes
+  context-audit  Read-only transcript category/usage evidence; optional on-load hook
 EOF
 }
 
@@ -94,6 +95,9 @@ if [[ $# -gt 0 ]]; then
   shift
 fi
 case "$cmd" in
+  context-audit)
+    exec uv run --no-project --with tiktoken "$SCRIPT_DIR/context_audit.py" "$@"
+    ;;
   status|run|layer-action)
     exec uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" "$cmd" "$@"
     ;;
