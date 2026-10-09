@@ -52,3 +52,14 @@ point. No new companion improves the default workflow with sufficient evidence.
 Evidence logs and original upstream checkouts:
 `~/research-artifacts/token-reduce-audit-20261009/`. Live runtime upgrade and browser
 qualification remain distinct from repo source changes and passing unit tests.
+
+## Host upgrade applied — 2026-10-09 (after intake above)
+
+| Tool | Before | After | Verification |
+|---|---|---|---|
+| Headroom | 0.39.1 | 0.40.0 | isolated venv proxy on :8799 answered `/readyz`; compress parity vs 0.39.1; live proxy restarted via `headroom install stop/start`, `/readyz` reports 0.40.0 and live sessions route through it |
+| RTK | 0.50.0 | 0.51.0 | built from tag v0.51.0 `--locked`; `rewrite` exit codes and `rtk hook claude` output identical to 0.50.0; old binary kept as `~/.local/bin/rtk.0.50.0.bak` |
+| gh-axi | 0.1.35 | 0.1.36 | `gh-axi --version` |
+| QMD, chrome-devtools-axi, context-mode | unchanged | unchanged | held per intake; openclaw excluded from sweeps |
+
+Headroom 0.40.0 makes usage reporting opt-in (the proxy already runs `--no-telemetry`); `/metrics` is behind an opt-in loopback gate (token-reduce reads `/stats`, not `/metrics`).
