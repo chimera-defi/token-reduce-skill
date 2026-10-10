@@ -41,12 +41,16 @@ def emit(data) -> None:
 
 def telemetry_root(project_root: str) -> Path:
     base = Path(project_root).resolve()
-    proc = subprocess.run(
-        ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return base
     candidate = (proc.stdout or "").strip()
     if candidate:
         return Path(candidate).resolve()

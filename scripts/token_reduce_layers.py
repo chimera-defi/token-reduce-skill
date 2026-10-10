@@ -9,6 +9,7 @@ from pathlib import Path
 import shlex
 import shutil
 import subprocess
+import sys
 import urllib.request
 
 from token_reduce_config import DEFAULT_CONFIG, config_path, layer_mode, load_config
@@ -115,7 +116,11 @@ def run_command(argv: list[str], *, approved_rewrite: bool = False) -> int:
                 raise ValueError("invalid RTK rewrite output")
         elif rewritten.returncode != 1:
             raise ValueError("RTK rewrite failed")
-    return subprocess.run(argv, check=False).returncode
+    try:
+        return subprocess.run(argv, check=False).returncode
+    except FileNotFoundError:
+        print(f"{argv[0]!r}: command not found", file=sys.stderr)
+        return 127
 
 
 def main() -> int:
