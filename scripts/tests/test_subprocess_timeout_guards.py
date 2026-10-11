@@ -3,6 +3,14 @@ the caller on TimeoutExpired / FileNotFoundError. Mirrors commit 8dfe987's
 guard on token-reduce-update-check.py / token-reduce-dependency-health.py,
 applied to the two remaining unguarded call sites found while hardening the
 hook wedge (token_reduce_state.repo_root and token_reduce_adaptive.run_command).
+
+Also covers:
+- token-reduce-structural.telemetry_root: called inside the except branch of
+  main(); an unguarded FileNotFoundError there would chain on top of the real
+  exception, masking it.
+- token_reduce_layers.run_command: unguarded subprocess.run(argv) previously
+  let FileNotFoundError surface as exit code 2 (argparse error) instead of
+  the conventional 127 for "command not found".
 """
 from __future__ import annotations
 
@@ -119,3 +127,76 @@ class TestRunCommandGuards:
         )
         assert exit_code == 0
         assert stdout.strip() == "hello"
+
+
+import importlib.util as _ilu
+
+
+def _load_structural():
+    spec = _ilu.spec_from_file_location(
+        "token_reduce_structural",
+        Path(__file__).resolve().parents[1] / "token-reduce-structural.py",
+    )
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
+class TestTelemetryRootGuards:
+    """token-reduce-structural.telemetry_root() mirrors repo_root() semantics
+    but lacked the FileNotFoundError / TimeoutExpired guard. The function is
+    called inside main()'s except branch; an unhandled exception there chains
+    on top of the real exception and masks it."""
+
+    def test_timeout_falls_back_to_project_root(self, tmp_path: Path) -> None:
+        mod = _load_structural()
+        with mock.patch.object(
+            mod.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(cmd="git", timeout=10),
+        ):
+            result = mod.telemetry_root(str(tmp_path))
+        assert result == tmp_path.resolve()
+
+    def test_missing_git_falls_back_to_project_root(self, tmp_path: Path) -> None:
+        mod = _load_structural()
+        with mock.patch.object(
+            mod.subprocess,
+            "run",
+            side_effect=FileNotFoundError("git not found"),
+        ):
+            result = mod.telemetry_root(str(tmp_path))
+        assert result == tmp_path.resolve()
+
+    def test_git_toplevel_is_used_when_available(self, tmp_path: Path) -> None:
+        mod = _load_structural()
+        fake_root = tmp_path / "repo"
+        fake_root.mkdir()
+        completed = mock.MagicMock()
+        completed.stdout = str(fake_root) + "\n"
+        completed.returncode = 0
+        with mock.patch.object(mod.subprocess, "run", return_value=completed):
+            result = mod.telemetry_root(str(tmp_path / "repo" / "sub"))
+        assert result == fake_root.resolve()
+
+
+import token_reduce_layers as _layers
+
+
+class TestLayersRunCommandNotFound:
+    """token_reduce_layers.run_command() previously propagated FileNotFoundError
+    as OSError up to main(), which mapped it to exit code 2 (argparse error)
+    instead of the conventional 127 for command-not-found."""
+
+    def test_missing_command_returns_127(self, tmp_path: Path) -> None:
+        with mock.patch.object(
+            _layers.subprocess,
+            "run",
+            side_effect=FileNotFoundError("no such file"),
+        ):
+            result = _layers.run_command(["nonexistent-binary-xyz"])
+        assert result == 127
+
+    def test_normal_command_returns_exit_code(self, tmp_path: Path) -> None:
+        result = _layers.run_command(["true"])
+        assert result == 0
