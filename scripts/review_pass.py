@@ -143,10 +143,6 @@ def _default_repo_root() -> Path:
     return _trs.repo_root()
 
 
-def sha256_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
 def _git_blob_oid(data: bytes, algo: str) -> str:
     """Hash bytes the way git hashes a blob object: <algo>(b"blob <len>\\0" + data).
     Matching git's own object-hash format lets local file content be

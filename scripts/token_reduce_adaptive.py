@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Sequence
 
-from token_reduce_config import load_config
+from token_reduce_config import load_config, layer_enabled
 from token_reduce_telemetry import load_events, record_event, summarize_events
 
 
@@ -115,7 +115,9 @@ def brain_hint_line(query: str) -> str | None:
     filesystem scan. Returns ``None`` when neither CLI is available, so
     callers can prepend conditionally without extra checks.
     """
-    have_qmd = shutil.which("qmd") is not None
+    if not layer_enabled("memory"):
+        return None
+    have_qmd = shutil.which("qmd") is not None and layer_enabled("search_qmd")
     have_gbrain = shutil.which("gbrain") is not None
     if not (have_qmd or have_gbrain):
         return None
@@ -492,7 +494,7 @@ def main() -> int:
             routing.get("enable_context_mode_recommendations", True)
         ),
         enable_headroom_recommendations=bool(
-            routing.get("enable_headroom_recommendations", True)
+            routing.get("enable_headroom_recommendations", True) and layer_enabled("headroom_compress")
         ),
         enable_code_review_graph_recommendations=bool(
             routing.get("enable_code_review_graph_recommendations", True)

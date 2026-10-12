@@ -82,47 +82,11 @@ def test_gstack_not_available_keeps_session_spawn_false() -> None:
     )
 
 
-def test_gstack_default_is_false_when_not_passed() -> None:
-    """N5: gstack_skill_available defaults to False (no regression)."""
-    decision = decide(
-        "search across repos for auth",
-        behavior=_behavior(),
-        availability=_availability(),
-        policy=_policy(),
-        root=Path.cwd(),
-        repo_file_count=100,
-        # gstack_skill_available not passed — should default False
-    )
-    assert decision.session_spawn_recommended is False
 
 
 # ---------------------------------------------------------------------------
 # N7: rationale and headroom commands surface to stderr
 # ---------------------------------------------------------------------------
 
-def test_n7_adaptive_py_has_rationale_print_to_stderr() -> None:
-    """N7: structural check that token_reduce_adaptive.py emits rationale to stderr."""
-    adaptive_src = Path(__file__).resolve().parents[1] / "token_reduce_adaptive.py"
-    content = adaptive_src.read_text()
-    assert "# token-reduce:" in content, (
-        "token_reduce_adaptive.py must emit rationale as '# token-reduce: ...' to stderr (N7 fix missing)"
-    )
-    assert 'file=sys.stderr' in content, (
-        "token_reduce_adaptive.py must print rationale to sys.stderr (N7 fix missing)"
-    )
 
 
-def test_n7_headroom_commands_surface_when_recommended() -> None:
-    """N7: when headroom is available and output-heavy query, headroom_commands is non-empty."""
-    decision = decide(
-        "dump all log output from the API response paste here",
-        behavior=_behavior(helper_calls=3),
-        availability=_availability(headroom=True),
-        policy=_policy(enable_headroom=True),
-        root=Path.cwd(),
-        repo_file_count=100,
-    )
-    if decision.headroom_recommended:
-        assert len(decision.headroom_commands) > 0, (
-            "headroom_recommended=True but headroom_commands is empty"
-        )

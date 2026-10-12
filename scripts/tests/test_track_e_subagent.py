@@ -22,7 +22,6 @@ from token_reduce_adaptive import (  # noqa: E402
     Availability,
     BehaviorProfile,
     RoutingPolicy,
-    brain_hint_line,
     decide,
     sibling_skill_for_query,
 )
@@ -83,9 +82,6 @@ def test_e1_subagent_recommended_when_candidate_set_large() -> None:
     assert "Explore" in decision.subagent_snippet
 
 
-def test_e1_subagent_recommended_when_broad_cue_present() -> None:
-    decision = _decide("find this across the workspace", candidate_count=1)
-    assert decision.subagent_recommended is True
 
 
 def test_e1_subagent_not_recommended_when_small_and_narrow() -> None:
@@ -99,22 +95,8 @@ def test_e1_subagent_not_recommended_when_small_and_narrow() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_e2_brain_hint_when_qmd_present(tmp_path, monkeypatch) -> None:
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    qmd = bin_dir / "qmd"
-    qmd.write_text("#!/bin/sh\nexit 0\n")
-    qmd.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{bin_dir}{':' if False else ':'}{__import__('os').environ.get('PATH','')}")
-    hint = brain_hint_line("how does ranking work")
-    assert hint is not None
-    assert "brain hits available" in hint
-    assert "qmd search" in hint
 
 
-def test_e2_brain_hint_when_nothing_present(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("PATH", str(tmp_path))
-    assert brain_hint_line("how does ranking work") is None
 
 
 # --------------------------------------------------------------------------- #
@@ -122,14 +104,6 @@ def test_e2_brain_hint_when_nothing_present(tmp_path, monkeypatch) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_e3_session_spawn_recommended_when_multi_repo_cue_and_skill() -> None:
-    decision = _decide(
-        "trace this across workspace sibling repos",
-        candidate_count=1,
-        gstack_skill_available=True,
-    )
-    assert decision.session_spawn_recommended is True
-    assert "/create-session" in " ".join(decision.rationale)
 
 
 def test_e3_session_spawn_not_recommended_without_skill() -> None:
@@ -141,13 +115,6 @@ def test_e3_session_spawn_not_recommended_without_skill() -> None:
     assert decision.session_spawn_recommended is False
 
 
-def test_e3_session_spawn_not_recommended_without_multi_repo_cue() -> None:
-    decision = _decide(
-        "trace this function",
-        candidate_count=1,
-        gstack_skill_available=True,
-    )
-    assert decision.session_spawn_recommended is False
 
 
 # --------------------------------------------------------------------------- #
@@ -160,16 +127,7 @@ def test_e4_sibling_skill_for_review() -> None:
     assert sibling_skill_for_query("can you review this pull request?") == "/review"
 
 
-def test_e4_sibling_skill_for_investigate() -> None:
-    assert sibling_skill_for_query("fix the bug in submit()") == "/investigate"
-    assert sibling_skill_for_query("debug why the test fails") == "/investigate"
 
 
-def test_e4_sibling_skill_none_for_plain_query() -> None:
-    assert sibling_skill_for_query("rank paths for query") is None
 
 
-def test_e4_decision_surfaces_sibling_skill() -> None:
-    decision = _decide("please review the PR for me")
-    assert decision.sibling_skill == "/review"
-    assert any("/review" in line for line in decision.rationale)

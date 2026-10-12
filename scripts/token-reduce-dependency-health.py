@@ -30,7 +30,7 @@ CORE_DEPENDENCIES: tuple[Dependency, ...] = (
         command=["qmd", "--version"],
         source_type="github",
         source_value="tobi/qmd",
-        update_hint="bun install -g https://github.com/tobi/qmd",
+        update_hint="QMD 2.8.3 intake held; see references/dependency-compatibility-20261009.md",
         tier="core",
     ),
     Dependency(
@@ -38,7 +38,7 @@ CORE_DEPENDENCIES: tuple[Dependency, ...] = (
         command=["rtk", "--version"],
         source_type="github",
         source_value="rtk-ai/rtk",
-        update_hint="brew upgrade rtk  # or re-run RTK installer",
+        update_hint="cargo install --force --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked",
         tier="core",
     ),
 )
@@ -71,9 +71,9 @@ CONDITIONAL_DEPENDENCIES: tuple[Dependency, ...] = (
     Dependency(
         name="headroom",
         command=["headroom", "--version"],
-        source_type="fixed",
-        source_value="headroom-ai[proxy]==0.24.0",
-        update_hint="uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'",
+        source_type="pypi",
+        source_value="headroom-ai",
+        update_hint="uv tool install --upgrade --python /usr/bin/python3.12 'headroom-ai[proxy]==0.40.0'",
         tier="conditional",
     ),
     Dependency(
@@ -198,6 +198,12 @@ def latest_version(dep: Dependency) -> str:
         return latest_npm_version(dep.source_value)
     if dep.source_type == "github":
         return latest_github_version(dep.source_value)
+    if dep.source_type == "pypi":
+        payload = fetch_json(f"https://pypi.org/pypi/{dep.source_value}/json")
+        if isinstance(payload, dict) and isinstance(payload.get("info"), dict):
+            version = payload["info"].get("version")
+            return version.strip() if isinstance(version, str) else ""
+        return ""
     if dep.source_type == "fixed":
         return dep.source_value
     return ""
@@ -240,50 +246,41 @@ def needs_action(state: str) -> bool:
 def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
 
-    qmd_status = next((item for item in statuses if item["name"] == "qmd"), None)
-    if qmd_status and needs_action(str(qmd_status.get("state"))):
-        if shutil.which("bun"):
-            code, out, err = run_install(["bun", "install", "-g", "https://github.com/tobi/qmd"])
-            actions.append(
-                {
-                    "target": "qmd",
-                    "command": "bun install -g https://github.com/tobi/qmd",
-                    "status": "updated" if code == 0 else "failed",
-                    "detail": out or err,
-                }
-            )
+    # Intake is version-specific. Never upgrade to a newer unqualified release.
+    qualified = {"headroom": "0.40.0", "rtk": "0.51.0"}
+    eligible = []
+    for item in statuses:
+        name = item["name"]
+        latest = item.get("latest_version")
+        held = name == "qmd" and needs_action(str(item.get("state")))
+        unqualified = name in qualified and latest and latest != qualified[name] and needs_action(str(item.get("state")))
+        if held or unqualified:
+            actions.append({"target": name, "status": "skipped", "command": "none",
+                            "detail": "candidate held for dependency intake; see references/dependency-compatibility-20261009.md"})
         else:
-            actions.append(
-                {
-                    "target": "qmd",
-                    "command": "bun install -g https://github.com/tobi/qmd",
-                    "status": "skipped",
-                    "detail": "bun not installed",
-                }
-            )
+            eligible.append(item)
+    statuses = eligible
 
     rtk_status = next((item for item in statuses if item["name"] == "rtk"), None)
     if rtk_status and needs_action(str(rtk_status.get("state"))):
-        if shutil.which("brew"):
-            cmd = ["brew", "upgrade", "rtk"]
+        if shutil.which("cargo"):
+            cmd = ["cargo", "install", "--force", "--git", "https://github.com/rtk-ai/rtk", "--tag", "v0.51.0", "--locked"]
             code, out, err = run_install(cmd)
             actions.append(
                 {
                     "target": "rtk",
-                    "command": "brew upgrade rtk",
+                    "command": "cargo install --force --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked",
                     "status": "updated" if code == 0 else "failed",
                     "detail": out or err,
                 }
             )
         else:
-            cmd = ["bash", "-lc", "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh"]
-            code, out, err = run_install(cmd)
             actions.append(
                 {
                     "target": "rtk",
-                    "command": "curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh",
-                    "status": "updated" if code == 0 else "failed",
-                    "detail": out or err,
+                    "command": "cargo install --force --git https://github.com/rtk-ai/rtk --tag v0.51.0 --locked",
+                    "status": "skipped",
+                    "detail": "cargo not installed; use the qualified release manually",
                 }
             )
 
@@ -338,12 +335,12 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if shutil.which("uv"):
             python = "/usr/bin/python3.12" if Path("/usr/bin/python3.12").exists() else "python3.12"
             code, out, err = run_install(
-                ["uv", "tool", "install", "--python", python, "headroom-ai[proxy]==0.24.0"]
+                ["uv", "tool", "install", "--upgrade", "--python", python, "headroom-ai[proxy]==0.40.0"]
             )
             actions.append(
                 {
                     "target": "headroom",
-                    "command": f"uv tool install --python {python} 'headroom-ai[proxy]==0.24.0'",
+                    "command": f"uv tool install --upgrade --python {python} 'headroom-ai[proxy]==0.40.0'",
                     "status": "updated" if code == 0 else "failed",
                     "detail": out or err,
                 }
@@ -352,7 +349,7 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
             actions.append(
                 {
                     "target": "headroom",
-                    "command": "uv tool install --python /usr/bin/python3.12 'headroom-ai[proxy]==0.24.0'",
+                    "command": "uv tool install --upgrade --python /usr/bin/python3.12 'headroom-ai[proxy]==0.40.0'",
                     "status": "skipped",
                     "detail": "uv not installed",
                 }

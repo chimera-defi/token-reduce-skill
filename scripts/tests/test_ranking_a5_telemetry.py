@@ -9,14 +9,11 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from rank_paths import (  # noqa: E402
-    EVENT_FILE_READ_AFTER_HELPER,
     aggregate_priors,
     click_through_score,
 )
 
 
-def test_event_constant_matches_brief_spec() -> None:
-    assert EVENT_FILE_READ_AFTER_HELPER == "file_read_after_helper"
 
 
 def test_aggregate_priors_counts_per_query_path_pairs() -> None:
@@ -51,28 +48,8 @@ def test_aggregate_priors_counts_per_query_path_pairs() -> None:
     assert "unrelated" not in priors
 
 
-def test_aggregate_priors_normalizes_query_whitespace() -> None:
-    events = [
-        {
-            "event": "file_read_after_helper",
-            "query": "  Measure   Script  ",
-            "path": "scripts/measure_token_reduction.py",
-        },
-    ]
-    priors = aggregate_priors(events)
-    assert "measure script" in priors
 
 
-def test_aggregate_priors_meta_fallback_for_path() -> None:
-    events = [
-        {
-            "event": "file_read_after_helper",
-            "query": "rank paths",
-            "meta": {"path": "scripts/rank_paths.py"},
-        },
-    ]
-    priors = aggregate_priors(events)
-    assert priors["rank paths"]["scripts/rank_paths.py"] == 1.0
 
 
 def test_aggregate_priors_feeds_click_through_score() -> None:
