@@ -96,3 +96,7 @@ Headroom is most useful after those steps for:
 6. Compare against token-reduce/RTK on exact symbol lookup, broad topic discovery, impact analysis, output-heavy test/build failures, and long OpenClaw session history.
 
 Keep only if real agent turns show savings beyond RTK/token-reduce alone, no material answer-quality regression, predictable local retrieval behavior, acceptable latency, and clean rollback.
+
+## Addendum 2026-10-12: removed globally
+
+Live `/stats` (since 2026-10-11, 1476 requests): compression removed 2.65M of 113.1M tokens (2.3%, avg 3.3%/request); claimed $15.55 saved. The $409 cache_savings is Anthropic prompt caching, independent of Headroom. Costs: ~1 GB RSS proxy, 22 `mcp serve` processes, a hook on every SessionStart/Bash, and `init-user` start/stop churn (3622 cycles, 1.07 GB log). Keep criteria above were not met. Removed: ANTHROPIC_BASE_URL, plugin, shell env blocks, Claude and Codex MCP entries, Codex hooks, `headroom-default.service` (stopped, disabled, unit file kept), `init-user` deployment. Undo: restore `*.bak-headroom-20261012` / `*.bak-20261012-hr` files and `systemctl --user enable --now headroom-default.service`.

@@ -104,7 +104,9 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 8. For GitHub/browser-heavy execution, prefer `gh-axi` or `chrome-devtools-axi` over higher-overhead interfaces when available.
 9. When routing behavior should be formally constrained, apply a profile (`minimal-load`, `balanced`, `max-savings`) via `token-reduce-manage.sh settings profile apply <name>`.
 
-## Headroom Companion (Pilot)
+## Headroom Companion (Pilot — off by default)
+
+Decision 2026-10-12: removed host-wide. Live proxy compressed 2.65M of 113.1M tokens (2.3%, 1476 requests); its "cache savings" are Anthropic prompt caching, which needs no proxy. Cost: ~1 GB proxy RSS, one `mcp serve` per session, a Python hook per Bash call, and an `init-user` respawn loop (3622 cycles). Re-enable only per session, never globally.
 
 Token-reduce remains the master router. Use helper-first discovery, scoped reads, QMD, RTK, and structural helpers before adding a proxy layer.
 
