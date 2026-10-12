@@ -30,7 +30,7 @@ except Exception:
 }
 # Skip preamble for meta/setup commands where it would be redundant or noisy
 case "${1:-}" in
-  updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
+  context-audit|status|run|layer-action|updates|auto-update|workspace-auto-update|activate-stack|handoff-codex|''|-h|--help|help)
     ;;
   *)
     _maybe_update_check
@@ -50,7 +50,6 @@ commands:
   sync-benchmarks  Sync README benchmark token rows from benchmark artifacts
   benchmark-context-mode-intake  Validate and benchmark context-mode companion intake
   benchmark-code-review-graph-intake  Validate and benchmark code-review-graph companion intake
-  benchmark-token-optimizer-intake  Benchmark token-optimizer-mcp wrapper against token-reduce discovery tasks
   caliper-summary  Summarize a running Cost Caliper Control Tower API
   cost-playbook  Compare current controls against the Databricks AI coding cost playbook
   release-gate  Run benchmark suite + keep/drop verdict for major change sets
@@ -83,6 +82,10 @@ commands:
   setup         Interactive setup wizard (auto-detect delegates/companions, save config)
   delegate-health  Check installed/missing status for each configured delegate and companion
   tools         List all available tools with enabled/disabled status from config
+  status        Read-only session layer policy and measured companion savings
+  run           Run one argv command with optional RTK rewrite (layers.rtk=on)
+  layer-action  Print the enabled Headroom/MCP action contract; no config writes
+  context-audit  Read-only transcript category/usage evidence; optional on-load hook
 EOF
 }
 
@@ -91,6 +94,12 @@ if [[ $# -gt 0 ]]; then
   shift
 fi
 case "$cmd" in
+  context-audit)
+    exec uv run --no-project --with tiktoken "$SCRIPT_DIR/context_audit.py" "$@"
+    ;;
+  status|run|layer-action)
+    exec uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" "$cmd" "$@"
+    ;;
   activate-stack)
     exec "$SCRIPT_DIR/activate-token-reduce-stack.sh"
     ;;
@@ -122,13 +131,6 @@ case "$cmd" in
       exit 2
     fi
     exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project "$SCRIPT_DIR/benchmark-code-review-graph-intake.py" --code-review-graph-repo "$CODE_REVIEW_GRAPH_REPO"
-    ;;
-  benchmark-token-optimizer-intake)
-    if [[ -z "${TOKEN_OPTIMIZER_REPO:-}" ]]; then
-      echo "set TOKEN_OPTIMIZER_REPO to a local token-optimizer-mcp clone path" >&2
-      exit 2
-    fi
-    exec env TOKEN_REDUCE_TELEMETRY_CONTEXT=benchmark uv run --no-project --with tiktoken "$SCRIPT_DIR/benchmark-token-optimizer-intake.py" --repo-root "$PWD" --token-optimizer-repo "$TOKEN_OPTIMIZER_REPO"
     ;;
   caliper-summary)
     exec uv run --no-project "$SCRIPT_DIR/caliper_summary.py" "$@"

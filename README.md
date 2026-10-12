@@ -13,7 +13,7 @@ It provides built-in routing/enforcement, installs and wires downstream tools, a
 ## What It Is
 
 `token-reduce` is not just a prompt style or a single helper script.
-It is a high-level token orchestration kit that:
+It is a token orchestration kit that:
 
 - enforces low-cost discovery first
 - auto-routes between path/snippet/structural tiers
@@ -62,7 +62,7 @@ What `setup.sh` does automatically:
 
 - installs/configures core tools (`qmd`, `rtk`) when possible
 - runs initial QMD indexing for docs+code (`**/*.{md,txt,rst,py,sh,...}`), which can take longer on first run
-- wires Claude hooks for prompt steering + pre-tool enforcement
+- wires Claude hooks: PreToolUse enforcement + SessionStart update check
 - links global wrappers (`token-reduce-adaptive`, `token-reduce-paths`, `token-reduce-snippet`, `token-reduce-manage`)
 - links the Codex skill and companion skills when present
 
@@ -103,12 +103,7 @@ TOKEN_REDUCE_INSTALL_EXTENDED_STACK=1 ./tools/token-reduce-skill/scripts/setup.s
 
 ### Claude Code
 
-```bash
-git clone https://github.com/chimera-defi/token-reduce-skill tools/token-reduce-skill
-./tools/token-reduce-skill/scripts/setup.sh
-```
-
-The skill is then available as `/token-reduce` in any Claude Code session rooted in the repo.
+Run `setup.sh` as above, or `claude plugin install token-reduce@chimera-defi`.
 
 ### Codex
 
@@ -144,8 +139,8 @@ Codex fresh-context handoff generator:
 | `token_reduce_benchmark` | Run the local token-reduction benchmark and return the summary table |
 | `token_reduce_measure` | Measure recent token-reduce adoption and write fresh repo-local artifacts |
 | `token_reduce_self_review` | Generate a telemetry-driven self-review with prioritised next improvements |
-| `token_reduce_setup` | Return plugin and MCP install instructions for this repo |
-| `token_reduce_full_setup` | Run one-command full setup (installs QMD + RTK, wires hook layers, indexes repo) |
+| `token_reduce_install_info` | Return plugin and MCP install instructions for this repo |
+| `token_reduce_setup` | Run one-command full setup (installs QMD + RTK, wires hook layers, indexes repo) |
 | `anthropic_cache_plan` | Annotate Anthropic API payloads with `cache_control` and estimate repeated-call savings |
 
 ## Routing Model
@@ -174,8 +169,7 @@ delegate instead of running a bigger manual scan: `Agent(subagent_type="Explore"
 read-only search, or `subagent_type="builder"` / `model="sonnet"` for implementation. The
 adaptive router recommends this automatically above `SUBAGENT_CANDIDATE_THRESHOLD` (5)
 candidate files or on broad-scope query cues; the enforcer's block messages also name it
-directly. (There is no separate `UserPromptSubmit` reminder hook anymore — retired
-2026-09-28.) See `references/subagent-and-brain-integration.md`.
+directly. See `references/subagent-and-brain-integration.md`.
 
 ## Benchmarks And Regression Guard
 
@@ -184,10 +178,10 @@ directly. (There is no separate `UserPromptSubmit` reminder hook anymore — ret
 | Strategy | Tokens | vs broad inventory |
 |----------|--------|--------------------|
 | `broad_inventory` | `1543` | baseline |
-| `guidance_scoped_rg` | `221` | `83.3%` saved |
-| `qmd_files` | `242` | `81.2%` saved |
-| `token_reduce_paths_warm` | `238` | `81.0%` saved |
-| `token_reduce_snippet_warm` | `366` | `71.2%` saved |
+| `guidance_scoped_rg` | `221` | `85.7%` saved |
+| `qmd_files` | `242` | `84.3%` saved |
+| `token_reduce_paths_warm` | `238` | `84.6%` saved |
+| `token_reduce_snippet_warm` | `366` | `76.3%` saved |
 
 ### Composite benchmark (`references/benchmarks/composite-benchmark.json`)
 
@@ -195,12 +189,13 @@ directly. (There is no separate `UserPromptSubmit` reminder hook anymore — ret
 |----------|--------|----------------|--------|
 | `broad_shell` | `2154` | baseline | `ok` |
 | `qmd_only` | `679` | `68.5%` saved | `ok` |
-| `token_reduce_only` | `462` | `78.6%` saved | `quality-fail` |
+| `token_reduce_only` | `462` | `78.6%` saved | `ok` |
 | `token_savior_only` | `213` | `90.1%` saved | `quality-fail` |
 | `rtk_only` | `897` | `58.4%` saved | `ok` |
-| `composite_stack` | `447` | `79.2%` saved | `quality-fail` |
+| `composite_stack` | `447` | `79.2%` saved | `ok` |
 
-This reports the current potential token-savings ceiling and flags quality failures honestly; do not treat quality-failing strategies as release-ready wins.
+Only quality-passing rows count as wins (`token_savior_only` fails quality).
+Layer on/off (`scripts/benchmark-layers.py`, `references/benchmarks/layers-benchmark-20261009.md`): RTK -72.2% tokens; rg and qmd search tie (8/9 top-5 hits), qmd +55% tokens; Headroom proxy -3.0%.
 
 ### Honest outcome reporting (anti-gaming)
 
@@ -373,7 +368,7 @@ Use `review --check-deps` when you want the same playbook and optional companion
 
 Two operating modes:
 
-- **passive proxy/wrap** (default): wrapping `claude`/`codex` lets Headroom replay and compress old tool turns in flight. Local benchmarks show ~8% reduction on mixed sessions and 24–33% on tool-result-heavy workloads.
+- **passive proxy/wrap** (default): wrapping `claude`/`codex` lets Headroom replay and compress old tool turns in flight. A June smoke test saved 24–33% on tool-result payloads; the live proxy here removed ~3% of tokens (2026-10-09 layers benchmark).
 - **active MCP `headroom_compress`** (>20k-token tool results): call the `headroom_compress` MCP action directly on large blobs (logs, payloads, transcripts, pytest output, API responses, big pastes). The adaptive router emits `headroom_compress`, `headroom install status`, and `curl -fsS http://127.0.0.1:8787/readyz` as ready-to-run commands whenever Headroom is recommended.
 
 Default discovery still starts with token-reduce helpers. Headroom is for context pressure after the cheapest discovery and command-output paths are in place.

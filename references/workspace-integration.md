@@ -21,7 +21,7 @@ token-reduce-snippet topic words
 Two hook layers work together:
 
 - **token-reduce hooks** block wasteful discovery commands before they fire
-- **RTK hook** (`~/.claude/hooks/rtk-rewrite.sh`) compresses output of commands that do run — install with `scripts/setup.sh` or `rtk init -g`
+- **RTK hook** (`~/.claude/hooks/rtk-rewrite.sh`) compresses output of commands that do run. `scripts/setup.sh` installs the RTK binary only; hook wiring is a separate operator-approved step (`rtk init -g` changes Claude settings).
 
 There is no `UserPromptSubmit` reminder hook to wire up (it was retired 2026-09-28 as
 redundant with the `PreToolUse` enforcer below — see `references/worktree-deploy-sync.md`).
