@@ -26,6 +26,7 @@ Exit codes (per subcommand, and for `all` as the worst of all five):
 Subcommands: deploy-drift, hook-contract, env-sanity, adoption-snapshot,
 inventory-staleness, all.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,11 +40,12 @@ import sys
 import tempfile
 import time
 from collections import Counter, defaultdict
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -53,8 +55,8 @@ if str(SCRIPT_DIR) not in sys.path:
 # session-key/state-path/telemetry logic here -- a hand-rolled copy can
 # silently drift from the real implementation and mask the exact regressions
 # this tool exists to catch (see round2-P1-P6 notes).
-import token_reduce_state as _trs  # noqa: E402
-import token_reduce_telemetry as _trt  # noqa: E402
+import token_reduce_state as _trs
+import token_reduce_telemetry as _trt
 
 # remind-token-reduce.py (the former UserPromptSubmit reminder, retired
 # 2026-09-28 -- see references/worktree-deploy-sync.md) is deliberately NOT
@@ -227,7 +229,9 @@ def _scratch_repo() -> Iterator[Path]:
 # =========================================================================== #
 
 
-def git_fetch_origin(repo_root: Path, *, no_fetch: bool, timeout: int = 20) -> tuple[bool, str]:
+def git_fetch_origin(
+    repo_root: Path, *, no_fetch: bool, timeout: int = 20
+) -> tuple[bool, str]:
     if no_fetch:
         return True, "skipped (--no-fetch)"
     rc, _out, err = _git(repo_root, "fetch", "origin", "--quiet", timeout=timeout)
@@ -236,7 +240,9 @@ def git_fetch_origin(repo_root: Path, *, no_fetch: bool, timeout: int = 20) -> t
     return True, "ok"
 
 
-def _resolve_worktree_main(skills_symlink: Path, override: Path | None) -> tuple[Path | None, str | None]:
+def _resolve_worktree_main(
+    skills_symlink: Path, override: Path | None
+) -> tuple[Path | None, str | None]:
     """Returns (resolved worktree/main path or None, raw readlink target or None)."""
     if override is not None:
         return (override if override.is_dir() else None), str(override)
@@ -271,17 +277,24 @@ def check_deploy_drift(args: argparse.Namespace) -> CheckResult:
         rc, out, _err = _git(repo_root, "rev-parse", "origin/main")
         origin_commit = out.strip()
         origin_ref_ok = rc == 0 and bool(origin_commit)
-        lines.append(f"origin/main fetch: {fetch_msg}" + (f" ({origin_commit[:12]})" if origin_ref_ok else " (ref unresolved)"))
+        lines.append(
+            f"origin/main fetch: {fetch_msg}"
+            + (f" ({origin_commit[:12]})" if origin_ref_ok else " (ref unresolved)")
+        )
     data["origin_available"] = origin_ref_ok
 
     # skills symlink + .worktrees/main
-    worktree_main, raw_target = _resolve_worktree_main(skills_symlink, args.worktree_main)
+    worktree_main, raw_target = _resolve_worktree_main(
+        skills_symlink, args.worktree_main
+    )
     if skills_symlink.is_symlink():
         lines.append(f"skills symlink: {skills_symlink} -> {raw_target or '?'}")
     elif args.worktree_main is not None:
         lines.append(f".worktrees/main override: {args.worktree_main}")
     else:
-        lines.append(f"skills symlink not found: {skills_symlink} (marking .worktrees/main unknown)")
+        lines.append(
+            f"skills symlink not found: {skills_symlink} (marking .worktrees/main unknown)"
+        )
     data["worktree_main"] = str(worktree_main) if worktree_main else None
 
     worktree_commit = None
@@ -294,7 +307,11 @@ def check_deploy_drift(args: argparse.Namespace) -> CheckResult:
             worktree_detached = head_ref.strip() == "HEAD"
             lines.append(
                 f".worktrees/main: {worktree_main} @ {worktree_commit[:12]}"
-                + (" (DETACHED HEAD)" if worktree_detached else f" (branch={head_ref.strip()})")
+                + (
+                    " (DETACHED HEAD)"
+                    if worktree_detached
+                    else f" (branch={head_ref.strip()})"
+                )
             )
             if worktree_detached:
                 findings.append(
@@ -303,13 +320,19 @@ def check_deploy_drift(args: argparse.Namespace) -> CheckResult:
                     "but still flagged so it isn't missed"
                 )
         else:
-            lines.append(f".worktrees/main: {worktree_main} (git state unreadable -- marking unknown)")
+            lines.append(
+                f".worktrees/main: {worktree_main} (git state unreadable -- marking unknown)"
+            )
     else:
         lines.append(".worktrees/main: unresolvable (marking unknown)")
 
     if origin_ref_ok and worktree_commit:
         rc, origin_commit_full, _e = _git(repo_root, "rev-parse", "origin/main")
-        if rc == 0 and origin_commit_full.strip() and origin_commit_full.strip() != worktree_commit:
+        if (
+            rc == 0
+            and origin_commit_full.strip()
+            and origin_commit_full.strip() != worktree_commit
+        ):
             findings.append(
                 f".worktrees/main ({worktree_commit[:12]}) is behind origin/main "
                 f"({origin_commit_full.strip()[:12]})"
@@ -324,21 +347,37 @@ def check_deploy_drift(args: argparse.Namespace) -> CheckResult:
     blob_algo = _detect_blob_algo(origin_oids) if origin_oids else "sha1"
 
     lines.append("")
-    lines.append("| file | repo (working tree) | origin/main | .worktrees/main | deployed | drift |")
+    lines.append(
+        "| file | repo (working tree) | origin/main | .worktrees/main | deployed | drift |"
+    )
     lines.append("|---|---|---|---|---|---|")
     for name in WATCHED_FILES:
         repo_sha = _blob_oid_of_file(repo_scripts / name, blob_algo)
-        origin_sha = origin_oids.get(f"scripts/{name}") if origin_oids is not None else None
-        worktree_sha = _blob_oid_of_file(worktree_main / "scripts" / name, blob_algo) if worktree_main else None
+        origin_sha = (
+            origin_oids.get(f"scripts/{name}") if origin_oids is not None else None
+        )
+        worktree_sha = (
+            _blob_oid_of_file(worktree_main / "scripts" / name, blob_algo)
+            if worktree_main
+            else None
+        )
         deployed_sha = _blob_oid_of_file(deployed_root / name, blob_algo)
 
         def short(sha: str | None) -> str:
             return sha[:10] if sha else "?"
 
         drift_bits = []
-        if repo_sha is not None and deployed_sha is not None and repo_sha != deployed_sha:
+        if (
+            repo_sha is not None
+            and deployed_sha is not None
+            and repo_sha != deployed_sha
+        ):
             drift_bits.append("deployed")
-        if repo_sha is not None and worktree_sha is not None and repo_sha != worktree_sha:
+        if (
+            repo_sha is not None
+            and worktree_sha is not None
+            and repo_sha != worktree_sha
+        ):
             drift_bits.append("worktree-main")
         drift_label = ", ".join(drift_bits) if drift_bits else "-"
         lines.append(
@@ -357,14 +396,20 @@ def check_deploy_drift(args: argparse.Namespace) -> CheckResult:
         if deployed_sha is None:
             findings.append(f"{name}: missing from deployed copy at {deployed_root}")
         elif repo_sha != deployed_sha:
-            findings.append(f"{name}: deployed copy differs from repo working tree (deployed copy behind repo)")
+            findings.append(
+                f"{name}: deployed copy differs from repo working tree (deployed copy behind repo)"
+            )
         if worktree_main is not None and worktree_sha is None:
             findings.append(f"{name}: missing from .worktrees/main at {worktree_main}")
         elif worktree_sha is not None and repo_sha != worktree_sha:
-            findings.append(f"{name}: .worktrees/main skill copy differs from repo working tree")
+            findings.append(
+                f"{name}: .worktrees/main skill copy differs from repo working tree"
+            )
 
     ok = not findings
-    return CheckResult(name="deploy-drift", ok=ok, lines=lines, findings=findings, data=data)
+    return CheckResult(
+        name="deploy-drift", ok=ok, lines=lines, findings=findings, data=data
+    )
 
 
 # =========================================================================== #
@@ -407,9 +452,21 @@ class ScenarioResult:
     detail: str
 
 
-def _run_script(script: Path, root: Path, payload: dict, *, env_extra: dict | None = None, timeout: int = 20) -> dict:
+def _run_script(
+    script: Path,
+    root: Path,
+    payload: dict,
+    *,
+    env_extra: dict | None = None,
+    timeout: int = 20,
+) -> dict:
     if not script.is_file():
-        return {"ok": False, "returncode": None, "stdout": "", "error": f"missing script: {script}"}
+        return {
+            "ok": False,
+            "returncode": None,
+            "stdout": "",
+            "error": f"missing script: {script}",
+        }
     env = os.environ.copy()
     env["TOKEN_REDUCE_REPO_ROOT"] = str(root)
     env["PYTHONPATH"] = str(script.parent) + os.pathsep + env.get("PYTHONPATH", "")
@@ -430,18 +487,42 @@ def _run_script(script: Path, root: Path, payload: dict, *, env_extra: dict | No
         return {"ok": False, "returncode": None, "stdout": "", "error": "timeout"}
     except OSError as exc:
         return {"ok": False, "returncode": None, "stdout": "", "error": str(exc)}
-    return {"ok": True, "returncode": proc.returncode, "stdout": proc.stdout, "error": None}
+    return {
+        "ok": True,
+        "returncode": proc.returncode,
+        "stdout": proc.stdout,
+        "error": None,
+    }
 
 
-def _run_enforce(copy: HookCopy, root: Path, command: str, session_id: str, *, tool_use_id: str | None = None) -> StepResult:
-    payload: dict[str, object] = {"session_id": session_id, "tool_name": "Bash", "tool_input": {"command": command}}
+def _run_enforce(
+    copy: HookCopy,
+    root: Path,
+    command: str,
+    session_id: str,
+    *,
+    tool_use_id: str | None = None,
+) -> StepResult:
+    payload: dict[str, object] = {
+        "session_id": session_id,
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+    }
     if tool_use_id:
         payload["tool_use_id"] = tool_use_id
     r = _run_script(copy.enforce_path, root, payload)
-    return StepResult(hook="enforce", ok=r["ok"], returncode=r["returncode"], stdout=r["stdout"], error=r["error"])
+    return StepResult(
+        hook="enforce",
+        ok=r["ok"],
+        returncode=r["returncode"],
+        stdout=r["stdout"],
+        error=r["error"],
+    )
 
 
-def _fail(sid: str, desc: str, detail: str, steps: list[StepResult]) -> tuple[ScenarioResult, list[StepResult]]:
+def _fail(
+    sid: str, desc: str, detail: str, steps: list[StepResult]
+) -> tuple[ScenarioResult, list[StepResult]]:
     return ScenarioResult(id=sid, description=desc, passed=False, detail=detail), steps
 
 
@@ -452,7 +533,9 @@ def _scenario_s1(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         enforce = _run_enforce(copy, root, "which rg", session_id)
         steps = [enforce]
         if not enforce.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
+            return _fail(
+                sid, desc, f"enforce hook failed to execute: {enforce.error}", steps
+            )
         passed = enforce.returncode == 0
         detail = f"`which rg` with no state -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
         return ScenarioResult(sid, desc, passed, detail), steps
@@ -466,7 +549,9 @@ def _scenario_s2(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         enforce = _run_enforce(copy, root, "ls -la scripts", session_id)
         steps = [enforce]
         if not enforce.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
+            return _fail(
+                sid, desc, f"enforce hook failed to execute: {enforce.error}", steps
+            )
         passed = enforce.returncode == 0
         detail = f"`ls -la scripts` -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
         return ScenarioResult(sid, desc, passed, detail), steps
@@ -479,20 +564,44 @@ def _scenario_s3(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
     )
     with _scratch_repo() as root:
         session_id = "hc-s3"
-        first = _run_enforce(copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-a")
-        second = _run_enforce(copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-b")
+        first = _run_enforce(
+            copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-a"
+        )
+        second = _run_enforce(
+            copy, root, "grep -R foo .", session_id, tool_use_id="hc-s3-b"
+        )
         steps = [first, second]
         if not first.ok or not second.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {first.error or second.error}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"enforce hook failed to execute: {first.error or second.error}",
+                steps,
+            )
         if first.returncode != 0:
-            return _fail(sid, desc, f"first attempt should warn-and-allow (rc=0), got rc={first.returncode}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"first attempt should warn-and-allow (rc=0), got rc={first.returncode}",
+                steps,
+            )
         enforce = second
         if enforce.returncode != 2:
-            return _fail(sid, desc, f"expected repeat attempt to block (rc=2), got rc={enforce.returncode}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"expected repeat attempt to block (rc=2), got rc={enforce.returncode}",
+                steps,
+            )
         try:
             decision = json.loads(enforce.stdout)
         except json.JSONDecodeError:
-            return _fail(sid, desc, f"block stdout is not valid JSON: {enforce.stdout[:160]!r}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"block stdout is not valid JSON: {enforce.stdout[:160]!r}",
+                steps,
+            )
         reason = str(decision.get("reason", ""))
         has_hint = "token-reduce" in reason.lower() or "qmd" in reason.lower()
         passed = bool(reason.strip()) and has_hint
@@ -510,14 +619,19 @@ def _scenario_s4(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         enforce = _run_enforce(copy, root, cmd, session_id)
         steps = [enforce]
         if not enforce.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
+            return _fail(
+                sid, desc, f"enforce hook failed to execute: {enforce.error}", steps
+            )
         passed = enforce.returncode == 0
         detail = f"compound cheap command -> rc={enforce.returncode}, stdout={enforce.stdout[:160]!r}"
         return ScenarioResult(sid, desc, passed, detail), steps
 
 
 def _scenario_s5(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S5", "quoted payload with embedded `find /...` text MUST allow, twice, no escalation"
+    sid, desc = (
+        "S5",
+        "quoted payload with embedded `find /...` text MUST allow, twice, no escalation",
+    )
     with _scratch_repo() as root:
         session_id = "hc-s5"
         cmd = 'echo \'{"c":"find /home/x -name y"}\' | some-tool'
@@ -525,18 +639,31 @@ def _scenario_s5(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         second = _run_enforce(copy, root, cmd, session_id, tool_use_id="hc-s5-b")
         steps = [first, second]
         if not first.ok or not second.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {first.error or second.error}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"enforce hook failed to execute: {first.error or second.error}",
+                steps,
+            )
         # Different tool_use_id => a genuine second attempt, not a dedup replay. If
         # the quoted text were mistaken for a real broad scan, the second attempt
         # would escalate to a hard block (see F5's real-retry semantics). Both
         # staying at rc=0 is the observable proof that it was never counted broad.
-        passed = first.returncode == 0 and second.returncode == 0 and first.stdout == "" and second.stdout == ""
+        passed = (
+            first.returncode == 0
+            and second.returncode == 0
+            and first.stdout == ""
+            and second.stdout == ""
+        )
         detail = f"call1 rc={first.returncode} call2 rc={second.returncode} (no escalation = never classified broad)"
         return ScenarioResult(sid, desc, passed, detail), steps
 
 
 def _scenario_s6(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S6", "double-run dedup: same broad payload twice within 1s -> counter +1 total, identical decisions"
+    sid, desc = (
+        "S6",
+        "double-run dedup: same broad payload twice within 1s -> counter +1 total, identical decisions",
+    )
     with _scratch_repo() as root:
         session_id = "hc-s6"
         cmd = "tree ."
@@ -544,8 +671,15 @@ def _scenario_s6(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         second = _run_enforce(copy, root, cmd, session_id, tool_use_id="hc-s6-dup")
         steps = [first, second]
         if not first.ok or not second.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {first.error or second.error}", steps)
-        identical = first.returncode == second.returncode and first.stdout == second.stdout
+            return _fail(
+                sid,
+                desc,
+                f"enforce hook failed to execute: {first.error or second.error}",
+                steps,
+            )
+        identical = (
+            first.returncode == second.returncode and first.stdout == second.stdout
+        )
         # P1: read the counter through the hooks' own broad_attempt_count(),
         # not a hand-rolled session-key-slug + state-path reimplementation --
         # a hand-rolled copy that drifts from the real path/schema would
@@ -559,7 +693,8 @@ def _scenario_s6(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         # exactly once, and the decision marker on disk proving the dedup path
         # (not merely an idempotent re-decision) served call 2.
         marker_seen = any(
-            p.name.startswith("decision_") for p in _trs.state_dir(root).glob("decision_*.json")
+            p.name.startswith("decision_")
+            for p in _trs.state_dir(root).glob("decision_*.json")
         )
         passed = identical and count == 1 and marker_seen
         detail = (
@@ -570,7 +705,10 @@ def _scenario_s6(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
 
 
 def _scenario_s7(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S7", "find on symlink root MUST block loudly with 'symlink'; trailing-slash form allowed"
+    sid, desc = (
+        "S7",
+        "find on symlink root MUST block loudly with 'symlink'; trailing-slash form allowed",
+    )
     with _scratch_repo() as root:
         session_id = "hc-s7"
         link_dir = Path(tempfile.mkdtemp(prefix="review-pass-hc-s7-"))
@@ -579,19 +717,35 @@ def _scenario_s7(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         link = link_dir / "the_link"
         try:
             link.symlink_to(real_dir)
-            first = _run_enforce(copy, root, f"find {link} -name x", session_id, tool_use_id="hc-s7-a")
-            second = _run_enforce(copy, root, f"find {link}/ -name x", session_id, tool_use_id="hc-s7-b")
+            first = _run_enforce(
+                copy, root, f"find {link} -name x", session_id, tool_use_id="hc-s7-a"
+            )
+            second = _run_enforce(
+                copy, root, f"find {link}/ -name x", session_id, tool_use_id="hc-s7-b"
+            )
         finally:
             shutil.rmtree(link_dir, ignore_errors=True)
         steps = [first, second]
         if not first.ok or not second.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {first.error or second.error}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"enforce hook failed to execute: {first.error or second.error}",
+                steps,
+            )
         if first.returncode != 2:
-            return _fail(sid, desc, f"bare symlink `find` expected block (rc=2), got rc={first.returncode}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"bare symlink `find` expected block (rc=2), got rc={first.returncode}",
+                steps,
+            )
         try:
             decision = json.loads(first.stdout)
         except json.JSONDecodeError:
-            return _fail(sid, desc, f"block stdout not valid JSON: {first.stdout[:160]!r}", steps)
+            return _fail(
+                sid, desc, f"block stdout not valid JSON: {first.stdout[:160]!r}", steps
+            )
         reason = str(decision.get("reason", ""))
         first_ok = "symlink" in reason.lower()
         # Never silent: the trailing-slash form must produce an explicit decision
@@ -600,7 +754,9 @@ def _scenario_s7(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
         if second.returncode == 2:
             try:
                 second_decision = json.loads(second.stdout)
-                second_ok = "symlink" not in str(second_decision.get("reason", "")).lower()
+                second_ok = (
+                    "symlink" not in str(second_decision.get("reason", "")).lower()
+                )
             except json.JSONDecodeError:
                 second_ok = False
         passed = first_ok and second_ok
@@ -609,19 +765,31 @@ def _scenario_s7(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
 
 
 def _scenario_s8(copy: HookCopy) -> tuple[ScenarioResult, list[StepResult]]:
-    sid, desc = "S8", "catastrophic `find / -name x` MUST block, reason contains 'catastrophic'"
+    sid, desc = (
+        "S8",
+        "catastrophic `find / -name x` MUST block, reason contains 'catastrophic'",
+    )
     with _scratch_repo() as root:
         session_id = "hc-s8"
         enforce = _run_enforce(copy, root, "find / -name x", session_id)
         steps = [enforce]
         if not enforce.ok:
-            return _fail(sid, desc, f"enforce hook failed to execute: {enforce.error}", steps)
+            return _fail(
+                sid, desc, f"enforce hook failed to execute: {enforce.error}", steps
+            )
         if enforce.returncode != 2:
-            return _fail(sid, desc, f"expected block (rc=2), got rc={enforce.returncode}", steps)
+            return _fail(
+                sid, desc, f"expected block (rc=2), got rc={enforce.returncode}", steps
+            )
         try:
             decision = json.loads(enforce.stdout)
         except json.JSONDecodeError:
-            return _fail(sid, desc, f"block stdout not valid JSON: {enforce.stdout[:160]!r}", steps)
+            return _fail(
+                sid,
+                desc,
+                f"block stdout not valid JSON: {enforce.stdout[:160]!r}",
+                steps,
+            )
         reason = str(decision.get("reason", ""))
         passed = "catastrophic" in reason.lower()
         detail = f"reason={reason[:160]!r}"
@@ -676,14 +844,24 @@ def run_hook_contract_for_copy(copy: HookCopy) -> dict[str, Any]:
         try:
             result, steps = fn(copy)
         except Exception as exc:  # never let one scenario crash the whole pass
-            result = ScenarioResult(id=fn.__name__, description=fn.__name__, passed=False, detail=f"scenario raised: {exc}")
+            result = ScenarioResult(
+                id=fn.__name__,
+                description=fn.__name__,
+                passed=False,
+                detail=f"scenario raised: {exc}",
+            )
             steps = []
         scenario_results[result.id] = result
         all_steps.extend(steps)
     s9 = _scenario_s9(all_steps)
     scenario_results[s9.id] = s9
     passed = all(r.passed for r in scenario_results.values())
-    return {"available": True, "passed": passed, "scenarios": scenario_results, "summary": None}
+    return {
+        "available": True,
+        "passed": passed,
+        "scenarios": scenario_results,
+        "summary": None,
+    }
 
 
 SCENARIO_IDS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"]
@@ -704,7 +882,9 @@ def _compose_hook_contract_result(
     for sid in scenario_ids:
         repo_r = repo_result["scenarios"].get(sid)
         dep_r = deployed_result["scenarios"].get(sid)
-        repo_cell = "PASS" if (repo_r and repo_r.passed) else ("FAIL" if repo_r else "N/A")
+        repo_cell = (
+            "PASS" if (repo_r and repo_r.passed) else ("FAIL" if repo_r else "N/A")
+        )
         dep_cell = "PASS" if (dep_r and dep_r.passed) else ("FAIL" if dep_r else "N/A")
         lines.append(f"| `{sid}` | {repo_cell} | {dep_cell} |")
     lines.append("")
@@ -713,9 +893,13 @@ def _compose_hook_contract_result(
         dep_r = deployed_result["scenarios"].get(sid)
         if repo_r:
             lines.append(f"- `{sid}` {repo_r.description}")
-            lines.append(f"  - repo: {'PASS' if repo_r.passed else 'FAIL'} -- {repo_r.detail}")
+            lines.append(
+                f"  - repo: {'PASS' if repo_r.passed else 'FAIL'} -- {repo_r.detail}"
+            )
         if dep_r:
-            lines.append(f"  - deployed: {'PASS' if dep_r.passed else 'FAIL'} -- {dep_r.detail}")
+            lines.append(
+                f"  - deployed: {'PASS' if dep_r.passed else 'FAIL'} -- {dep_r.detail}"
+            )
 
     findings: list[str] = []
     tool_error = False
@@ -724,7 +908,13 @@ def _compose_hook_contract_result(
         tool_error = True
         findings.append(repo_result["summary"])
     elif not repo_result["passed"]:
-        failing = [sid for sid in scenario_ids if not repo_result["scenarios"].get(sid, ScenarioResult(sid, "", False, "")).passed]
+        failing = [
+            sid
+            for sid in scenario_ids
+            if not repo_result["scenarios"]
+            .get(sid, ScenarioResult(sid, "", False, ""))
+            .passed
+        ]
         findings.append(
             "repo copy FAILED hook-contract scenario(s) "
             f"{failing} -- this is a regression in scripts/, not a deploy-drift signal "
@@ -735,7 +925,13 @@ def _compose_hook_contract_result(
     if not deployed_result["available"]:
         findings.append(f"deployed copy unavailable: {deployed_result['summary']}")
     elif not deployed_result["passed"]:
-        failing = [sid for sid in scenario_ids if not deployed_result["scenarios"].get(sid, ScenarioResult(sid, "", False, "")).passed]
+        failing = [
+            sid
+            for sid in scenario_ids
+            if not deployed_result["scenarios"]
+            .get(sid, ScenarioResult(sid, "", False, ""))
+            .passed
+        ]
         if repo_result.get("passed"):
             findings.append(
                 f"deployed copy FAILED scenario(s) {failing} that the repo copy PASSES -- "
@@ -750,7 +946,14 @@ def _compose_hook_contract_result(
 
     ok = not findings
     data = {"repo": repo_result, "deployed": deployed_result}
-    return CheckResult(name="hook-contract", ok=ok, tool_error=tool_error, lines=lines, findings=findings, data=data)
+    return CheckResult(
+        name="hook-contract",
+        ok=ok,
+        tool_error=tool_error,
+        lines=lines,
+        findings=findings,
+        data=data,
+    )
 
 
 def check_hook_contract(args: argparse.Namespace) -> CheckResult:
@@ -770,7 +973,12 @@ def check_hook_contract(args: argparse.Namespace) -> CheckResult:
     try:
         deployed_result = run_hook_contract_for_copy(deployed_copy)
     except Exception as exc:
-        deployed_result = {"available": False, "passed": False, "scenarios": {}, "summary": f"deployed copy runner crashed: {exc}"}
+        deployed_result = {
+            "available": False,
+            "passed": False,
+            "scenarios": {},
+            "summary": f"deployed copy runner crashed: {exc}",
+        }
 
     return _compose_hook_contract_result(repo_result, deployed_result, SCENARIO_IDS)
 
@@ -809,7 +1017,9 @@ def _guard_status_for_copy(copy: HookCopy, target: Path) -> str:
     if not copy.available():
         return "unavailable"
     with _scratch_repo() as root:
-        step = _run_enforce(copy, root, f"find {target} -maxdepth 1", f"env-sanity-{copy.label}")
+        step = _run_enforce(
+            copy, root, f"find {target} -maxdepth 1", f"env-sanity-{copy.label}"
+        )
     if not step.ok:
         return f"error ({step.error})"
     if step.returncode == 2:
@@ -818,7 +1028,11 @@ def _guard_status_for_copy(copy: HookCopy, target: Path) -> str:
         except json.JSONDecodeError:
             return "blocked (unparseable reason)"
         reason = str(decision.get("reason", ""))
-        return "guarded" if "symlink" in reason.lower() else f"blocked (not symlink-attributed: {reason[:80]!r})"
+        return (
+            "guarded"
+            if "symlink" in reason.lower()
+            else f"blocked (not symlink-attributed: {reason[:80]!r})"
+        )
     if step.returncode == 0:
         return "unguarded (silently allowed)"
     return f"unexpected rc={step.returncode}"
@@ -826,7 +1040,11 @@ def _guard_status_for_copy(copy: HookCopy, target: Path) -> str:
 
 def _rg_hidden_demo() -> dict[str, Any]:
     if shutil.which("rg") is None:
-        return {"ok": True, "skipped": True, "summary": "rg hidden-dir demo: skipped (rg not installed)"}
+        return {
+            "ok": True,
+            "skipped": True,
+            "summary": "rg hidden-dir demo: skipped (rg not installed)",
+        }
     d = Path(tempfile.mkdtemp(prefix="review-pass-rg-demo-"))
     try:
         (d / "visible.txt").write_text("hi\n")
@@ -834,10 +1052,22 @@ def _rg_hidden_demo() -> dict[str, Any]:
         (d / ".gitignore").write_text("ignored.txt\n")
         (d / "ignored.txt").write_text("hi\n")
         try:
-            default = subprocess.run(["rg", "--files"], cwd=d, capture_output=True, text=True, timeout=15)
-            full = subprocess.run(["rg", "--files", "--hidden", "--no-ignore"], cwd=d, capture_output=True, text=True, timeout=15)
+            default = subprocess.run(
+                ["rg", "--files"], cwd=d, capture_output=True, text=True, timeout=15
+            )
+            full = subprocess.run(
+                ["rg", "--files", "--hidden", "--no-ignore"],
+                cwd=d,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
         except (OSError, subprocess.TimeoutExpired) as exc:
-            return {"ok": False, "skipped": False, "summary": f"rg hidden-dir demo: tool error running rg ({exc})"}
+            return {
+                "ok": False,
+                "skipped": False,
+                "summary": f"rg hidden-dir demo: tool error running rg ({exc})",
+            }
         default_n = len([line for line in default.stdout.splitlines() if line.strip()])
         full_n = len([line for line in full.stdout.splitlines() if line.strip()])
         ok = full_n > default_n
@@ -846,7 +1076,13 @@ def _rg_hidden_demo() -> dict[str, Any]:
             f"`--hidden --no-ignore` finds {full_n} file(s) "
             f"({'confirms silent gap' if ok else 'UNEXPECTED: no gap observed'})"
         )
-        return {"ok": ok, "skipped": False, "summary": summary, "default_count": default_n, "full_count": full_n}
+        return {
+            "ok": ok,
+            "skipped": False,
+            "summary": summary,
+            "default_count": default_n,
+            "full_count": full_n,
+        }
     finally:
         shutil.rmtree(d, ignore_errors=True)
 
@@ -871,22 +1107,33 @@ def check_env_sanity(args: argparse.Namespace) -> CheckResult:
         lines.append(f"symlink target: {target or '?'}")
 
         bare = _find_line_count(str(projects_path), maxdepth=1)
-        with_slash = _find_line_count(_with_trailing_sep(str(projects_path)), maxdepth=1)
-        lines.append(f"`find {projects_path} -maxdepth 1` -> {bare} line(s); trailing-slash form -> {with_slash} line(s)")
+        with_slash = _find_line_count(
+            _with_trailing_sep(str(projects_path)), maxdepth=1
+        )
+        lines.append(
+            f"`find {projects_path} -maxdepth 1` -> {bare} line(s); trailing-slash form -> {with_slash} line(s)"
+        )
         trap_live = 0 <= bare <= 1 and with_slash > 1
         data["trap_live"] = trap_live
         if trap_live:
             lines.append("silent-empty find trap: CONFIRMED live on this host")
         else:
-            findings.append(f"expected find-on-symlink trap not reproduced (bare={bare}, slash={with_slash})")
+            findings.append(
+                f"expected find-on-symlink trap not reproduced (bare={bare}, slash={with_slash})"
+            )
 
         data["guard_status"] = {}
-        for copy in (HookCopy("repo", args.repo_scripts), HookCopy("deployed", args.deployed_root)):
+        for copy in (
+            HookCopy("repo", args.repo_scripts),
+            HookCopy("deployed", args.deployed_root),
+        ):
             status = _guard_status_for_copy(copy, projects_path)
             lines.append(f"guard status ({copy.label}): {status}")
             data["guard_status"][copy.label] = status
             if copy.label == "repo" and status != "guarded":
-                findings.append(f"repo copy does not guard the symlink-find trap (status={status})")
+                findings.append(
+                    f"repo copy does not guard the symlink-find trap (status={status})"
+                )
             if copy.label == "deployed" and status != "guarded":
                 findings.append(
                     f"deployed copy is UNGUARDED against the symlink-find trap (status={status}) -- "
@@ -900,7 +1147,9 @@ def check_env_sanity(args: argparse.Namespace) -> CheckResult:
         findings.append(rg_demo["summary"])
 
     ok = not findings
-    return CheckResult(name="env-sanity", ok=ok, lines=lines, findings=findings, data=data)
+    return CheckResult(
+        name="env-sanity", ok=ok, lines=lines, findings=findings, data=data
+    )
 
 
 # =========================================================================== #
@@ -923,7 +1172,10 @@ def check_adoption_snapshot(args: argparse.Namespace) -> CheckResult:
     # P2: reuse token_reduce_telemetry.load_events(days=...) instead of a
     # parallel reimplementation of the same cutoff/parse logic.
     events = _trt.load_events(args.repo_root, days=args.days)
-    lines: list[str] = [f"telemetry window: last {args.days} day(s)", f"total events: {len(events)}"]
+    lines: list[str] = [
+        f"telemetry window: last {args.days} day(s)",
+        f"total events: {len(events)}",
+    ]
     findings: list[str] = []
     data: dict[str, Any] = {}
 
@@ -985,25 +1237,35 @@ def check_adoption_snapshot(args: argparse.Namespace) -> CheckResult:
     for sk, n, total in storms[:10]:
         lines.append(f"  {sk}: {n} blocks in first 5 (of {total} recorded events)")
     if storms:
-        findings.append(f"{len(storms)} storm session(s) detected in the last {args.days}d window")
+        findings.append(
+            f"{len(storms)} storm session(s) detected in the last {args.days}d window"
+        )
 
     dedup_replays = by_event.get("hook_dedup_replay", 0)
     decisions = by_event.get("hook_block", 0) + by_event.get("hook_warn", 0)
     if dedup_replays:
         denom = decisions + dedup_replays
         ratio = dedup_replays / denom if denom else 0.0
-        lines.append(f"dedup ratio: {ratio:.1%} ({dedup_replays} replayed / {denom} total decisions)")
+        lines.append(
+            f"dedup ratio: {ratio:.1%} ({dedup_replays} replayed / {denom} total decisions)"
+        )
         data["dedup_ratio"] = ratio
     else:
-        lines.append("dedup ratio: no hook_dedup_replay telemetry in window (F5 meta not present)")
+        lines.append(
+            "dedup ratio: no hook_dedup_replay telemetry in window (F5 meta not present)"
+        )
         data["dedup_ratio"] = None
 
     hook_errors = by_event.get("hook_error", 0)
     if hook_errors:
-        findings.append(f"{hook_errors} hook_error event(s) in window -- check fail-open paths")
+        findings.append(
+            f"{hook_errors} hook_error event(s) in window -- check fail-open paths"
+        )
 
     ok = not findings
-    return CheckResult(name="adoption-snapshot", ok=ok, lines=lines, findings=findings, data=data)
+    return CheckResult(
+        name="adoption-snapshot", ok=ok, lines=lines, findings=findings, data=data
+    )
 
 
 # =========================================================================== #
@@ -1078,7 +1340,9 @@ def check_inventory_staleness(args: argparse.Namespace) -> CheckResult:
     for p in all_files:
         checked += 1
         base = p.stem
-        cross_text = "\n".join(text for name, text in file_contents.items() if name != p.name)
+        cross_text = "\n".join(
+            text for name, text in file_contents.items() if name != p.name
+        )
         haystack = wiring_text + "\n" + cross_text
         pattern = re.compile(r"(?<![\w.-])" + re.escape(base) + r"(?![\w-])")
         wired = bool(pattern.search(haystack)) or bool(pattern.search(wiring_text))
@@ -1088,8 +1352,12 @@ def check_inventory_staleness(args: argparse.Namespace) -> CheckResult:
         if not wired and stale:
             candidates.append(
                 {
-                    "file": str(p.relative_to(repo_root)) if p.is_relative_to(repo_root) else p.name,
-                    "last_touch_days": round(last_touch_days, 1) if last_touch_days is not None else None,
+                    "file": str(p.relative_to(repo_root))
+                    if p.is_relative_to(repo_root)
+                    else p.name,
+                    "last_touch_days": round(last_touch_days, 1)
+                    if last_touch_days is not None
+                    else None,
                     "tested": tested,
                 }
             )
@@ -1098,9 +1366,13 @@ def check_inventory_staleness(args: argparse.Namespace) -> CheckResult:
     data["demote_candidates"] = candidates
     lines.append(f"scripts inventoried: {checked}")
     lines.append(f"unwired AND untouched>30d demote candidates: {len(candidates)}")
-    for c in sorted(candidates, key=lambda c: c.get("last_touch_days") or 0, reverse=True):
+    for c in sorted(
+        candidates, key=lambda c: c.get("last_touch_days") or 0, reverse=True
+    ):
         tested_note = " (has unit tests)" if c["tested"] else ""
-        lines.append(f"  {c['file']}: last touched {c['last_touch_days']}d ago{tested_note}")
+        lines.append(
+            f"  {c['file']}: last touched {c['last_touch_days']}d ago{tested_note}"
+        )
 
     if candidates:
         findings.append(
@@ -1110,7 +1382,9 @@ def check_inventory_staleness(args: argparse.Namespace) -> CheckResult:
         )
 
     ok = not findings
-    return CheckResult(name="inventory-staleness", ok=ok, lines=lines, findings=findings, data=data)
+    return CheckResult(
+        name="inventory-staleness", ok=ok, lines=lines, findings=findings, data=data
+    )
 
 
 # =========================================================================== #
@@ -1181,38 +1455,91 @@ def build_parser() -> argparse.ArgumentParser:
             "staleness. All checks are read-only."
         ),
     )
-    parser.add_argument("--repo-root", default=None, help="repo root to evaluate (default: git toplevel of this script)")
-    parser.add_argument("--repo-scripts", default=None, help="path to the repo's scripts/ dir (default: <repo-root>/scripts)")
     parser.add_argument(
-        "--deployed-root", default=str(DEFAULT_DEPLOYED_ROOT), help="deployed hook copy dir (default: ~/.claude/hooks/token-reduce)"
+        "--repo-root",
+        default=None,
+        help="repo root to evaluate (default: git toplevel of this script)",
     )
     parser.add_argument(
-        "--skills-symlink", default=str(DEFAULT_SKILLS_SYMLINK), help="path to the ~/.claude/skills/token-reduce symlink"
+        "--repo-scripts",
+        default=None,
+        help="path to the repo's scripts/ dir (default: <repo-root>/scripts)",
     )
-    parser.add_argument("--worktree-main", default=None, help="override .worktrees/main path (default: resolved from --skills-symlink)")
     parser.add_argument(
-        "--projects-path", default=str(DEFAULT_PROJECTS_PATH), help="path to check for the symlink-find trap (default: ~/.claude/projects)"
+        "--deployed-root",
+        default=str(DEFAULT_DEPLOYED_ROOT),
+        help="deployed hook copy dir (default: ~/.claude/hooks/token-reduce)",
     )
-    parser.add_argument("--days", type=int, default=7, help="telemetry window in days for adoption-snapshot (default: 7)")
-    parser.add_argument("--no-fetch", action="store_true", help="skip `git fetch origin` in deploy-drift (offline/test mode)")
+    parser.add_argument(
+        "--skills-symlink",
+        default=str(DEFAULT_SKILLS_SYMLINK),
+        help="path to the ~/.claude/skills/token-reduce symlink",
+    )
+    parser.add_argument(
+        "--worktree-main",
+        default=None,
+        help="override .worktrees/main path (default: resolved from --skills-symlink)",
+    )
+    parser.add_argument(
+        "--projects-path",
+        default=str(DEFAULT_PROJECTS_PATH),
+        help="path to check for the symlink-find trap (default: ~/.claude/projects)",
+    )
+    parser.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="telemetry window in days for adoption-snapshot (default: 7)",
+    )
+    parser.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="skip `git fetch origin` in deploy-drift (offline/test mode)",
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("deploy-drift", help="Compare hashes of hook entrypoints/helpers across origin/main, .worktrees/main, and the deployed copy")
-    sub.add_parser("hook-contract", help="Run the S1-S9 canned scenarios against the repo and deployed hook copies")
-    sub.add_parser("env-sanity", help="Check the ~/.claude/projects symlink-find trap and the rg hidden-file demo")
-    sub.add_parser("adoption-snapshot", help="Summarize recent hook/telemetry adoption signals")
-    sub.add_parser("inventory-staleness", help="Flag unwired, long-untouched scripts as demote candidates")
-    p_all = sub.add_parser("all", help="Run every check and write a combined markdown report")
-    p_all.add_argument("--report", required=True, help="path to write the combined markdown report")
+    sub.add_parser(
+        "deploy-drift",
+        help="Compare hashes of hook entrypoints/helpers across origin/main, .worktrees/main, and the deployed copy",
+    )
+    sub.add_parser(
+        "hook-contract",
+        help="Run the S1-S9 canned scenarios against the repo and deployed hook copies",
+    )
+    sub.add_parser(
+        "env-sanity",
+        help="Check the ~/.claude/projects symlink-find trap and the rg hidden-file demo",
+    )
+    sub.add_parser(
+        "adoption-snapshot", help="Summarize recent hook/telemetry adoption signals"
+    )
+    sub.add_parser(
+        "inventory-staleness",
+        help="Flag unwired, long-untouched scripts as demote candidates",
+    )
+    p_all = sub.add_parser(
+        "all", help="Run every check and write a combined markdown report"
+    )
+    p_all.add_argument(
+        "--report", required=True, help="path to write the combined markdown report"
+    )
     return parser
 
 
 def _resolve_paths(args: argparse.Namespace) -> None:
-    args.repo_root = Path(args.repo_root).resolve() if args.repo_root else _default_repo_root()
-    args.repo_scripts = Path(args.repo_scripts).resolve() if args.repo_scripts else (args.repo_root / "scripts")
+    args.repo_root = (
+        Path(args.repo_root).resolve() if args.repo_root else _default_repo_root()
+    )
+    args.repo_scripts = (
+        Path(args.repo_scripts).resolve()
+        if args.repo_scripts
+        else (args.repo_root / "scripts")
+    )
     args.deployed_root = Path(args.deployed_root).expanduser()
     args.skills_symlink = Path(args.skills_symlink).expanduser()
-    args.worktree_main = Path(args.worktree_main).resolve() if args.worktree_main else None
+    args.worktree_main = (
+        Path(args.worktree_main).resolve() if args.worktree_main else None
+    )
     args.projects_path = Path(args.projects_path).expanduser()
 
 
@@ -1239,7 +1566,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = single_checks[args.command](args)
     except Exception as exc:  # report-only tool must never crash the caller
-        print(f"review_pass.py: tool error running {args.command}: {exc}", file=sys.stderr)
+        print(
+            f"review_pass.py: tool error running {args.command}: {exc}", file=sys.stderr
+        )
         return EXIT_TOOL_ERROR
 
     print(result.render_text())

@@ -27,6 +27,7 @@ consumer references it directly -- check with:
 Until then, this is a permanent no-op: it drains stdin (best-effort), never
 emits a systemMessage or any other output, and always exits 0.
 """
+
 import sys
 
 

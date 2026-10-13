@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Shared config helpers for token-reduce local management scripts."""
+
 from __future__ import annotations
 
 import json
@@ -8,13 +9,20 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
-    "layers": {name: "auto" for name in (
-        "rtk", "headroom_compress", "headroom_retrieve", "search_qmd",
-        "memory", "mcp_trim", "context_audit",
-    )},
+    "layers": {
+        name: "auto"
+        for name in (
+            "rtk",
+            "headroom_compress",
+            "headroom_retrieve",
+            "search_qmd",
+            "memory",
+            "mcp_trim",
+            "context_audit",
+        )
+    },
     "telemetry": {
         "enabled": False,
         "endpoint": "",
@@ -133,7 +141,9 @@ def layer_mode(name: str, config: dict[str, Any] | None = None) -> str:
     layers = config.get("layers")
     if not isinstance(layers, dict):  # null/garbage layers = defaults
         layers = {}
-    value = os.environ.get(f"TOKEN_REDUCE_LAYER_{name.upper()}", layers.get(name, "auto"))
+    value = os.environ.get(
+        f"TOKEN_REDUCE_LAYER_{name.upper()}", layers.get(name, "auto")
+    )
     if isinstance(value, bool):
         return "on" if value else "off"
     mode = str(value).strip().lower()
@@ -185,6 +195,7 @@ def set_nested(config: dict[str, Any], dotted_key: str, value: Any) -> None:
 
 def _list_tools(config: dict[str, Any]) -> None:
     import shutil
+
     print("Delegates:")
     for name, cfg in config.get("delegates", {}).items():
         installed = "installed" if shutil.which(f"{name}-delegate") else "not found"
@@ -201,11 +212,18 @@ def _list_tools(config: dict[str, Any]) -> None:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="token-reduce config CLI")
-    parser.add_argument("--path", action="store_true", help="Print the active config path")
-    parser.add_argument("--list-tools", action="store_true", help="List delegates/companions")
+    parser.add_argument(
+        "--path", action="store_true", help="Print the active config path"
+    )
+    parser.add_argument(
+        "--list-tools", action="store_true", help="List delegates/companions"
+    )
     parser.add_argument("--get", metavar="KEY", help="Get a config value by dotted key")
-    parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"), help="Set a config value")
+    parser.add_argument(
+        "--set", nargs=2, metavar=("KEY", "VALUE"), help="Set a config value"
+    )
     args = parser.parse_args()
     cfg = load_config()
     if args.path:

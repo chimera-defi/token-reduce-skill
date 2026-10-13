@@ -9,39 +9,136 @@ Re-orders candidate paths produced by ``token-reduce-paths.sh`` /
 - A4 query expansion + stopword pruning + bigrams
 - A5 click-through learning prior built from telemetry events
 """
+
 from __future__ import annotations
 
 import math
 import os
 import re
 import subprocess
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
 
-
-STOPWORDS = frozenset({
-    "a", "an", "the", "and", "or", "but", "if", "then", "than", "so",
-    "for", "of", "to", "in", "on", "at", "by", "from", "into", "out",
-    "with", "as", "is", "are", "be", "was", "were", "this", "that",
-    "these", "those", "it", "we", "you", "they", "i", "me", "my",
-    "our", "us", "your", "he", "she", "him", "her", "do", "does",
-    "did", "can", "could", "should", "would", "will", "shall", "may",
-    "might", "must", "what", "which", "who", "whom", "whose", "when",
-    "where", "why", "how", "find", "look", "looking", "want", "wanted",
-    "need", "needed", "use", "using", "via", "about",
-})
+STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "than",
+        "so",
+        "for",
+        "of",
+        "to",
+        "in",
+        "on",
+        "at",
+        "by",
+        "from",
+        "into",
+        "out",
+        "with",
+        "as",
+        "is",
+        "are",
+        "be",
+        "was",
+        "were",
+        "this",
+        "that",
+        "these",
+        "those",
+        "it",
+        "we",
+        "you",
+        "they",
+        "i",
+        "me",
+        "my",
+        "our",
+        "us",
+        "your",
+        "he",
+        "she",
+        "him",
+        "her",
+        "do",
+        "does",
+        "did",
+        "can",
+        "could",
+        "should",
+        "would",
+        "will",
+        "shall",
+        "may",
+        "might",
+        "must",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "when",
+        "where",
+        "why",
+        "how",
+        "find",
+        "look",
+        "looking",
+        "want",
+        "wanted",
+        "need",
+        "needed",
+        "use",
+        "using",
+        "via",
+        "about",
+    }
+)
 
 # Tokens that double as path-category cues — must survive tokenization.
-PATH_CUE_TOKENS = frozenset({
-    "test", "tests", "fixture", "fixtures", "vendor", "vendored",
-    "dist", "docs", "doc", "build",
-})
+PATH_CUE_TOKENS = frozenset(
+    {
+        "test",
+        "tests",
+        "fixture",
+        "fixtures",
+        "vendor",
+        "vendored",
+        "dist",
+        "docs",
+        "doc",
+        "build",
+    }
+)
 
 EXTENSIONS = (
-    ".pyi", ".tsx", ".jsx", ".bash", ".zsh", ".json", ".toml",
-    ".yaml", ".yml", ".html", ".rst", ".md", ".txt", ".cfg",
-    ".ini", ".css", ".py", ".ts", ".js", ".sh",
+    ".pyi",
+    ".tsx",
+    ".jsx",
+    ".bash",
+    ".zsh",
+    ".json",
+    ".toml",
+    ".yaml",
+    ".yml",
+    ".html",
+    ".rst",
+    ".md",
+    ".txt",
+    ".cfg",
+    ".ini",
+    ".css",
+    ".py",
+    ".ts",
+    ".js",
+    ".sh",
 )
 
 DEMOTE_SEGMENTS: dict[str, tuple[str, ...]] = {
@@ -196,9 +293,7 @@ _DEFINITION_PATTERNS: tuple[str, ...] = (
 )
 
 
-def symbol_match_score(
-    path: str, tokens: Iterable[str], *, repo_root: Path
-) -> float:
+def symbol_match_score(path: str, tokens: Iterable[str], *, repo_root: Path) -> float:
     file_path = Path(repo_root) / path
     try:
         text = file_path.read_text(encoding="utf-8", errors="ignore")
@@ -335,9 +430,7 @@ def rerank_lines(
     score_by_path = {s.path: s.total for s in scored}
     # Stable sort: by score desc, then original index.
     indexed = list(enumerate(items))
-    indexed.sort(
-        key=lambda e: (-(score_by_path.get(e[1][0], 0.0)), e[0])
-    )
+    indexed.sort(key=lambda e: (-(score_by_path.get(e[1][0], 0.0)), e[0]))
     return [line for _, (_, line) in indexed]
 
 
@@ -378,12 +471,7 @@ def rank_paths(
         sym = symbol_match_score(path, tokens, repo_root=Path(repo_root))
         dem = path_demotion_score(path, tokens)
         clk = click_through_score(path, query, priors)
-        total = (
-            RECENCY_WEIGHT * rec
-            + SYMBOL_WEIGHT * sym
-            + dem
-            + CLICK_WEIGHT * clk
-        )
+        total = RECENCY_WEIGHT * rec + SYMBOL_WEIGHT * sym + dem + CLICK_WEIGHT * clk
         scored.append(
             PathScore(
                 path=path,
@@ -419,23 +507,30 @@ def _cli(argv: list[str] | None = None) -> int:
     parser.add_argument("--query", required=True)
     parser.add_argument("--repo-root", default=".")
     parser.add_argument(
-        "--now-epoch", type=int, default=None,
+        "--now-epoch",
+        type=int,
+        default=None,
         help="Override for testing. Defaults to current epoch.",
     )
     parser.add_argument(
-        "--events-file", default=None,
+        "--events-file",
+        default=None,
         help="Path to telemetry events.jsonl for click-through priors.",
     )
     parser.add_argument(
-        "--limit", type=int, default=0,
+        "--limit",
+        type=int,
+        default=0,
         help="Trim to N top results (0 = no limit).",
     )
     parser.add_argument(
-        "--scores", action="store_true",
+        "--scores",
+        action="store_true",
         help="Emit '<score>\\t<path>' instead of plain paths.",
     )
     parser.add_argument(
-        "--rerank-lines", action="store_true",
+        "--rerank-lines",
+        action="store_true",
         help="Treat stdin as raw helper output; reorder lines by extracted path.",
     )
     args = parser.parse_args(argv)

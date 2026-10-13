@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Composite telemetry for token-reduce + companion tooling (RTK/QMD/hooks)."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,9 @@ from typing import Any
 from measure_token_reduction import measure
 
 
-def run_command(command: list[str], *, cwd: Path | None = None, timeout: int = 30) -> dict[str, Any]:
+def run_command(
+    command: list[str], *, cwd: Path | None = None, timeout: int = 30
+) -> dict[str, Any]:
     try:
         completed = subprocess.run(
             command,
@@ -193,7 +196,9 @@ def rtk_status(scope: str, repo_root: Path) -> dict[str, Any]:
 
 def benchmark_potential(repo_root: Path) -> dict[str, Any]:
     artifact = repo_root / "references" / "benchmarks" / "composite-benchmark.json"
-    payload = maybe_json(artifact.read_text(encoding="utf-8")) if artifact.exists() else None
+    payload = (
+        maybe_json(artifact.read_text(encoding="utf-8")) if artifact.exists() else None
+    )
     if not isinstance(payload, dict):
         return {
             "artifact": str(artifact),
@@ -212,11 +217,19 @@ def benchmark_potential(repo_root: Path) -> dict[str, Any]:
         }
 
     composite = next(
-        (row for row in benchmarks if isinstance(row, dict) and row.get("name") == "composite_stack"),
+        (
+            row
+            for row in benchmarks
+            if isinstance(row, dict) and row.get("name") == "composite_stack"
+        ),
         None,
     )
     broad = next(
-        (row for row in benchmarks if isinstance(row, dict) and row.get("name") == "broad_shell"),
+        (
+            row
+            for row in benchmarks
+            if isinstance(row, dict) and row.get("name") == "broad_shell"
+        ),
         None,
     )
     if not isinstance(composite, dict):
@@ -247,7 +260,9 @@ def _clamp(value: float, lower: float, upper: float) -> float:
 
 
 def realized_outcomes_summary(
-    token_reduce: dict[str, Any], benchmark: dict[str, Any], dependency_overhead: dict[str, Any]
+    token_reduce: dict[str, Any],
+    benchmark: dict[str, Any],
+    dependency_overhead: dict[str, Any],
 ) -> dict[str, Any]:
     adoption = token_reduce.get("adoption", {})
     compliance = token_reduce.get("compliance", {})
@@ -257,14 +272,22 @@ def realized_outcomes_summary(
 
     helper_calls = int(efficiency.get("helper_calls", 0) or 0)
     session_count = int(token_reduce.get("session_count", 0) or 0)
-    observed_discovery_sessions = int(compliance.get("sessions_with_first_discovery_observed", 0) or 0)
+    observed_discovery_sessions = int(
+        compliance.get("sessions_with_first_discovery_observed", 0) or 0
+    )
     telemetry_events = int(telemetry.get("event_count", 0) or 0)
     telemetry_windows = token_reduce.get("telemetry_windows", {})
-    window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    window_1d = (
+        telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    )
     window_1d_helper_calls = int(window_1d.get("helper_calls", 0) or 0)
 
     helper_usage_pct = float(
-        adoption.get("helper_sessions_pct_observed_discovery", adoption.get("helper_sessions_pct", 0.0)) or 0.0
+        adoption.get(
+            "helper_sessions_pct_observed_discovery",
+            adoption.get("helper_sessions_pct", 0.0),
+        )
+        or 0.0
     )
     compliance_pct = float(
         compliance.get(
@@ -283,17 +306,23 @@ def realized_outcomes_summary(
     latency_window_used = "14d"
     if window_1d_helper_calls >= 5:
         latency_reference_ms = round(
-            helper_latency_p95_ms * 0.6 + float(window_1d.get("helper_latency_p95_ms", helper_latency_p95_ms)) * 0.4,
+            helper_latency_p95_ms * 0.6
+            + float(window_1d.get("helper_latency_p95_ms", helper_latency_p95_ms))
+            * 0.4,
             1,
         )
         logging_reference_score = round(
-            logging_quality_score * 0.6 + float(window_1d.get("logging_quality_score", logging_quality_score)) * 0.4,
+            logging_quality_score * 0.6
+            + float(window_1d.get("logging_quality_score", logging_quality_score))
+            * 0.4,
             1,
         )
         latency_window_used = "blended_14d_1d"
 
     potential_savings_pct = float(benchmark.get("potential_savings_pct", 0.0) or 0.0)
-    potential_available = bool(benchmark.get("available")) and bool(benchmark.get("quality_pass"))
+    potential_available = bool(benchmark.get("available")) and bool(
+        benchmark.get("quality_pass")
+    )
 
     adoption_factor = _clamp(helper_usage_pct / 100.0, 0.0, 1.0)
     compliance_factor = _clamp(compliance_pct / 100.0, 0.0, 1.0)
@@ -308,8 +337,12 @@ def realized_outcomes_summary(
 
     latency_factor = 1.0
     if helper_calls > 0:
-        latency_factor = _clamp(1.0 - max(0.0, latency_reference_ms - 4000.0) / 20000.0, 0.4, 1.0)
-    logging_factor = _clamp(logging_reference_score / 100.0, 0.5, 1.0) if helper_calls > 0 else 0.0
+        latency_factor = _clamp(
+            1.0 - max(0.0, latency_reference_ms - 4000.0) / 20000.0, 0.4, 1.0
+        )
+    logging_factor = (
+        _clamp(logging_reference_score / 100.0, 0.5, 1.0) if helper_calls > 0 else 0.0
+    )
 
     point_estimate_pct = (
         potential_savings_pct
@@ -329,8 +362,12 @@ def realized_outcomes_summary(
 
     confidence_factor = _clamp(confidence_score / 100.0, 0.15, 1.0)
     uncertainty = 1.0 - confidence_factor
-    conservative_pct = round(point_estimate_pct * _clamp(0.5 + confidence_factor * 0.5, 0.5, 1.0), 1)
-    optimistic_pct = round(point_estimate_pct * _clamp(1.0 + uncertainty * 0.2, 1.0, 1.2), 1)
+    conservative_pct = round(
+        point_estimate_pct * _clamp(0.5 + confidence_factor * 0.5, 0.5, 1.0), 1
+    )
+    optimistic_pct = round(
+        point_estimate_pct * _clamp(1.0 + uncertainty * 0.2, 1.0, 1.2), 1
+    )
     realized_pct = round(point_estimate_pct, 1)
 
     headroom_pct = round(max(0.0, potential_savings_pct - realized_pct), 1)
@@ -377,7 +414,9 @@ def realized_outcomes_summary(
     }
 
 
-def dependency_overhead_summary(token_reduce: dict[str, Any], rtk: dict[str, Any]) -> dict[str, Any]:
+def dependency_overhead_summary(
+    token_reduce: dict[str, Any], rtk: dict[str, Any]
+) -> dict[str, Any]:
     efficiency = token_reduce.get("telemetry", {}).get("efficiency", {})
     logging = token_reduce.get("telemetry", {}).get("logging", {})
     helper_calls = int(efficiency.get("helper_calls", 0) or 0)
@@ -400,12 +439,19 @@ def dependency_overhead_summary(token_reduce: dict[str, Any], rtk: dict[str, Any
 
     failure_overhead_calls = helper_error_calls + error_recovery_retries
     failure_overhead_pct = (
-        round((failure_overhead_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
+        round((failure_overhead_calls * 100.0 / helper_calls), 1)
+        if helper_calls
+        else 0.0
     )
     error_rate_pct = (
         round((helper_error_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
     )
-    estimated_overhead_events = failure_overhead_calls + hook_error_count + pending_leak_count + rtk_failed_checks
+    estimated_overhead_events = (
+        failure_overhead_calls
+        + hook_error_count
+        + pending_leak_count
+        + rtk_failed_checks
+    )
     healthy = (
         failure_overhead_pct <= 10.0
         and error_rate_pct <= 5.0
@@ -447,7 +493,9 @@ def composite(scope: str, repo_root: Path) -> dict[str, Any]:
         "repo_root": str(repo_root),
         "token_reduce": token_reduce,
         "benchmark_potential": benchmark,
-        "realized_outcomes": realized_outcomes_summary(token_reduce, benchmark, dependency_overhead),
+        "realized_outcomes": realized_outcomes_summary(
+            token_reduce, benchmark, dependency_overhead
+        ),
         "integration_status": {
             "binaries": {
                 "token_reduce_paths": binary_info("token-reduce-paths"),
@@ -478,74 +526,74 @@ def write_markdown(report: dict[str, Any], output_path: Path) -> None:
     gain_summary = rtk.get("gain_summary", {})
     md = f"""# Composite Token Telemetry
 
-- Scope: `{report['scope']}`
-- Measured at: `{report['measured_at']}`
-- Repo: `{report['repo_root']}`
+- Scope: `{report["scope"]}`
+- Measured at: `{report["measured_at"]}`
+- Repo: `{report["repo_root"]}`
 
 ## Potential Vs Realized
 
-- Benchmark potential savings: `{realized.get('potential_savings_pct', benchmark.get('potential_savings_pct', 0.0))}%`
-- Realized savings estimate: `{realized.get('realized_savings_estimate_pct', 0.0)}%`
-- Realized savings (conservative): `{realized.get('realized_savings_conservative_pct', 0.0)}%`
-- Realized savings (optimistic): `{realized.get('realized_savings_optimistic_pct', 0.0)}%`
-- Headroom to potential: `{realized.get('headroom_to_potential_pct', 0.0)}%`
-- Honesty flags: `{", ".join(realized.get('honesty', {}).get('flags', [])) or "none"}`
+- Benchmark potential savings: `{realized.get("potential_savings_pct", benchmark.get("potential_savings_pct", 0.0))}%`
+- Realized savings estimate: `{realized.get("realized_savings_estimate_pct", 0.0)}%`
+- Realized savings (conservative): `{realized.get("realized_savings_conservative_pct", 0.0)}%`
+- Realized savings (optimistic): `{realized.get("realized_savings_optimistic_pct", 0.0)}%`
+- Headroom to potential: `{realized.get("headroom_to_potential_pct", 0.0)}%`
+- Honesty flags: `{", ".join(realized.get("honesty", {}).get("flags", [])) or "none"}`
 
 ## Token-Reduce Runtime
 
-- Session count: `{token_reduce['session_count']}`
-- Discovery sessions observed: `{compliance.get('sessions_with_first_discovery_observed', 0)}`
-- Helper usage pct (all): `{adoption['helper_sessions_pct']}`
-- Helper usage pct (observed): `{adoption.get('helper_sessions_pct_observed_discovery', adoption['helper_sessions_pct'])}`
-- Discovery compliance pct (all): `{compliance['discovery_compliance_pct']}`
-- Discovery compliance pct (observed): `{compliance.get('discovery_compliance_pct_observed', compliance['discovery_compliance_pct'])}`
-- Broad scan violations: `{compliance['broad_scan_violations']}`
-- Telemetry events (14d): `{telemetry['event_count']}`
-- Helper error rate: `{efficiency.get('helper_error_rate_pct', 0.0)}%`
-- Helper failure overhead: `{efficiency.get('failure_overhead_pct', 0.0)}%`
-- Helper latency p50/p95: `{efficiency.get('helper_latency_p50_ms', 0.0)} / {efficiency.get('helper_latency_p95_ms', 0.0)} ms`
-- Hook errors: `{efficiency.get('hook_error_count', 0)}`
-- Pending state leaks: `{efficiency.get('pending_leak_count', 0)}`
+- Session count: `{token_reduce["session_count"]}`
+- Discovery sessions observed: `{compliance.get("sessions_with_first_discovery_observed", 0)}`
+- Helper usage pct (all): `{adoption["helper_sessions_pct"]}`
+- Helper usage pct (observed): `{adoption.get("helper_sessions_pct_observed_discovery", adoption["helper_sessions_pct"])}`
+- Discovery compliance pct (all): `{compliance["discovery_compliance_pct"]}`
+- Discovery compliance pct (observed): `{compliance.get("discovery_compliance_pct_observed", compliance["discovery_compliance_pct"])}`
+- Broad scan violations: `{compliance["broad_scan_violations"]}`
+- Telemetry events (14d): `{telemetry["event_count"]}`
+- Helper error rate: `{efficiency.get("helper_error_rate_pct", 0.0)}%`
+- Helper failure overhead: `{efficiency.get("failure_overhead_pct", 0.0)}%`
+- Helper latency p50/p95: `{efficiency.get("helper_latency_p50_ms", 0.0)} / {efficiency.get("helper_latency_p95_ms", 0.0)} ms`
+- Hook errors: `{efficiency.get("hook_error_count", 0)}`
+- Pending state leaks: `{efficiency.get("pending_leak_count", 0)}`
 
 ## Logging Quality
 
-- Logging quality score: `{logging.get('logging_quality_score', 0.0)}`
-- Logging quality tier: `{logging.get('logging_quality_tier', 'no_data')}`
-- Latency coverage: `{logging.get('helper_latency_coverage_pct', 0.0)}%`
-- Exit-code coverage: `{logging.get('helper_exit_code_coverage_pct', 0.0)}%`
-- Size coverage: `{logging.get('helper_size_coverage_pct', 0.0)}%`
-- Backend coverage: `{logging.get('helper_backend_coverage_pct', 0.0)}%`
-- Status/exit mismatches: `{logging.get('helper_status_exit_mismatch_count', 0)}`
+- Logging quality score: `{logging.get("logging_quality_score", 0.0)}`
+- Logging quality tier: `{logging.get("logging_quality_tier", "no_data")}`
+- Latency coverage: `{logging.get("helper_latency_coverage_pct", 0.0)}%`
+- Exit-code coverage: `{logging.get("helper_exit_code_coverage_pct", 0.0)}%`
+- Size coverage: `{logging.get("helper_size_coverage_pct", 0.0)}%`
+- Backend coverage: `{logging.get("helper_backend_coverage_pct", 0.0)}%`
+- Status/exit mismatches: `{logging.get("helper_status_exit_mismatch_count", 0)}`
 
 ## RTK
 
-- Available: `{rtk.get('available', False)}`
-- Gain command ok: `{rtk.get('gain', {}).get('ok', False)}`
-- Discover command ok: `{rtk.get('discover', {}).get('ok', False)}`
-- Session command ok: `{rtk.get('session', {}).get('ok', False)}`
-- Hook audit command ok: `{rtk.get('hook_audit', {}).get('ok', False)}`
-- RTK total commands: `{gain_summary.get('total_commands')}`
-- RTK total saved: `{gain_summary.get('total_saved')}`
-- RTK avg savings pct: `{gain_summary.get('avg_savings_pct')}`
+- Available: `{rtk.get("available", False)}`
+- Gain command ok: `{rtk.get("gain", {}).get("ok", False)}`
+- Discover command ok: `{rtk.get("discover", {}).get("ok", False)}`
+- Session command ok: `{rtk.get("session", {}).get("ok", False)}`
+- Hook audit command ok: `{rtk.get("hook_audit", {}).get("ok", False)}`
+- RTK total commands: `{gain_summary.get("total_commands")}`
+- RTK total saved: `{gain_summary.get("total_saved")}`
+- RTK avg savings pct: `{gain_summary.get("avg_savings_pct")}`
 
 ## Dependency Overhead
 
-- Estimated overhead events: `{dependency_overhead.get('estimated_overhead_events', 0)}`
-- Helper rapid repeats: `{dependency_overhead.get('helper_rapid_repeat_calls', 0)}`
-- Helper error-recovery retries: `{dependency_overhead.get('helper_error_recovery_retries', 0)}`
-- Helper failure overhead calls: `{dependency_overhead.get('helper_failure_overhead_calls', 0)}`
-- Helper error calls: `{dependency_overhead.get('helper_error_calls', 0)}`
-- Hook errors: `{dependency_overhead.get('hook_error_count', 0)}`
-- Pending state leaks: `{dependency_overhead.get('pending_leak_count', 0)}`
-- RTK failed checks: `{dependency_overhead.get('rtk_failed_checks', 0)}`
-- Healthy: `{dependency_overhead.get('healthy', False)}`
+- Estimated overhead events: `{dependency_overhead.get("estimated_overhead_events", 0)}`
+- Helper rapid repeats: `{dependency_overhead.get("helper_rapid_repeat_calls", 0)}`
+- Helper error-recovery retries: `{dependency_overhead.get("helper_error_recovery_retries", 0)}`
+- Helper failure overhead calls: `{dependency_overhead.get("helper_failure_overhead_calls", 0)}`
+- Helper error calls: `{dependency_overhead.get("helper_error_calls", 0)}`
+- Hook errors: `{dependency_overhead.get("hook_error_count", 0)}`
+- Pending state leaks: `{dependency_overhead.get("pending_leak_count", 0)}`
+- RTK failed checks: `{dependency_overhead.get("rtk_failed_checks", 0)}`
+- Healthy: `{dependency_overhead.get("healthy", False)}`
 
 ## Integration Health
 
-- Codex skill installed: `{report['integration_status']['codex_skill']['exists']}`
-- Token-reduce remind hooks: `{report['integration_status']['claude_hooks']['token_reduce_remind_count']}`
-- Token-reduce enforce matchers: `{len(report['integration_status']['claude_hooks']['token_reduce_enforce_matchers'])}`
-- RTK rewrite hooks: `{len(report['integration_status']['claude_hooks']['rtk_hook_commands'])}`
+- Codex skill installed: `{report["integration_status"]["codex_skill"]["exists"]}`
+- Token-reduce remind hooks: `{report["integration_status"]["claude_hooks"]["token_reduce_remind_count"]}`
+- Token-reduce enforce matchers: `{len(report["integration_status"]["claude_hooks"]["token_reduce_enforce_matchers"])}`
+- RTK rewrite hooks: `{len(report["integration_status"]["claude_hooks"]["rtk_hook_commands"])}`
 """
     output_path.write_text(md, encoding="utf-8")
 

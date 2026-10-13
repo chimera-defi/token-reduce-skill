@@ -12,6 +12,7 @@ D4. ``review_token_reduction.build_companion_funnels`` exposes
     mention → recommended → used → estimated savings for headroom,
     caveman, context_mode, code_review_graph, axi.
 """
+
 from __future__ import annotations
 
 import sys
@@ -21,13 +22,12 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from token_reduce_adaptive import (  # noqa: E402
+from token_reduce_adaptive import (
     Availability,
     BehaviorProfile,
     RoutingPolicy,
     decide,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -110,5 +110,3 @@ def test_d2_plain_query_does_not_recommend_headroom() -> None:
 # --------------------------------------------------------------------------- #
 # D4 — per-companion conversion funnel
 # --------------------------------------------------------------------------- #
-
-

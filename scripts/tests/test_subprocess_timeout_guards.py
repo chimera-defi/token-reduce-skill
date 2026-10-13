@@ -12,6 +12,7 @@ Also covers:
   let FileNotFoundError surface as exit code 2 (argparse error) instead of
   the conventional 127 for "command not found".
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -23,8 +24,8 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-import token_reduce_state
 import token_reduce_adaptive
+import token_reduce_state
 
 
 class TestRepoRootGuards:
@@ -38,7 +39,9 @@ class TestRepoRootGuards:
             result = token_reduce_state.repo_root()
         assert result == tmp_path.resolve()
 
-    def test_missing_git_binary_falls_back_to_base_dir(self, tmp_path: Path, monkeypatch) -> None:
+    def test_missing_git_binary_falls_back_to_base_dir(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(tmp_path))
         with mock.patch.object(
             token_reduce_state.subprocess,
@@ -48,8 +51,12 @@ class TestRepoRootGuards:
             result = token_reduce_state.repo_root()
         assert result == tmp_path.resolve()
 
-    def test_normal_git_repo_still_resolves_toplevel(self, tmp_path: Path, monkeypatch) -> None:
-        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    def test_normal_git_repo_still_resolves_toplevel(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        subprocess.run(
+            ["git", "init", "-q", str(tmp_path)], check=True, capture_output=True
+        )
         nested = tmp_path / "a" / "b"
         nested.mkdir(parents=True)
         monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(nested))
@@ -74,7 +81,9 @@ class TestAdaptiveRepoRootGuards:
             result = token_reduce_adaptive.repo_root()
         assert result == tmp_path.resolve()
 
-    def test_missing_git_binary_falls_back_to_base_dir(self, tmp_path: Path, monkeypatch) -> None:
+    def test_missing_git_binary_falls_back_to_base_dir(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(tmp_path))
         with mock.patch.object(
             token_reduce_adaptive.subprocess,
@@ -84,8 +93,12 @@ class TestAdaptiveRepoRootGuards:
             result = token_reduce_adaptive.repo_root()
         assert result == tmp_path.resolve()
 
-    def test_normal_git_repo_still_resolves_toplevel(self, tmp_path: Path, monkeypatch) -> None:
-        subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
+    def test_normal_git_repo_still_resolves_toplevel(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        subprocess.run(
+            ["git", "init", "-q", str(tmp_path)], check=True, capture_output=True
+        )
         nested = tmp_path / "a" / "b"
         nested.mkdir(parents=True)
         monkeypatch.setenv("TOKEN_REDUCE_REPO_ROOT", str(nested))
@@ -94,7 +107,9 @@ class TestAdaptiveRepoRootGuards:
 
 
 class TestRunCommandGuards:
-    def test_timeout_returns_failure_tuple_instead_of_raising(self, tmp_path: Path) -> None:
+    def test_timeout_returns_failure_tuple_instead_of_raising(
+        self, tmp_path: Path
+    ) -> None:
         with mock.patch.object(
             token_reduce_adaptive.subprocess,
             "run",
@@ -108,7 +123,9 @@ class TestRunCommandGuards:
         assert "timed out" in stderr
         assert duration_ms >= 0
 
-    def test_missing_binary_returns_failure_tuple_instead_of_raising(self, tmp_path: Path) -> None:
+    def test_missing_binary_returns_failure_tuple_instead_of_raising(
+        self, tmp_path: Path
+    ) -> None:
         with mock.patch.object(
             token_reduce_adaptive.subprocess,
             "run",

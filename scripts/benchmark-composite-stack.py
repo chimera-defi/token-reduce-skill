@@ -134,7 +134,9 @@ def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
         )
     duration_ms = int((time.perf_counter() - started) * 1000)
     preview = "\n".join(stdout.splitlines()[:6])
-    quality_failures = [needle for needle in expected_substrings if needle not in stdout]
+    quality_failures = [
+        needle for needle in expected_substrings if needle not in stdout
+    ]
     quality_pass = len(quality_failures) == 0
     quality_note = "ok" if quality_pass else f"missing: {', '.join(quality_failures)}"
     return StepResult(
@@ -269,12 +271,12 @@ def main() -> int:
                 ("fuzzy_discovery", "rg --files . | head -200", []),
                 (
                     "exact_symbol",
-                    "rg -n \"session_key\" scripts/*.py | head -40",
+                    'rg -n "session_key" scripts/*.py | head -40',
                     ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
-                    "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    'rg -n -i "token reduction" README.md SKILL.md references/*.md | head -80',
                     ["Token Reduction Guide"],
                 ),
             ],
@@ -285,17 +287,17 @@ def main() -> int:
             [
                 (
                     "fuzzy_discovery",
-                    f"qmd search \"hook enforcement system\" -n 8 --files -c {QMD_COLLECTION}",
+                    f'qmd search "hook enforcement system" -n 8 --files -c {QMD_COLLECTION}',
                     [],
                 ),
                 (
                     "exact_symbol",
-                    f"qmd search \"session key normalization token reduce state\" -n 8 --files -c {QMD_COLLECTION}",
+                    f'qmd search "session key normalization token reduce state" -n 8 --files -c {QMD_COLLECTION}',
                     ["scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
-                    "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    'rg -n -i "token reduction" README.md SKILL.md references/*.md | head -80',
                     ["Token Reduction Guide"],
                 ),
             ],
@@ -304,7 +306,11 @@ def main() -> int:
             "token_reduce_only",
             ["token-reduce-paths", "rg"],
             [
-                ("fuzzy_discovery", "token-reduce-paths hook enforcement system | head -40", []),
+                (
+                    "fuzzy_discovery",
+                    "token-reduce-paths hook enforcement system | head -40",
+                    [],
+                ),
                 (
                     "exact_symbol",
                     "token-reduce-paths find symbol session_key | head -40",
@@ -312,7 +318,7 @@ def main() -> int:
                 ),
                 (
                     "output_scan",
-                    "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    'rg -n -i "token reduction" README.md SKILL.md references/*.md | head -80',
                     ["Token Reduction Guide"],
                 ),
             ],
@@ -323,7 +329,7 @@ def main() -> int:
             [
                 (
                     "fuzzy_discovery",
-                    "token-reduce-structural --project-root . search \"hook enforcement system\" | head -80",
+                    'token-reduce-structural --project-root . search "hook enforcement system" | head -80',
                     [],
                 ),
                 (
@@ -333,7 +339,7 @@ def main() -> int:
                 ),
                 (
                     "output_scan",
-                    "rg -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    'rg -n -i "token reduction" README.md SKILL.md references/*.md | head -80',
                     ["Token Reduction Guide"],
                 ),
             ],
@@ -345,12 +351,12 @@ def main() -> int:
                 ("fuzzy_discovery", "rtk find . -name '*.md' | head -40", []),
                 (
                     "exact_symbol",
-                    "rtk grep -n \"session_key\" scripts/*.py | head -40",
+                    'rtk grep -n "session_key" scripts/*.py | head -40',
                     ["session_key", "scripts/token_reduce_state.py"],
                 ),
                 (
                     "output_scan",
-                    "rtk grep -n -i \"token reduction\" README.md SKILL.md references/*.md | head -80",
+                    'rtk grep -n -i "token reduction" README.md SKILL.md references/*.md | head -80',
                     ["Token Reduction Guide"],
                 ),
             ],
@@ -361,7 +367,11 @@ def main() -> int:
             # fall back to rg so the strategy runs on any machine.
             ["token-reduce-paths", "rg"],
             [
-                ("fuzzy_discovery", "token-reduce-paths hook enforcement system | head -40", []),
+                (
+                    "fuzzy_discovery",
+                    "token-reduce-paths hook enforcement system | head -40",
+                    [],
+                ),
                 (
                     "exact_symbol",
                     (
@@ -384,9 +394,13 @@ def main() -> int:
         ),
     ]
 
-    results = [run_strategy(name, requires, steps) for name, requires, steps in strategies]
+    results = [
+        run_strategy(name, requires, steps) for name, requires, steps in strategies
+    ]
 
-    broad = next((r.tokens for r in results if r.name == "broad_shell" and r.available), 0)
+    broad = next(
+        (r.tokens for r in results if r.name == "broad_shell" and r.available), 0
+    )
     for result in results:
         if not result.available or broad == 0:
             continue
@@ -395,14 +409,26 @@ def main() -> int:
     singles = [
         r
         for r in results
-        if r.name in {"qmd_only", "token_reduce_only", "token_savior_only", "rtk_only", "broad_shell"}
+        if r.name
+        in {
+            "qmd_only",
+            "token_reduce_only",
+            "token_savior_only",
+            "rtk_only",
+            "broad_shell",
+        }
         and r.available
         and r.exit_code == 0
         and r.quality_pass
     ]
     composite = next((r for r in results if r.name == "composite_stack"), None)
     beats = {}
-    if composite and composite.available and composite.exit_code == 0 and composite.quality_pass:
+    if (
+        composite
+        and composite.available
+        and composite.exit_code == 0
+        and composite.quality_pass
+    ):
         beats = {single.name: (composite.tokens < single.tokens) for single in singles}
 
     payload = {

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -78,7 +77,9 @@ def test_classify_telemetry_only_usage() -> None:
 
 
 def test_build_report_flags_active_helper_slo_failure() -> None:
-    report = build_report(_audit(), active_helper_slo_pct=90.0, helper_usage_slo_pct=25.0)
+    report = build_report(
+        _audit(), active_helper_slo_pct=90.0, helper_usage_slo_pct=25.0
+    )
     assert report["slo"]["active_helper_usage_actual_pct"] == 66.7
     assert report["slo"]["active_helper_usage_pass"] is False
     assert report["slo"]["workspace_helper_usage_actual_pct"] == 50.0
@@ -98,4 +99,7 @@ def test_render_markdown_includes_slo_and_intervention_table() -> None:
     assert "# Token-Reduce Adoption Improvement Report" in markdown
     assert "Active repo helper usage" in markdown
     assert "`active-miss`" in markdown
-    assert "| Repo | Cause | Sessions | Helper sessions | Telemetry calls | Action |" in markdown
+    assert (
+        "| Repo | Cause | Sessions | Helper sessions | Telemetry calls | Action |"
+        in markdown
+    )

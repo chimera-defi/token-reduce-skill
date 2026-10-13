@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run context-mode intake validation and benchmark, emit JSON artifact."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,7 +10,6 @@ import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "context-mode-intake.json"
@@ -49,7 +49,8 @@ def parse_vitest_summary(output: str) -> dict[str, int]:
 
 def parse_compare_summary(output: str) -> dict[str, object]:
     total_match = re.search(
-        r"\|\s*TOTAL\s*\|\s*([0-9.]+KB)\s*\|\s*([0-9A-Za-z.]+)\s*\|\s*(\d+)%\s*\|", output
+        r"\|\s*TOTAL\s*\|\s*([0-9.]+KB)\s*\|\s*([0-9A-Za-z.]+)\s*\|\s*(\d+)%\s*\|",
+        output,
     )
     token_match = re.search(
         r"WITHOUT context-mode:\s*\n\s*([0-9,]+)\s+tokens consumed.*?\n\s*WITH context-mode:\s*\n\s*([0-9,]+)\s+tokens consumed",
@@ -94,7 +95,10 @@ def main() -> int:
     if not (repo / "package.json").exists():
         raise SystemExit(f"not a context-mode repo: {repo}")
 
-    install_result = {"command": "pnpm install --no-frozen-lockfile", "status": "skipped"}
+    install_result = {
+        "command": "pnpm install --no-frozen-lockfile",
+        "status": "skipped",
+    }
     if not args.skip_install:
         code, out, err, ms = run(["pnpm", "install", "--no-frozen-lockfile"], repo)
         install_result = {

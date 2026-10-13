@@ -1,5 +1,6 @@
 """record-event is a CLI-friendly alias of the `log` subcommand, added so
 shell hook wrappers can record telemetry without importing this module."""
+
 from __future__ import annotations
 
 import json
@@ -92,7 +93,9 @@ class TestDefaultRepoRootGuards:
             result = token_reduce_telemetry.default_repo_root()
         assert result == SCRIPT_DIR.parent
 
-    def test_record_event_cli_without_repo_root_flag_does_not_hang(self, tmp_path: Path, monkeypatch) -> None:
+    def test_record_event_cli_without_repo_root_flag_does_not_hang(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         # Exercise the actual CLI entry point (argparse default) with a
         # stalled git binary on PATH, not just the Python-level function.
         stub_git = tmp_path / "bin" / "git"
@@ -103,7 +106,15 @@ class TestDefaultRepoRootGuards:
         stub_git.chmod(0o755)
         env = {**os.environ, "PATH": str(tmp_path / "bin")}
         result = subprocess.run(
-            [sys.executable, str(SCRIPT), "record-event", "--event", "e", "--source", "s"],
+            [
+                sys.executable,
+                str(SCRIPT),
+                "record-event",
+                "--event",
+                "e",
+                "--source",
+                "s",
+            ],
             capture_output=True,
             text=True,
             env=env,

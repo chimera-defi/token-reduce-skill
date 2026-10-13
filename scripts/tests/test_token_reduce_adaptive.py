@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -30,7 +29,9 @@ def _availability(**overrides: bool) -> Availability:
     return Availability(**base)
 
 
-def _behavior(*, helper_calls: int = 50, repeated: float = 0.2, rapid: float = 0.1) -> BehaviorProfile:
+def _behavior(
+    *, helper_calls: int = 50, repeated: float = 0.2, rapid: float = 0.1
+) -> BehaviorProfile:
     return BehaviorProfile(
         helper_calls=helper_calls,
         repeated_ratio=repeated,

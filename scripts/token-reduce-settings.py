@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Manage local token-reduce settings (telemetry opt-in and updates)."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,8 +8,13 @@ import json
 from copy import deepcopy
 from typing import Any
 
-from token_reduce_config import DEFAULT_CONFIG, load_config, parse_value, save_config, set_nested
-
+from token_reduce_config import (
+    DEFAULT_CONFIG,
+    load_config,
+    parse_value,
+    save_config,
+    set_nested,
+)
 
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
     "minimal-load": {
@@ -63,7 +69,11 @@ def redact_config(config: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(value, dict):
                     stack.append(value)
                     continue
-                if key in {"api_key", "signing_secret", "token", "secret"} and isinstance(value, str) and value:
+                if (
+                    key in {"api_key", "signing_secret", "token", "secret"}
+                    and isinstance(value, str)
+                    and value
+                ):
                     current[key] = "***redacted***"
     return redacted
 
@@ -140,7 +150,9 @@ def prompt_yes_no(message: str, *, default: bool) -> bool:
         print("Please answer yes or no.")
 
 
-def cmd_onboard(*, yes: bool, no: bool, endpoint: str | None, non_interactive: bool) -> int:
+def cmd_onboard(
+    *, yes: bool, no: bool, endpoint: str | None, non_interactive: bool
+) -> int:
     config = load_config()
     telemetry = config.setdefault("telemetry", {})
     current_enabled = bool(telemetry.get("enabled", False))
@@ -186,7 +198,9 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     show_parser = sub.add_parser("show")
-    show_parser.add_argument("--raw", action="store_true", help="Show secrets without redaction")
+    show_parser.add_argument(
+        "--raw", action="store_true", help="Show secrets without redaction"
+    )
     set_parser = sub.add_parser("set")
     set_parser.add_argument("key")
     set_parser.add_argument("value")

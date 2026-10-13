@@ -6,6 +6,7 @@ N3: token-reduce-paths.sh and token-reduce-snippet.sh must use `uv run python3`
 N4: When rank_paths or brain_hint fails, the error must be logged to telemetry
     (events.jsonl) with status=error, not silently swallowed.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,15 +36,18 @@ def _read_events(repo: Path) -> list[dict]:
 def _init_git_repo(path: Path) -> None:
     subprocess.run(
         ["git", "-c", "init.defaultBranch=main", "init", "-q", str(path)],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "-C", str(path), "config", "user.email", "test@example.com"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "-C", str(path), "config", "user.name", "test"],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
 
 
@@ -58,14 +62,10 @@ def repo(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-
-
-
-
-
 # ---------------------------------------------------------------------------
 # N4: rank_paths failure → telemetry event logged
 # ---------------------------------------------------------------------------
+
 
 def test_rank_paths_failure_is_logged_to_telemetry(repo: Path, tmp_path: Path) -> None:
     """N4: rank_paths failure is logged to telemetry (either in paths.sh or dispatch.py)."""
@@ -89,8 +89,6 @@ def test_rank_paths_failure_is_logged_to_telemetry(repo: Path, tmp_path: Path) -
     )
 
 
-
-
 # ---------------------------------------------------------------------------
 # Regression: token-reduce-paths.sh error branch must preserve the real exit
 # code, not silently report success.
@@ -109,8 +107,6 @@ def test_rank_paths_failure_is_logged_to_telemetry(repo: Path, tmp_path: Path) -
 
 
 WRAPPER_SCRIPTS = ["token-reduce-paths.sh", "token-reduce-snippet.sh"]
-
-
 
 
 @pytest.mark.parametrize("wrapper_name", WRAPPER_SCRIPTS)
@@ -146,13 +142,14 @@ def test_wrapper_sh_preserves_real_exit_code_on_search_failure(
     )
     events = _read_events(tmp_path)
     error_events = [
-        e for e in events
+        e
+        for e in events
         if e.get("event") == "helper_invocation" and e.get("status") == "error"
     ]
-    assert error_events, f"{wrapper_name}: expected an error telemetry event, got: {events}"
+    assert error_events, (
+        f"{wrapper_name}: expected an error telemetry event, got: {events}"
+    )
     assert error_events[-1]["meta"]["exit_code"] == 5, (
         f"{wrapper_name}: telemetry must log the real exit code (5), "
         f"got meta={error_events[-1]['meta']}"
     )
-
-

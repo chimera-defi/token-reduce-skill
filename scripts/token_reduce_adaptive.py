@@ -6,6 +6,7 @@ This controller promotes or demotes helper tiers based on:
 2) recent helper behavior (rapid repeats / repeated calls),
 3) local tool availability and repo scale.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,13 +18,12 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Sequence
 
-from token_reduce_config import load_config, layer_enabled
+from token_reduce_config import layer_enabled, load_config
 from token_reduce_telemetry import load_events, record_event, summarize_events
-
 
 OUTPUT_HEAVY_TERMS = {
     "log",
@@ -51,10 +51,18 @@ OUTPUT_HEAVY_TERMS = {
 # that signals "large tool payload".
 OUTPUT_HEAVY_PHRASE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bapi\s+(response|payload|dump|output|result)s?\b", re.IGNORECASE),
-    re.compile(r"\bpytest\s+(output|log|results?|failures?|traceback)\b", re.IGNORECASE),
-    re.compile(r"\b(log|json|trace|stack|response|payload|console)\s+dumps?\b", re.IGNORECASE),
-    re.compile(r"\bpaste(d)?\s+(log|output|trace|response|payload|json)\b", re.IGNORECASE),
-    re.compile(r"\blarge\s+(tool|api)?\s*(output|payload|response|result)s?\b", re.IGNORECASE),
+    re.compile(
+        r"\bpytest\s+(output|log|results?|failures?|traceback)\b", re.IGNORECASE
+    ),
+    re.compile(
+        r"\b(log|json|trace|stack|response|payload|console)\s+dumps?\b", re.IGNORECASE
+    ),
+    re.compile(
+        r"\bpaste(d)?\s+(log|output|trace|response|payload|json)\b", re.IGNORECASE
+    ),
+    re.compile(
+        r"\blarge\s+(tool|api)?\s*(output|payload|response|result)s?\b", re.IGNORECASE
+    ),
 )
 
 # Track D1 — actionable, copy-pasteable commands. Router emits these literal
@@ -102,9 +110,24 @@ SUBAGENT_CANDIDATE_THRESHOLD = 5
 
 # Track E4 — sibling-skill intent map. (regex, /skill) pairs. First match wins.
 SIBLING_SKILL_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"\breview\b.{0,30}\b(pr|pull\s*request|patch|diff|cl|change)\b", re.IGNORECASE), "/review"),
-    (re.compile(r"\b(fix|debug|investigate|root\s*cause|why\s+does|why\s+is)\b", re.IGNORECASE), "/investigate"),
-    (re.compile(r"\b(brainstorm|design|architect|propose)\b", re.IGNORECASE), "/brainstorm"),
+    (
+        re.compile(
+            r"\breview\b.{0,30}\b(pr|pull\s*request|patch|diff|cl|change)\b",
+            re.IGNORECASE,
+        ),
+        "/review",
+    ),
+    (
+        re.compile(
+            r"\b(fix|debug|investigate|root\s*cause|why\s+does|why\s+is)\b",
+            re.IGNORECASE,
+        ),
+        "/investigate",
+    ),
+    (
+        re.compile(r"\b(brainstorm|design|architect|propose)\b", re.IGNORECASE),
+        "/brainstorm",
+    ),
 )
 
 
@@ -151,6 +174,8 @@ def _subagent_snippet(query: str) -> str:
         f'prompt="Find files and symbols matching: {safe}. '
         'Report a ranked list with paths and 1-line summaries.")'
     )
+
+
 IMPACT_TERMS = {
     "impact",
     "blast",
@@ -220,7 +245,11 @@ class RoutingPolicy:
 
 
 def repo_root() -> Path:
-    base = Path(os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
+    base = Path(
+        os.environ.get("TOKEN_REDUCE_REPO_ROOT")
+        or os.environ.get("CLAUDE_PROJECT_DIR")
+        or Path.cwd()
+    )
     try:
         proc = subprocess.run(
             ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
@@ -274,10 +303,15 @@ def collect_availability() -> Availability:
     sdir = script_dir()
     structural_backend_available = importlib.util.find_spec("token_savior") is not None
     return Availability(
-        paths=(sdir / "token-reduce-paths.sh").exists() or shutil.which("token-reduce-paths") is not None,
-        snippet=(sdir / "token-reduce-snippet.sh").exists() or shutil.which("token-reduce-snippet") is not None,
+        paths=(sdir / "token-reduce-paths.sh").exists()
+        or shutil.which("token-reduce-paths") is not None,
+        snippet=(sdir / "token-reduce-snippet.sh").exists()
+        or shutil.which("token-reduce-snippet") is not None,
         structural=structural_backend_available
-        and (shutil.which("token-reduce-structural") is not None or (sdir / "token-reduce-structural.py").exists()),
+        and (
+            shutil.which("token-reduce-structural") is not None
+            or (sdir / "token-reduce-structural.py").exists()
+        ),
         context_mode=shutil.which("context-mode") is not None,
         headroom=shutil.which("headroom") is not None,
         code_review_graph=shutil.which("code-review-graph") is not None,
@@ -293,14 +327,18 @@ def structural_command() -> str:
 
 def load_behavior_profile(root: Path, *, days: int = 3) -> BehaviorProfile:
     if days <= 0:
-        return BehaviorProfile(helper_calls=0, repeated_ratio=0.0, rapid_repeat_ratio=0.0)
+        return BehaviorProfile(
+            helper_calls=0, repeated_ratio=0.0, rapid_repeat_ratio=0.0
+        )
     summary = summarize_events(load_events(root, days=days))
     efficiency = summary.get("efficiency", {})
     helper_calls = int(efficiency.get("helper_calls", 0) or 0)
     repeated = int(efficiency.get("repeated_helper_calls", 0) or 0)
     rapid = int(efficiency.get("rapid_repeat_calls", 0) or 0)
     if helper_calls <= 0:
-        return BehaviorProfile(helper_calls=0, repeated_ratio=0.0, rapid_repeat_ratio=0.0)
+        return BehaviorProfile(
+            helper_calls=0, repeated_ratio=0.0, rapid_repeat_ratio=0.0
+        )
     return BehaviorProfile(
         helper_calls=helper_calls,
         repeated_ratio=round(repeated / helper_calls, 3),
@@ -317,7 +355,9 @@ def extract_symbol(query: str) -> str:
     preferred = [
         token
         for token in candidates
-        if "_" in token or "::" in token or (any(char.isupper() for char in token[1:]) and token[0].islower())
+        if "_" in token
+        or "::" in token
+        or (any(char.isupper() for char in token[1:]) and token[0].islower())
     ]
     if preferred:
         return preferred[0]
@@ -354,18 +394,31 @@ def decide(
     if symbol and structural_enabled:
         if impact_like:
             tier = "structural_impact"
-            command = [structural_command(), "--project-root", str(root), "change-impact", symbol]
+            command = [
+                structural_command(),
+                "--project-root",
+                str(root),
+                "change-impact",
+                symbol,
+            ]
             rationale.append("symbol+impact query promoted to structural impact tier")
         else:
             tier = "structural_symbol"
-            command = [structural_command(), "--project-root", str(root), "find-symbol", symbol]
+            command = [
+                structural_command(),
+                "--project-root",
+                str(root),
+                "find-symbol",
+                symbol,
+            ]
             rationale.append("symbol-like query promoted to structural symbol tier")
     elif impact_like and structural_enabled:
         tier = "structural_search"
         command = [structural_command(), "--project-root", str(root), "search", query]
         rationale.append("impact query promoted to structural search tier")
     elif availability.snippet and (
-        snippet_hint or behavior.rapid_repeat_ratio >= policy.rapid_repeat_snippet_threshold
+        snippet_hint
+        or behavior.rapid_repeat_ratio >= policy.rapid_repeat_snippet_threshold
     ):
         tier = "core_snippet"
         command = [str(script_dir() / "token-reduce-snippet.sh"), query]
@@ -382,10 +435,14 @@ def decide(
         rationale.append("structural helper unavailable; demoted to path-only tier")
 
     context_mode_recommended = (
-        policy.enable_context_mode_recommendations and output_heavy and availability.context_mode
+        policy.enable_context_mode_recommendations
+        and output_heavy
+        and availability.context_mode
     )
     headroom_recommended = (
-        policy.enable_headroom_recommendations and output_heavy and availability.headroom
+        policy.enable_headroom_recommendations
+        and output_heavy
+        and availability.headroom
     )
     code_review_graph_recommended = (
         policy.enable_code_review_graph_recommendations
@@ -394,17 +451,18 @@ def decide(
         and repo_file_count >= 2000
     )
     if context_mode_recommended:
-        rationale.append("output-heavy terms detected; context-mode recommended for follow-up tool output")
+        rationale.append(
+            "output-heavy terms detected; context-mode recommended for follow-up tool output"
+        )
     headroom_commands: list[str] = []
     if headroom_recommended:
         headroom_commands = list(HEADROOM_ACTION_COMMANDS)
         # D1: emit copy-pasteable commands instead of prose
-        rationale.append(
-            "headroom recommended; run: "
-            + " ; ".join(headroom_commands)
-        )
+        rationale.append("headroom recommended; run: " + " ; ".join(headroom_commands))
     if code_review_graph_recommended:
-        rationale.append("large repo impact task detected; code-review-graph recommended")
+        rationale.append(
+            "large repo impact task detected; code-review-graph recommended"
+        )
 
     # Track E1 — subagent recommendation
     broad_scope_hit = bool(terms & BROAD_SCOPE_TERMS)
@@ -481,9 +539,15 @@ def main() -> int:
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
     query = " ".join(args.query).strip()
     config = load_config()
-    routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+    routing = (
+        config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+    )
     configured_behavior_days = int(routing.get("behavior_days", 3) or 3)
-    behavior_days = args.behavior_days if args.behavior_days is not None else configured_behavior_days
+    behavior_days = (
+        args.behavior_days
+        if args.behavior_days is not None
+        else configured_behavior_days
+    )
     policy = RoutingPolicy(
         behavior_days=int(behavior_days),
         rapid_repeat_snippet_threshold=float(
@@ -494,7 +558,8 @@ def main() -> int:
             routing.get("enable_context_mode_recommendations", True)
         ),
         enable_headroom_recommendations=bool(
-            routing.get("enable_headroom_recommendations", True) and layer_enabled("headroom_compress")
+            routing.get("enable_headroom_recommendations", True)
+            and layer_enabled("headroom_compress")
         ),
         enable_code_review_graph_recommendations=bool(
             routing.get("enable_code_review_graph_recommendations", True)
@@ -539,7 +604,8 @@ def main() -> int:
     # line; if that crosses the threshold, surface the subagent snippet so the
     # caller can fan out instead of stuffing N reads into the parent context.
     candidate_lines = [
-        line for line in stdout.splitlines()
+        line
+        for line in stdout.splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
     candidate_count = len(candidate_lines)

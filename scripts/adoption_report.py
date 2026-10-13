@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build workspace-level token-reduce adoption SLO reports."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,12 +10,11 @@ from pathlib import Path
 
 from audit_workspace_skills import build_payload
 
-
 DEFAULT_ACTIVE_HELPER_SLO_PCT = 90.0
 DEFAULT_HELPER_USAGE_SLO_PCT = 25.0
 
 
-def pct(part: int | float, total: int | float) -> float:
+def pct(part: float, total: float) -> float:
     return round((float(part) * 100.0 / float(total)), 1) if total else 0.0
 
 
@@ -29,15 +29,30 @@ def classify_repo(repo: dict, expected_skill: dict) -> tuple[str, str]:
     """Return likely cause and next action for one repo row."""
     name = str(repo.get("repo", ""))
     if not repo.get("local_skill_installed"):
-        return "missing_install", "Run workspace-install or setup, then rerun improve-adoption."
+        return (
+            "missing_install",
+            "Run workspace-install or setup, then rerun improve-adoption.",
+        )
     if not repo.get("token_reduce_docs"):
-        return "missing_guidance", "Install or refresh AGENTS.md/CLAUDE.md token-reduce routing guidance."
+        return (
+            "missing_guidance",
+            "Install or refresh AGENTS.md/CLAUDE.md token-reduce routing guidance.",
+        )
     if repo.get("skill_source_path") != expected_skill.get("root"):
-        return "wrong_skill_root", "Force-relink this repo to the canonical token-reduce skill root."
+        return (
+            "wrong_skill_root",
+            "Force-relink this repo to the canonical token-reduce skill root.",
+        )
     if repo.get("local_skill_installed") and not repo.get("skill_version_match"):
-        return "version_drift", "Refresh this repo's skill symlink or installed copy to the expected package version."
+        return (
+            "version_drift",
+            "Refresh this repo's skill symlink or installed copy to the expected package version.",
+        )
     if repo.get("local_skill_installed") and not repo.get("skill_commit_match"):
-        return "commit_drift", "Refresh this repo's skill symlink or installed copy to the expected commit."
+        return (
+            "commit_drift",
+            "Refresh this repo's skill symlink or installed copy to the expected commit.",
+        )
     sessions = int(repo.get("session_count", 0) or 0)
     helper_sessions = int(repo.get("helper_sessions", 0) or 0)
     telemetry_calls = int(repo.get("telemetry_helper_calls", 0) or 0)
@@ -65,7 +80,12 @@ def classify_repo(repo: dict, expected_skill: dict) -> tuple[str, str]:
 
 
 def repo_priority(repo: dict, cause: str) -> int:
-    if cause in {"missing_install", "wrong_skill_root", "version_drift", "commit_drift"}:
+    if cause in {
+        "missing_install",
+        "wrong_skill_root",
+        "version_drift",
+        "commit_drift",
+    }:
         return 0
     if cause == "active_no_helper":
         return 1
@@ -115,23 +135,33 @@ def build_report(
                     "cause": cause,
                     "sessions": int(repo.get("session_count", 0) or 0),
                     "helper_sessions": int(repo.get("helper_sessions", 0) or 0),
-                    "telemetry_helper_calls": int(repo.get("telemetry_helper_calls", 0) or 0),
+                    "telemetry_helper_calls": int(
+                        repo.get("telemetry_helper_calls", 0) or 0
+                    ),
                     "docs": bool(repo.get("token_reduce_docs")),
                     "installed": bool(repo.get("local_skill_installed")),
                     "action": action,
                     "priority": repo_priority(repo, cause),
                 }
             )
-    interventions.sort(key=lambda row: (int(row["priority"]), -int(row["sessions"]), str(row["repo"])))
+    interventions.sort(
+        key=lambda row: (int(row["priority"]), -int(row["sessions"]), str(row["repo"]))
+    )
 
     slo = {
         "active_helper_usage_target_pct": active_helper_slo_pct,
         "active_helper_usage_actual_pct": active_helper_pct,
-        "active_helper_usage_pass": active_helper_pct >= active_helper_slo_pct if active_repo_count else False,
+        "active_helper_usage_pass": active_helper_pct >= active_helper_slo_pct
+        if active_repo_count
+        else False,
         "workspace_helper_usage_target_pct": helper_usage_slo_pct,
         "workspace_helper_usage_actual_pct": helper_usage_pct,
-        "workspace_helper_usage_pass": helper_usage_pct >= helper_usage_slo_pct if repo_count else False,
-        "active_repos_without_helper_usage": audit.get("gaps", {}).get("active_without_helper_usage", []),
+        "workspace_helper_usage_pass": helper_usage_pct >= helper_usage_slo_pct
+        if repo_count
+        else False,
+        "active_repos_without_helper_usage": audit.get("gaps", {}).get(
+            "active_without_helper_usage", []
+        ),
     }
 
     findings: list[dict[str, str]] = []
@@ -159,7 +189,10 @@ def build_report(
                 "recommendation": "Keep workspace-install clean, then use SessionStart nudges and repo-specific interventions.",
             }
         )
-    if int(summary.get("install_and_docs_compliant", 0) or 0) == repo_count and interventions:
+    if (
+        int(summary.get("install_and_docs_compliant", 0) or 0) == repo_count
+        and interventions
+    ):
         findings.append(
             {
                 "priority": "medium",
@@ -244,12 +277,18 @@ def render_markdown(report: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--audit-json", help="Read an existing workspace-audit JSON artifact.")
+    parser.add_argument(
+        "--audit-json", help="Read an existing workspace-audit JSON artifact."
+    )
     parser.add_argument("--workspace-root", default="/home/agents/workspace")
     parser.add_argument("--days", type=int, default=7)
     parser.add_argument("--include-source-repo", action="store_true")
-    parser.add_argument("--active-helper-slo-pct", type=float, default=DEFAULT_ACTIVE_HELPER_SLO_PCT)
-    parser.add_argument("--helper-usage-slo-pct", type=float, default=DEFAULT_HELPER_USAGE_SLO_PCT)
+    parser.add_argument(
+        "--active-helper-slo-pct", type=float, default=DEFAULT_ACTIVE_HELPER_SLO_PCT
+    )
+    parser.add_argument(
+        "--helper-usage-slo-pct", type=float, default=DEFAULT_HELPER_USAGE_SLO_PCT
+    )
     parser.add_argument("--output-json")
     parser.add_argument("--output-md")
     args = parser.parse_args()
@@ -257,7 +296,9 @@ def main() -> int:
     if args.audit_json:
         audit = load_audit(Path(args.audit_json))
     else:
-        audit = build_payload(Path(args.workspace_root).resolve(), args.days, args.include_source_repo)
+        audit = build_payload(
+            Path(args.workspace_root).resolve(), args.days, args.include_source_repo
+        )
     report = build_report(
         audit,
         active_helper_slo_pct=args.active_helper_slo_pct,

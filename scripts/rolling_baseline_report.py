@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build a rolling pre/post baseline report from telemetry snapshot history."""
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,10 @@ METRICS: tuple[MetricSpec, ...] = (
     MetricSpec(
         key="helper_sessions_pct",
         label="Helper Usage % (all sessions)",
-        paths=(("global_measure_summary", "helper_sessions_pct"), ("remote_payload", "metrics", "helper_sessions_pct")),
+        paths=(
+            ("global_measure_summary", "helper_sessions_pct"),
+            ("remote_payload", "metrics", "helper_sessions_pct"),
+        ),
     ),
     MetricSpec(
         key="helper_sessions_pct_observed_discovery",
@@ -34,7 +38,10 @@ METRICS: tuple[MetricSpec, ...] = (
     MetricSpec(
         key="discovery_compliance_pct",
         label="Discovery Compliance % (all sessions)",
-        paths=(("global_measure_summary", "discovery_compliance_pct"), ("remote_payload", "metrics", "discovery_compliance_pct")),
+        paths=(
+            ("global_measure_summary", "discovery_compliance_pct"),
+            ("remote_payload", "metrics", "discovery_compliance_pct"),
+        ),
     ),
     MetricSpec(
         key="discovery_compliance_pct_observed",
@@ -47,7 +54,14 @@ METRICS: tuple[MetricSpec, ...] = (
     MetricSpec(
         key="workspace_active_repos_with_helper_usage_pct",
         label="Workspace Active Repos With Helper Usage %",
-        paths=(("remote_payload", "metrics", "workspace", "active_repos_with_helper_usage_pct"),),
+        paths=(
+            (
+                "remote_payload",
+                "metrics",
+                "workspace",
+                "active_repos_with_helper_usage_pct",
+            ),
+        ),
     ),
     MetricSpec(
         key="helper_failure_overhead_pct",
@@ -95,7 +109,9 @@ def deep_get(payload: dict[str, Any], path: tuple[str, ...]) -> Any:
     return current
 
 
-def first_number(payload: dict[str, Any], paths: tuple[tuple[str, ...], ...]) -> float | None:
+def first_number(
+    payload: dict[str, Any], paths: tuple[tuple[str, ...], ...]
+) -> float | None:
     for path in paths:
         value = deep_get(payload, path)
         if isinstance(value, (int, float)):
@@ -123,7 +139,9 @@ def load_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def window_split(rows: list[dict[str, Any]], window_size: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def window_split(
+    rows: list[dict[str, Any]], window_size: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if len(rows) < 2:
         return [], []
     if len(rows) >= window_size * 2:
@@ -163,7 +181,9 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def build_report(rows: list[dict[str, Any]], window_size: int, source_file: Path) -> dict[str, Any]:
+def build_report(
+    rows: list[dict[str, Any]], window_size: int, source_file: Path
+) -> dict[str, Any]:
     pre, post = window_split(rows, window_size)
     metrics_payload: list[dict[str, Any]] = []
     for spec in METRICS:
@@ -205,7 +225,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--source",
-        default=str(Path(__file__).resolve().parents[1] / "artifacts" / "token-reduction" / "telemetry-optin.jsonl"),
+        default=str(
+            Path(__file__).resolve().parents[1]
+            / "artifacts"
+            / "token-reduction"
+            / "telemetry-optin.jsonl"
+        ),
     )
     parser.add_argument("--window-size", type=int, default=5)
     parser.add_argument("--output-json")

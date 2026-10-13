@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run code-review-graph intake validation and token-efficiency eval."""
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,6 @@ import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "code-review-graph-intake.json"
@@ -31,9 +31,7 @@ def run(cmd: list[str], cwd: Path) -> tuple[int, str, str, float]:
 
 
 def parse_pytest_summary(output: str) -> dict[str, int]:
-    match = re.search(
-        r"(\d+)\s+passed,\s+(\d+)\s+skipped,\s+(\d+)\s+xpassed", output
-    )
+    match = re.search(r"(\d+)\s+passed,\s+(\d+)\s+skipped,\s+(\d+)\s+xpassed", output)
     if not match:
         return {"passed": 0, "skipped": 0, "xpassed": 0}
     return {

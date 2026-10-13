@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -83,14 +82,20 @@ def test_budget_tripwires_are_warning_only() -> None:
         config=_config(),
         caliper_summary=_caliper_summary(),
         report=_report(),
-        dependency_health={"dependencies": [{"name": "headroom", "state": "up_to_date"}]},
+        dependency_health={
+            "dependencies": [{"name": "headroom", "state": "up_to_date"}]
+        },
     )
 
     areas = {item["area"] for item in tripwires}
     assert "repo_budget" in areas
     assert "session_budget" in areas
     assert "daily_budget" in areas
-    assert all("Warning-only" in item["action"] for item in tripwires if item["area"].endswith("_budget"))
+    assert all(
+        "Warning-only" in item["action"]
+        for item in tripwires
+        if item["area"].endswith("_budget")
+    )
 
 
 def test_disabled_budgets_do_not_emit_spend_tripwires() -> None:

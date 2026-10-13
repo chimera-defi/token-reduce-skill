@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Aggregate opt-in telemetry and optionally upload anonymized summaries."""
+
 from __future__ import annotations
 
 import argparse
+import hashlib
 import hmac
 import json
-import hashlib
 import socket
 import subprocess
 import urllib.error
@@ -95,7 +96,9 @@ def build_remote_payload(
     efficiency = measured.get("telemetry", {}).get("efficiency", {})
     logging = measured.get("telemetry", {}).get("logging", {})
     telemetry_windows = measured.get("telemetry_windows", {})
-    window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    window_1d = (
+        telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    )
     workspace_summary = workspace.get("summary", {})
     workspace_gaps = workspace.get("gaps", {})
     return {
@@ -107,33 +110,59 @@ def build_remote_payload(
         },
         "metrics": {
             "session_count": measured.get("session_count", 0),
-            "helper_sessions_pct": measured.get("adoption", {}).get("helper_sessions_pct", 0.0),
+            "helper_sessions_pct": measured.get("adoption", {}).get(
+                "helper_sessions_pct", 0.0
+            ),
             "helper_sessions_pct_observed_discovery": measured.get("adoption", {}).get(
                 "helper_sessions_pct_observed_discovery", 0.0
             ),
-            "discovery_compliance_pct": measured.get("compliance", {}).get("discovery_compliance_pct", 0.0),
+            "discovery_compliance_pct": measured.get("compliance", {}).get(
+                "discovery_compliance_pct", 0.0
+            ),
             "discovery_compliance_pct_observed": measured.get("compliance", {}).get(
                 "discovery_compliance_pct_observed", 0.0
             ),
-            "broad_scan_sessions": measured.get("compliance", {}).get("sessions_with_broad_scan_violation", 0),
-            "caveman_command_pct": measured.get("adoption", {}).get("caveman_command_pct", 0.0),
-            "headroom_command_pct": measured.get("adoption", {}).get("headroom_command_pct", 0.0),
-            "axi_tool_sessions_pct": measured.get("adoption", {}).get("axi_tool_sessions_pct", 0.0),
-            "telemetry_event_count_14d": measured.get("telemetry", {}).get("event_count", 0),
-            "telemetry_excluded_event_count_14d": measured.get("telemetry", {}).get("excluded_event_count", 0),
+            "broad_scan_sessions": measured.get("compliance", {}).get(
+                "sessions_with_broad_scan_violation", 0
+            ),
+            "caveman_command_pct": measured.get("adoption", {}).get(
+                "caveman_command_pct", 0.0
+            ),
+            "headroom_command_pct": measured.get("adoption", {}).get(
+                "headroom_command_pct", 0.0
+            ),
+            "axi_tool_sessions_pct": measured.get("adoption", {}).get(
+                "axi_tool_sessions_pct", 0.0
+            ),
+            "telemetry_event_count_14d": measured.get("telemetry", {}).get(
+                "event_count", 0
+            ),
+            "telemetry_excluded_event_count_14d": measured.get("telemetry", {}).get(
+                "excluded_event_count", 0
+            ),
             "helper_error_rate_pct": efficiency.get("helper_error_rate_pct", 0.0),
             "helper_failure_overhead_pct": efficiency.get("failure_overhead_pct", 0.0),
             "helper_latency_p95_ms": efficiency.get("helper_latency_p95_ms", 0.0),
             "helper_rapid_repeat_calls": efficiency.get("rapid_repeat_calls", 0),
-            "helper_error_recovery_retries": efficiency.get("error_recovery_retries", 0),
+            "helper_error_recovery_retries": efficiency.get(
+                "error_recovery_retries", 0
+            ),
             "hook_error_count": efficiency.get("hook_error_count", 0),
             "pending_leak_count": efficiency.get("pending_leak_count", 0),
             "logging_quality_score": logging.get("logging_quality_score", 0.0),
             "logging_quality_tier": logging.get("logging_quality_tier", "no_data"),
-            "helper_latency_coverage_pct": logging.get("helper_latency_coverage_pct", 0.0),
-            "helper_exit_code_coverage_pct": logging.get("helper_exit_code_coverage_pct", 0.0),
-            "helper_backend_coverage_pct": logging.get("helper_backend_coverage_pct", 0.0),
-            "helper_status_exit_mismatch_count": logging.get("helper_status_exit_mismatch_count", 0),
+            "helper_latency_coverage_pct": logging.get(
+                "helper_latency_coverage_pct", 0.0
+            ),
+            "helper_exit_code_coverage_pct": logging.get(
+                "helper_exit_code_coverage_pct", 0.0
+            ),
+            "helper_backend_coverage_pct": logging.get(
+                "helper_backend_coverage_pct", 0.0
+            ),
+            "helper_status_exit_mismatch_count": logging.get(
+                "helper_status_exit_mismatch_count", 0
+            ),
             "helper_calls_1d": window_1d.get("helper_calls", 0),
             "helper_latency_p95_ms_1d": window_1d.get("helper_latency_p95_ms", 0.0),
             "logging_quality_score_1d": window_1d.get("logging_quality_score", 0.0),
@@ -141,15 +170,21 @@ def build_remote_payload(
             "workspace_active_without_helper_usage_count": len(
                 workspace_gaps.get("active_without_helper_usage", [])
             ),
-            "workspace_missing_local_skill_count": len(workspace_gaps.get("missing_local_skill", [])),
+            "workspace_missing_local_skill_count": len(
+                workspace_gaps.get("missing_local_skill", [])
+            ),
         },
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--force", action="store_true", help="Run even when telemetry.enabled=false")
-    parser.add_argument("--dry-run", action="store_true", help="Do not POST even if endpoint is set")
+    parser.add_argument(
+        "--force", action="store_true", help="Run even when telemetry.enabled=false"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Do not POST even if endpoint is set"
+    )
     args = parser.parse_args()
 
     root = repo_root()
@@ -159,13 +194,19 @@ def main() -> int:
     endpoint = str(telemetry_cfg.get("endpoint", "") or "").strip()
     api_key = str(telemetry_cfg.get("api_key", "") or "").strip()
     signing_secret = str(telemetry_cfg.get("signing_secret", "") or "").strip()
-    workspace_root = str(telemetry_cfg.get("workspace_root", "/root/.openclaw/workspace/dev"))
+    workspace_root = str(
+        telemetry_cfg.get("workspace_root", "/root/.openclaw/workspace/dev")
+    )
     workspace_days = int(telemetry_cfg.get("workspace_days", 14) or 14)
-    workspace_include_source_repo = bool(telemetry_cfg.get("workspace_include_source_repo", False))
+    workspace_include_source_repo = bool(
+        telemetry_cfg.get("workspace_include_source_repo", False)
+    )
     timeout_seconds = int(telemetry_cfg.get("upload_timeout_seconds", 10) or 10)
 
     if not enabled and not args.force:
-        print("telemetry disabled (enable via: token-reduce-manage settings set telemetry.enabled true)")
+        print(
+            "telemetry disabled (enable via: token-reduce-manage settings set telemetry.enabled true)"
+        )
         return 0
 
     measured = measure("global", str(root))
@@ -191,11 +232,15 @@ def main() -> int:
         "remote_payload": remote_payload,
         "global_measure_summary": {
             "session_count": measured.get("session_count", 0),
-            "helper_sessions_pct": measured.get("adoption", {}).get("helper_sessions_pct", 0.0),
+            "helper_sessions_pct": measured.get("adoption", {}).get(
+                "helper_sessions_pct", 0.0
+            ),
             "helper_sessions_pct_observed_discovery": measured.get("adoption", {}).get(
                 "helper_sessions_pct_observed_discovery", 0.0
             ),
-            "discovery_compliance_pct": measured.get("compliance", {}).get("discovery_compliance_pct", 0.0),
+            "discovery_compliance_pct": measured.get("compliance", {}).get(
+                "discovery_compliance_pct", 0.0
+            ),
             "discovery_compliance_pct_observed": measured.get("compliance", {}).get(
                 "discovery_compliance_pct_observed", 0.0
             ),
@@ -205,7 +250,9 @@ def main() -> int:
     output_dir = root / "artifacts" / "token-reduction"
     append_jsonl(output_dir / "telemetry-optin.jsonl", local_payload)
     snapshot_path = output_dir / f"telemetry-optin-{datetime.now().date()}.json"
-    snapshot_path.write_text(json.dumps(local_payload, indent=2) + "\n", encoding="utf-8")
+    snapshot_path.write_text(
+        json.dumps(local_payload, indent=2) + "\n", encoding="utf-8"
+    )
 
     upload_status = "skipped"
     if endpoint and enabled and not args.dry_run:

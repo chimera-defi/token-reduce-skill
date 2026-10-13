@@ -8,6 +8,7 @@ Usage (from paths.sh):
   search_results | uv run python3 scripts/token_reduce_dispatch.py \
       --mode paths --query "..." [--repo-root DIR] [--events-file PATH]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,6 +24,7 @@ sys.path.insert(0, str(_SCRIPTS_DIR))
 def _try_record_error(event: str, query: str, repo_root: Path) -> None:
     try:
         from token_reduce_telemetry import record_event
+
         record_event(
             repo_root=repo_root,
             event=event,
@@ -35,7 +37,9 @@ def _try_record_error(event: str, query: str, repo_root: Path) -> None:
         pass
 
 
-def _run_rank(search_results: str, query: str, repo_root: Path, rank_args: list[str]) -> str:
+def _run_rank(
+    search_results: str, query: str, repo_root: Path, rank_args: list[str]
+) -> str:
     rank_script = _SCRIPTS_DIR / "rank_paths.py"
     if os.environ.get("TOKEN_REDUCE_DISABLE_RANK") or not rank_script.exists():
         return search_results
@@ -69,6 +73,7 @@ def _run_brain_hint(query: str, repo_root: Path) -> None:
         return
     try:
         from brain_hint import hint_line
+
         hint = hint_line(query)
         if hint:
             print(f"# brain-hint: {hint}", file=sys.stderr)

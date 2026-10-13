@@ -16,6 +16,7 @@ N2: broad scans on continuation lines of a multi-line Bash command must not
     references/worktree-deploy-sync.md. The underlying multi-line scan
     detection these tests exercise is unconditional and unaffected.)
 """
+
 from __future__ import annotations
 
 import json
@@ -66,7 +67,9 @@ def _run_hook(
     )
 
 
-def _bash_payload(command: str, session_id: str = "sess-bypass-test") -> dict[str, object]:
+def _bash_payload(
+    command: str, session_id: str = "sess-bypass-test"
+) -> dict[str, object]:
     return {
         "session_id": session_id,
         "tool_name": "Bash",
@@ -84,6 +87,7 @@ def repo(tmp_path: Path) -> Path:
 # N1: python3 -c / -m bypass
 # ---------------------------------------------------------------------------
 
+
 def test_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
     """N1: python3 -c with os.walk must NOT bypass safe-tool check.
 
@@ -91,7 +95,7 @@ def test_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
     Second attempt: hard block (rc=2) — proving it went through coverage checks.
     """
     session_id = "sess-n1-python3-c"
-    cmd = 'python3 -c "import os; [_ for _ in os.walk(\'.\')]"'
+    cmd = "python3 -c \"import os; [_ for _ in os.walk('.')]\""
 
     # First attempt: warn-and-allow (coverage hit, not bypassed)
     r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
@@ -111,7 +115,7 @@ def test_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
 def test_uv_run_python3_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
     """Agents are instructed to use uv run, so uv-wrapped python -c must be inspected."""
     session_id = "sess-n1-uv-run-python3-c"
-    cmd = 'uv run python3 -c "import os; [_ for _ in os.walk(\'.\')]"'
+    cmd = "uv run python3 -c \"import os; [_ for _ in os.walk('.')]\""
 
     r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
     assert r1.returncode == 0, (
@@ -146,7 +150,9 @@ def test_python3_m_pytest_is_allowed(repo: Path) -> None:
 
 def test_uv_run_python3_m_pytest_is_allowed(repo: Path) -> None:
     """uv-wrapped pytest remains a normal safe command when it has no broad pattern."""
-    result = _run_hook(_bash_payload("uv run python3 -m pytest scripts/tests/ -q"), repo)
+    result = _run_hook(
+        _bash_payload("uv run python3 -m pytest scripts/tests/ -q"), repo
+    )
     assert result.returncode == 0, (
         f"uv run python3 -m pytest should be allowed; got rc={result.returncode} "
         f"stdout={result.stdout!r}"
@@ -156,7 +162,7 @@ def test_uv_run_python3_m_pytest_is_allowed(repo: Path) -> None:
 def test_python311_c_with_os_walk_is_not_safe_tool_bypassed(repo: Path) -> None:
     """N1: versioned python (python3.11 -c) with os.walk must NOT bypass safe-tool check."""
     session_id = "sess-n1-python311-c"
-    cmd = 'python3.11 -c "import os; [_ for _ in os.walk(\'.\')]"'
+    cmd = "python3.11 -c \"import os; [_ for _ in os.walk('.')]\""
 
     r1 = _run_hook(_bash_payload(cmd, session_id=session_id), repo)
     assert r1.returncode == 0, (
@@ -198,8 +204,11 @@ def test_multiline_helper_plus_catastrophic_find_is_blocked(repo: Path) -> None:
 
     multi_cmd = "token-reduce-paths.sh foo\nfind / -name bar"
     result = _run_hook(
-        {"session_id": session_id, "tool_name": "Bash",
-         "tool_input": {"command": multi_cmd}},
+        {
+            "session_id": session_id,
+            "tool_name": "Bash",
+            "tool_input": {"command": multi_cmd},
+        },
         repo,
     )
 
@@ -215,8 +224,11 @@ def test_multiline_helper_only_is_allowed(repo: Path) -> None:
 
     multi_cmd = "token-reduce-paths.sh foo\necho done"
     result = _run_hook(
-        {"session_id": session_id, "tool_name": "Bash",
-         "tool_input": {"command": multi_cmd}},
+        {
+            "session_id": session_id,
+            "tool_name": "Bash",
+            "tool_input": {"command": multi_cmd},
+        },
         repo,
     )
 

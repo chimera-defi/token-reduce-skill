@@ -1,4 +1,5 @@
 """Track A5 — telemetry event constant + aggregate_priors tests."""
+
 from __future__ import annotations
 
 import sys
@@ -8,12 +9,10 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from rank_paths import (  # noqa: E402
+from rank_paths import (
     aggregate_priors,
     click_through_score,
 )
-
-
 
 
 def test_aggregate_priors_counts_per_query_path_pairs() -> None:
@@ -46,10 +45,6 @@ def test_aggregate_priors_counts_per_query_path_pairs() -> None:
     assert table["scripts/other.py"] == 1.0
     assert "helper_invocation" not in priors
     assert "unrelated" not in priors
-
-
-
-
 
 
 def test_aggregate_priors_feeds_click_through_score() -> None:

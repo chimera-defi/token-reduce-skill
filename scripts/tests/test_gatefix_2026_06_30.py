@@ -9,6 +9,7 @@ Fix 2 (benchmark-composite-stack.py): composite_stack hard-requires token-reduce
 and rtk; when token-savior is not installed the entire strategy is skipped and the
 composite_gate fails.  The fix makes those tools optional with rg fallbacks.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -26,6 +27,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _init_git_repo(path: Path) -> None:
     subprocess.run(
@@ -72,6 +74,7 @@ def _load_bcs():
 # Fix 1 — while-read trailing-newline bug (token-reduce-search.sh)
 # ---------------------------------------------------------------------------
 
+
 def test_while_read_includes_last_underscore_token(tmp_path: Path) -> None:
     """Behavioral: last underscore-token in query must appear in output.
 
@@ -106,18 +109,15 @@ def test_while_read_includes_last_underscore_token(tmp_path: Path) -> None:
 
     assert "beta_needle" in result.stdout, (
         "Last token 'beta_needle' absent from output — trailing-newline while-read bug "
-        "not fixed (missing `|| [[ -n \"$token\" ]]`).\n"
+        'not fixed (missing `|| [[ -n "$token" ]]`).\n'
         f"stdout: {result.stdout!r}\nstderr: {result.stderr!r}"
     )
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
 # Fix 2 — composite_stack token-savior fallback (benchmark-composite-stack.py)
 # ---------------------------------------------------------------------------
+
 
 def test_composite_stack_available_without_token_savior(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check for token-reduce updates and optionally apply safe fast-forward updates."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,9 @@ from token_reduce_config import load_config
 
 def run(cmd: list[str], cwd: Path) -> tuple[int, str, str]:
     try:
-        proc = subprocess.run(cmd, cwd=cwd, check=False, capture_output=True, text=True, timeout=15)
+        proc = subprocess.run(
+            cmd, cwd=cwd, check=False, capture_output=True, text=True, timeout=15
+        )
     except subprocess.TimeoutExpired:
         return 1, "", f"{cmd[0]}: timed out"
     except FileNotFoundError:
@@ -34,7 +37,9 @@ def branch(root: Path) -> str:
 
 
 def upstream(root: Path) -> str:
-    code, out, _ = run(["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], root)
+    code, out, _ = run(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], root
+    )
     return out if code == 0 else ""
 
 
@@ -46,7 +51,9 @@ def dirty(root: Path) -> bool:
 def ahead_behind(root: Path, upstream_ref: str) -> tuple[int, int]:
     if not upstream_ref:
         return 0, 0
-    code, out, _ = run(["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"], root)
+    code, out, _ = run(
+        ["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"], root
+    )
     if code != 0 or not out:
         return 0, 0
     parts = out.split()
@@ -100,12 +107,18 @@ def run_workspace_sync(
     if audit_output:
         output_path = Path(audit_output).expanduser().resolve()
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json.dumps(audit_payload, indent=2) + "\n", encoding="utf-8")
-    summary = audit_payload.get("summary", {}) if isinstance(audit_payload, dict) else {}
+        output_path.write_text(
+            json.dumps(audit_payload, indent=2) + "\n", encoding="utf-8"
+        )
+    summary = (
+        audit_payload.get("summary", {}) if isinstance(audit_payload, dict) else {}
+    )
     gaps = audit_payload.get("gaps", {}) if isinstance(audit_payload, dict) else {}
     version_drift = int(summary.get("repos_with_skill_version_drift", 0) or 0)
     commit_drift = int(summary.get("repos_with_skill_commit_drift", 0) or 0)
-    missing_local = len(gaps.get("missing_local_skill", [])) if isinstance(gaps, dict) else 0
+    missing_local = (
+        len(gaps.get("missing_local_skill", [])) if isinstance(gaps, dict) else 0
+    )
     ok = version_drift == 0 and commit_drift == 0 and missing_local == 0
     return {
         "action": "completed",
@@ -115,19 +128,42 @@ def run_workspace_sync(
         "audit_summary": summary,
         "audit_expected_skill": audit_payload.get("expected_skill", {}),
         "audit_gaps": gaps,
-        "audit_output": str(Path(audit_output).expanduser().resolve()) if audit_output else "",
+        "audit_output": str(Path(audit_output).expanduser().resolve())
+        if audit_output
+        else "",
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--notify", action="store_true", help="Print human-readable update message")
-    parser.add_argument("--quiet-if-current", action="store_true", help="With --notify, suppress 'up to date' message (used by automated preambles)")
-    parser.add_argument("--auto-update", action="store_true", help="Attempt safe ff-only update now")
-    parser.add_argument("--no-fetch", action="store_true", help="Skip git fetch before checking")
-    parser.add_argument("--workspace-sync", action="store_true", help="Also relink and audit sibling repos")
-    parser.add_argument("--workspace-root", default="", help="Workspace root for sibling repo syncing")
-    parser.add_argument("--workspace-days", type=int, default=None, help="Session window days for workspace audit")
+    parser.add_argument(
+        "--notify", action="store_true", help="Print human-readable update message"
+    )
+    parser.add_argument(
+        "--quiet-if-current",
+        action="store_true",
+        help="With --notify, suppress 'up to date' message (used by automated preambles)",
+    )
+    parser.add_argument(
+        "--auto-update", action="store_true", help="Attempt safe ff-only update now"
+    )
+    parser.add_argument(
+        "--no-fetch", action="store_true", help="Skip git fetch before checking"
+    )
+    parser.add_argument(
+        "--workspace-sync",
+        action="store_true",
+        help="Also relink and audit sibling repos",
+    )
+    parser.add_argument(
+        "--workspace-root", default="", help="Workspace root for sibling repo syncing"
+    )
+    parser.add_argument(
+        "--workspace-days",
+        type=int,
+        default=None,
+        help="Session window days for workspace audit",
+    )
     parser.add_argument(
         "--workspace-include-source-repo",
         action="store_true",
@@ -138,7 +174,11 @@ def main() -> int:
         action="store_true",
         help="Do not relink existing token-reduce dirs/symlinks in sibling repos",
     )
-    parser.add_argument("--workspace-audit-output", default="", help="Optional path to write workspace audit JSON")
+    parser.add_argument(
+        "--workspace-audit-output",
+        default="",
+        help="Optional path to write workspace audit JSON",
+    )
     args = parser.parse_args()
 
     root = repo_root()
@@ -146,11 +186,19 @@ def main() -> int:
     updates_cfg: dict[str, Any] = config.get("updates", {})
     telemetry_cfg: dict[str, Any] = config.get("telemetry", {})
     auto_update_enabled = bool(updates_cfg.get("auto_update", False))
-    workspace_auto_update_enabled = bool(updates_cfg.get("workspace_auto_update", False))
-    workspace_force_relink_default = bool(updates_cfg.get("workspace_force_relink", True))
-    default_workspace_root = str(telemetry_cfg.get("workspace_root") or "/root/.openclaw/workspace/dev")
+    workspace_auto_update_enabled = bool(
+        updates_cfg.get("workspace_auto_update", False)
+    )
+    workspace_force_relink_default = bool(
+        updates_cfg.get("workspace_force_relink", True)
+    )
+    default_workspace_root = str(
+        telemetry_cfg.get("workspace_root") or "/root/.openclaw/workspace/dev"
+    )
     default_workspace_days = parse_int(telemetry_cfg.get("workspace_days", 14), 14)
-    default_include_source_repo = bool(telemetry_cfg.get("workspace_include_source_repo", False))
+    default_include_source_repo = bool(
+        telemetry_cfg.get("workspace_include_source_repo", False)
+    )
 
     fetch_ok: bool | None = None
     if not args.no_fetch:
@@ -185,15 +233,28 @@ def main() -> int:
             if code == 0:
                 ahead, behind = ahead_behind(root, upstream(root))
 
-    workspace_sync_requested = args.workspace_sync or (workspace_auto_update_enabled and attempted_auto_update)
-    workspace_root = Path(args.workspace_root or default_workspace_root).expanduser().resolve()
-    workspace_days = args.workspace_days if args.workspace_days is not None else default_workspace_days
-    include_source_repo = args.workspace_include_source_repo or default_include_source_repo
+    workspace_sync_requested = args.workspace_sync or (
+        workspace_auto_update_enabled and attempted_auto_update
+    )
+    workspace_root = (
+        Path(args.workspace_root or default_workspace_root).expanduser().resolve()
+    )
+    workspace_days = (
+        args.workspace_days
+        if args.workspace_days is not None
+        else default_workspace_days
+    )
+    include_source_repo = (
+        args.workspace_include_source_repo or default_include_source_repo
+    )
     force_relink = workspace_force_relink_default and not args.workspace_no_force_relink
     if not args.workspace_audit_output:
         date_stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         args.workspace_audit_output = str(
-            root / "artifacts" / "token-reduction" / f"workspace-audit-{date_stamp}-auto-update.json"
+            root
+            / "artifacts"
+            / "token-reduction"
+            / f"workspace-audit-{date_stamp}-auto-update.json"
         )
     workspace_payload: dict[str, Any] = {}
     if workspace_sync_requested:
@@ -227,16 +288,25 @@ def main() -> int:
 
     if args.notify:
         import sys as _sys
+
         if payload["update_available"]:
-            print(f"[token-reduce] update available: {behind} commit(s) behind on {current_branch}", file=_sys.stderr)
-            print("[token-reduce] run: ./scripts/token-reduce-manage.sh auto-update", file=_sys.stderr)
+            print(
+                f"[token-reduce] update available: {behind} commit(s) behind on {current_branch}",
+                file=_sys.stderr,
+            )
+            print(
+                "[token-reduce] run: ./scripts/token-reduce-manage.sh auto-update",
+                file=_sys.stderr,
+            )
         elif not args.quiet_if_current:
             print("token-reduce is up to date.", file=_sys.stderr)
         if workspace_sync_requested:
             action = str(workspace_payload.get("action", "unknown"))
             if action == "completed":
                 summary = workspace_payload.get("audit_summary", {})
-                changed = int(workspace_payload.get("install", {}).get("repos_changed", 0) or 0)
+                changed = int(
+                    workspace_payload.get("install", {}).get("repos_changed", 0) or 0
+                )
                 print(
                     "workspace sync completed: "
                     f"repos_changed={changed}, "

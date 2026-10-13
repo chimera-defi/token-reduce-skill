@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Shared repo-local state for Claude token-reduce enforcement."""
+
 from __future__ import annotations
 
 import hashlib
@@ -21,7 +22,9 @@ def discovery_hint() -> str:
         adaptive_enabled = env_override != "0"
     else:
         config = load_config()
-        routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+        routing = (
+            config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
+        )
         adaptive_enabled = bool(routing.get("adaptive_hint", True))
     if adaptive_enabled and shutil.which("token-reduce-adaptive"):
         return "token-reduce-adaptive <topic words>"
@@ -41,7 +44,9 @@ STATE_DIR = ".claude/token-reduce-state"
 
 
 def repo_root() -> Path:
-    base_dir = os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR")
+    base_dir = os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get(
+        "CLAUDE_PROJECT_DIR"
+    )
     base = Path(base_dir).resolve() if base_dir else Path.cwd().resolve()
     try:
         proc = subprocess.run(
@@ -140,7 +145,9 @@ def block_state_path(repo: Path) -> Path:
     return state_dir(repo) / "last_block.json"
 
 
-def record_block(repo: Path, tool: str, reason: str, command: str | None = None) -> None:
+def record_block(
+    repo: Path, tool: str, reason: str, command: str | None = None
+) -> None:
     root = state_dir(repo)
     root.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -182,10 +189,14 @@ def decision_cache_path(repo: Path, key: str) -> Path:
 
 
 def _decision_fingerprint(fingerprint_source: str) -> str:
-    return hashlib.sha256(fingerprint_source.encode("utf-8", "replace")).hexdigest()[:16]
+    return hashlib.sha256(fingerprint_source.encode("utf-8", "replace")).hexdigest()[
+        :16
+    ]
 
 
-def recent_decision(repo: Path, key: str, tool_use_id: str, fingerprint_source: str) -> dict | None:
+def recent_decision(
+    repo: Path, key: str, tool_use_id: str, fingerprint_source: str
+) -> dict | None:
     """F5: return a still-fresh cached decision for (key, tool_use_id), or None.
 
     Two settings layers can wire the same hook onto one PreToolUse matcher

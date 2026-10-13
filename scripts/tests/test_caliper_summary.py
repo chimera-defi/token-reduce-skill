@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -14,8 +13,16 @@ import caliper_summary
 def test_fetch_complete_aggregate_restarts_and_polls_until_done(monkeypatch) -> None:
     urls: list[str] = []
     responses = [
-        {"done": False, "progress": {"scannedSessions": 1, "totalSessions": 2}, "totals": {"sessions": 1}},
-        {"done": True, "progress": {"scannedSessions": 2, "totalSessions": 2}, "totals": {"sessions": 2}},
+        {
+            "done": False,
+            "progress": {"scannedSessions": 1, "totalSessions": 2},
+            "totals": {"sessions": 1},
+        },
+        {
+            "done": True,
+            "progress": {"scannedSessions": 2, "totalSessions": 2},
+            "totals": {"sessions": 2},
+        },
     ]
 
     def fake_fetch(url: str, timeout: float) -> dict:
@@ -53,8 +60,13 @@ def test_normalize_reads_current_caliper_nested_token_buckets() -> None:
                     "costUsd": 12.5,
                     "tokens": {"in": 100, "out": 25, "cacheWr": 50, "cacheRd": 10},
                 },
-                "byRepo": [{"repo": "token-reduce-skill", "costUsd": 12.5, "sessions": 4}],
-                "byTier": [{"tier": "opus", "costUsd": 9.0}, {"tier": "sonnet", "costUsd": 3.5}],
+                "byRepo": [
+                    {"repo": "token-reduce-skill", "costUsd": 12.5, "sessions": 4}
+                ],
+                "byTier": [
+                    {"tier": "opus", "costUsd": 9.0},
+                    {"tier": "sonnet", "costUsd": 3.5},
+                ],
                 "byDay": [{"day": "2026-07-05", "costUsd": 12.5, "sessions": 4}],
             },
         },
@@ -81,9 +93,16 @@ def test_normalize_accepts_legacy_top_level_cost_aliases() -> None:
                 "sessions": 13,
                 "folders": 3,
                 "totals": {
-                    "tokens": {"in": 100000, "out": 25000, "cacheWr": 50000, "cacheRd": 5000},
+                    "tokens": {
+                        "in": 100000,
+                        "out": 25000,
+                        "cacheWr": 50000,
+                        "cacheRd": 5000,
+                    },
                 },
-                "byFolder": [{"folder": "token-reduce-skill", "cost": 120.5, "sessions": 7}],
+                "byFolder": [
+                    {"folder": "token-reduce-skill", "cost": 120.5, "sessions": 7}
+                ],
                 "byModel": [{"model": "opus", "cost": 168.9297}],
             },
         },

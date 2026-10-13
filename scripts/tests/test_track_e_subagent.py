@@ -9,6 +9,7 @@ E3. ``/create-session`` escalation when multi-repo scope cues + skill
 E4. Sibling-skill routing maps intent to skill names (/review,
     /investigate, ...).
 """
+
 from __future__ import annotations
 
 import sys
@@ -18,7 +19,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from token_reduce_adaptive import (  # noqa: E402
+from token_reduce_adaptive import (
     Availability,
     BehaviorProfile,
     RoutingPolicy,
@@ -57,7 +58,9 @@ def _policy(**overrides: bool) -> RoutingPolicy:
     return RoutingPolicy(**base)  # type: ignore[arg-type]
 
 
-def _decide(query: str, *, candidate_count: int = 1, gstack_skill_available: bool = False):
+def _decide(
+    query: str, *, candidate_count: int = 1, gstack_skill_available: bool = False
+):
     return decide(
         query,
         behavior=_behavior(),
@@ -82,8 +85,6 @@ def test_e1_subagent_recommended_when_candidate_set_large() -> None:
     assert "Explore" in decision.subagent_snippet
 
 
-
-
 def test_e1_subagent_not_recommended_when_small_and_narrow() -> None:
     decision = _decide("find Component definition", candidate_count=2)
     assert decision.subagent_recommended is False
@@ -95,15 +96,9 @@ def test_e1_subagent_not_recommended_when_small_and_narrow() -> None:
 # --------------------------------------------------------------------------- #
 
 
-
-
-
-
 # --------------------------------------------------------------------------- #
 # E3 — session-spawn escalation
 # --------------------------------------------------------------------------- #
-
-
 
 
 def test_e3_session_spawn_not_recommended_without_skill() -> None:
@@ -115,8 +110,6 @@ def test_e3_session_spawn_not_recommended_without_skill() -> None:
     assert decision.session_spawn_recommended is False
 
 
-
-
 # --------------------------------------------------------------------------- #
 # E4 — sibling-skill routing
 # --------------------------------------------------------------------------- #
@@ -125,9 +118,3 @@ def test_e3_session_spawn_not_recommended_without_skill() -> None:
 def test_e4_sibling_skill_for_review() -> None:
     assert sibling_skill_for_query("review the PR for me") == "/review"
     assert sibling_skill_for_query("can you review this pull request?") == "/review"
-
-
-
-
-
-

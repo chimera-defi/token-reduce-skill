@@ -16,6 +16,7 @@ hook's state writes (broad-attempt counter, last-block record) and
 telemetry events land there instead of polluting the real repo's
 ``artifacts/token-reduction/events.jsonl``.
 """
+
 from __future__ import annotations
 
 import json
@@ -97,8 +98,8 @@ def _bash_payload(command: str, session_id: str = "sess-int-test") -> dict[str, 
     }
 
 
-CATASTROPHIC_CMD = "find /etc/passwd"      # matches catastrophic `find /...` regex
-BROAD_CMD = "tree ."                       # broad bash pattern; NOT catastrophic
+CATASTROPHIC_CMD = "find /etc/passwd"  # matches catastrophic `find /...` regex
+BROAD_CMD = "tree ."  # broad bash pattern; NOT catastrophic
 
 
 def test_catastrophic_pattern_hard_blocks(repo: Path) -> None:
@@ -108,11 +109,15 @@ def test_catastrophic_pattern_hard_blocks(repo: Path) -> None:
     assert result.returncode == 2, result.stderr
     decision = json.loads(result.stdout)
     assert decision["decision"] == "block"
-    assert "scan" in decision["reason"].lower() or "catastrophic" in decision["reason"].lower()
+    assert (
+        "scan" in decision["reason"].lower()
+        or "catastrophic" in decision["reason"].lower()
+    )
 
     events = _events(repo)
     catastrophic_blocks = [
-        ev for ev in events
+        ev
+        for ev in events
         if ev.get("event") == "hook_block"
         and (ev.get("meta") or {}).get("policy") == "catastrophic"
     ]
@@ -151,7 +156,8 @@ def test_repeat_broad_attempt_blocks(repo: Path) -> None:
 
     events = _events(repo)
     repeat_blocks = [
-        ev for ev in events
+        ev
+        for ev in events
         if ev.get("event") == "hook_block"
         and (ev.get("meta") or {}).get("policy") == "repeat_broad"
     ]

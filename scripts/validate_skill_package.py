@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate local skill packaging against a lightweight JSM-style shape."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,7 +8,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
 
 REQUIRED_FRONTMATTER = ("name", "license", "description")
 REQUIRED_METADATA_FIELDS = ("author", "category")
@@ -32,7 +32,11 @@ def repo_root() -> Path:
             text=True,
             timeout=5,
         ).stdout.strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return script_dir.parents[1]
     return Path(root)
 
@@ -67,7 +71,9 @@ def validate(skill_path: Path, openai_yaml: Path, readme_path: Path) -> list[str
             errors.append(f"SKILL.md: missing required section `{section}`")
 
     if "## Trigger\n" in text:
-        errors.append("SKILL.md: use `## Triggers` instead of `## Trigger` for JSM-style compatibility")
+        errors.append(
+            "SKILL.md: use `## Triggers` instead of `## Trigger` for JSM-style compatibility"
+        )
 
     if not openai_yaml.exists():
         errors.append("agents/openai.yaml: missing UI metadata file")
@@ -90,7 +96,9 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve()
-    errors = validate(root / "SKILL.md", root / "agents" / "openai.yaml", root / "README.md")
+    errors = validate(
+        root / "SKILL.md", root / "agents" / "openai.yaml", root / "README.md"
+    )
     if errors:
         for error in errors:
             print(error, file=sys.stderr)

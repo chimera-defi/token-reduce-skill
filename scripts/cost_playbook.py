@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Databricks-style AI coding cost playbook scorecard for token-reduce."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,6 @@ from typing import Any
 from caliper_summary import CaliperUnavailable, fetch_summary
 from measure_token_reduction import measure
 from token_reduce_config import load_config
-
 
 PLAYBOOK_LEVERS: tuple[dict[str, str], ...] = (
     {
@@ -73,7 +73,9 @@ def _int(value: Any, default: int = 0) -> int:
         return default
 
 
-def _status(status: str, evidence: str, gap: str, recommendation: str) -> dict[str, str]:
+def _status(
+    status: str, evidence: str, gap: str, recommendation: str
+) -> dict[str, str]:
     return {
         "status": status,
         "evidence": evidence,
@@ -127,30 +129,54 @@ def build_playbook_scorecard(
     """Build a coverage scorecard against the Databricks coding-cost playbook."""
     cfg = config or load_config()
     budgets = cfg.get("budgets", {}) if isinstance(cfg.get("budgets"), dict) else {}
-    adoption = report.get("adoption", {}) if isinstance(report.get("adoption"), dict) else {}
-    telemetry = report.get("telemetry", {}) if isinstance(report.get("telemetry"), dict) else {}
-    compliance = report.get("compliance", {}) if isinstance(report.get("compliance"), dict) else {}
-    routing = report.get("routing", {}) if isinstance(report.get("routing"), dict) else {}
+    adoption = (
+        report.get("adoption", {}) if isinstance(report.get("adoption"), dict) else {}
+    )
+    telemetry = (
+        report.get("telemetry", {}) if isinstance(report.get("telemetry"), dict) else {}
+    )
+    compliance = (
+        report.get("compliance", {})
+        if isinstance(report.get("compliance"), dict)
+        else {}
+    )
+    routing = (
+        report.get("routing", {}) if isinstance(report.get("routing"), dict) else {}
+    )
 
     session_count = _int(report.get("session_count"))
     helper_pct = _float(
-        adoption.get("helper_sessions_pct_observed_discovery", routing.get("helper_first_or_helper_any_pct", 0.0))
+        adoption.get(
+            "helper_sessions_pct_observed_discovery",
+            routing.get("helper_first_or_helper_any_pct", 0.0),
+        )
     )
     compliance_pct = _float(
-        compliance.get("discovery_compliance_pct_observed", compliance.get("discovery_compliance_pct", 0.0))
+        compliance.get(
+            "discovery_compliance_pct_observed",
+            compliance.get("discovery_compliance_pct", 0.0),
+        )
     )
     telemetry_events = _int(telemetry.get("event_count"))
     has_caliper = _has_caliper(caliper_summary)
     estimated_cost = _caliper_cost(caliper_summary)
     caliper_sessions = _caliper_sessions(caliper_summary)
-    avg_session_cost = estimated_cost / caliper_sessions if estimated_cost > 0 and caliper_sessions > 0 else 0.0
+    avg_session_cost = (
+        estimated_cost / caliper_sessions
+        if estimated_cost > 0 and caliper_sessions > 0
+        else 0.0
+    )
 
     delegate_enabled = any(
         isinstance(value, dict) and bool(value.get("enabled"))
         for value in (cfg.get("delegates", {}) or {}).values()
     )
-    companions = cfg.get("companions", {}) if isinstance(cfg.get("companions"), dict) else {}
-    headroom_enabled = bool((companions.get("headroom") or {}).get("enabled")) and _tool_available("headroom")
+    companions = (
+        cfg.get("companions", {}) if isinstance(cfg.get("companions"), dict) else {}
+    )
+    headroom_enabled = bool(
+        (companions.get("headroom") or {}).get("enabled")
+    ) and _tool_available("headroom")
 
     rows: dict[str, dict[str, str]] = {}
     rows["efficiency_frontier"] = _status(
@@ -173,7 +199,9 @@ def build_playbook_scorecard(
     )
     rows["task_routing"] = _status(
         "partial" if delegate_enabled else "missing",
-        "Delegate router config is enabled." if delegate_enabled else "Delegate router config is not enabled.",
+        "Delegate router config is enabled."
+        if delegate_enabled
+        else "Delegate router config is not enabled.",
         "Routing is task/delegate guidance, not measured model quality/cost routing.",
         "Measure delegate conversion and add per-delegate cost/quality telemetry before expanding automation.",
     )
@@ -188,7 +216,9 @@ def build_playbook_scorecard(
     )
     rows["tripwires"] = _status(
         "partial" if budgets.get("enabled") else "missing",
-        "Warning-only budget config is enabled." if budgets.get("enabled") else "No budget/tripwire config is enabled.",
+        "Warning-only budget config is enabled."
+        if budgets.get("enabled")
+        else "No budget/tripwire config is enabled.",
         "There are no approval gates, automatic model downshift, or central suspension controls.",
         "Start with warning-only tripwires and concrete recommendations; avoid hard blocking until spend telemetry is reliable.",
     )
@@ -213,7 +243,12 @@ def build_playbook_scorecard(
     )
     missing_optional = [
         name
-        for name in ("context-mode", "code-review-graph", "gh-axi", "chrome-devtools-axi")
+        for name in (
+            "context-mode",
+            "code-review-graph",
+            "gh-axi",
+            "chrome-devtools-axi",
+        )
         if _dependency_state(dependency_health, name) in {"missing", "outdated"}
     ]
     return {
@@ -244,7 +279,9 @@ def build_budget_tripwires(
     report: dict[str, Any],
     dependency_health: dict[str, Any] | None,
 ) -> list[dict[str, str]]:
-    budgets = config.get("budgets", {}) if isinstance(config.get("budgets"), dict) else {}
+    budgets = (
+        config.get("budgets", {}) if isinstance(config.get("budgets"), dict) else {}
+    )
     if not budgets.get("enabled", False):
         return []
 
@@ -256,7 +293,12 @@ def build_budget_tripwires(
     daily_warning = _float(budgets.get("daily_warning_usd"))
     actions = budgets.get("actions")
     if not isinstance(actions, list) or not actions:
-        actions = ["warn", "recommend_headroom", "recommend_delegate", "recommend_downshift"]
+        actions = [
+            "warn",
+            "recommend_headroom",
+            "recommend_delegate",
+            "recommend_downshift",
+        ]
     action_text = ", ".join(str(action) for action in actions)
 
     tripwires: list[dict[str, str]] = []
@@ -269,7 +311,11 @@ def build_budget_tripwires(
                 "action": f"Warning-only actions: {action_text}. Review expensive sessions before escalating.",
             }
         )
-    if avg_session_cost > 0 and session_warning > 0 and avg_session_cost >= session_warning:
+    if (
+        avg_session_cost > 0
+        and session_warning > 0
+        and avg_session_cost >= session_warning
+    ):
         tripwires.append(
             {
                 "level": "warning",
@@ -300,7 +346,9 @@ def build_budget_tripwires(
     helper_pct = _float(
         (report.get("adoption", {}) or {}).get(
             "helper_sessions_pct_observed_discovery",
-            (report.get("routing", {}) or {}).get("helper_first_or_helper_any_pct", 0.0),
+            (report.get("routing", {}) or {}).get(
+                "helper_first_or_helper_any_pct", 0.0
+            ),
         )
     )
     if helper_pct < 60.0:
@@ -390,7 +438,9 @@ def render_scorecard_markdown(scorecard: dict[str, Any]) -> str:
         lines.append("- No budget tripwires fired.")
     else:
         for item in tripwires:
-            lines.append(f"- **{item.get('level', 'advisory').upper()} · {item.get('area', 'tripwire')}**: {item.get('finding', '')}")
+            lines.append(
+                f"- **{item.get('level', 'advisory').upper()} · {item.get('area', 'tripwire')}**: {item.get('finding', '')}"
+            )
             lines.append(f"  Action: {item.get('action', '')}")
     gaps = summary.get("optional_dependency_gaps") or []
     if gaps:
@@ -402,7 +452,9 @@ def render_scorecard_markdown(scorecard: dict[str, Any]) -> str:
 
 def build_dependency_health(include_conditional: bool) -> dict[str, Any]:
     module_path = Path(__file__).with_name("token-reduce-dependency-health.py")
-    spec = importlib.util.spec_from_file_location("token_reduce_dependency_health", module_path)
+    spec = importlib.util.spec_from_file_location(
+        "token_reduce_dependency_health", module_path
+    )
     if spec is None or spec.loader is None:
         return {"dependencies": [], "counts": {"unknown": 1}}
     module = importlib.util.module_from_spec(spec)
@@ -426,7 +478,11 @@ def main() -> int:
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--with-caliper", action="store_true")
     parser.add_argument("--caliper-url")
-    parser.add_argument("--check-deps", action="store_true", help="Include conditional companion dependency freshness")
+    parser.add_argument(
+        "--check-deps",
+        action="store_true",
+        help="Include conditional companion dependency freshness",
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--output-json")
     parser.add_argument("--output-md")
@@ -440,7 +496,9 @@ def main() -> int:
             caliper_summary = fetch_summary(args.caliper_url)
         except CaliperUnavailable as exc:
             caliper_error = str(exc)
-    dep_health = build_dependency_health(include_conditional=True) if args.check_deps else None
+    dep_health = (
+        build_dependency_health(include_conditional=True) if args.check_deps else None
+    )
     scorecard = build_playbook_scorecard(
         report,
         config=load_config(),
@@ -453,7 +511,9 @@ def main() -> int:
         "dependency_health": dep_health,
     }
     if args.output_json:
-        Path(args.output_json).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        Path(args.output_json).write_text(
+            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        )
     markdown = render_scorecard_markdown(scorecard)
     if args.output_md:
         Path(args.output_md).write_text(markdown, encoding="utf-8")

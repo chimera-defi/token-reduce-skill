@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for extract_paths_meta.py — previously zero coverage."""
+
 from __future__ import annotations
 
 import sys
@@ -71,11 +72,7 @@ class TestExtractPaths:
         assert len(paths) == 3
 
     def test_mixed_input_types(self):
-        raw = (
-            "qmd://idx/seg/alpha/beta.py\n"
-            "/abs/plain.py\n"
-            "rel/rg-style.ts:10:content\n"
-        )
+        raw = "qmd://idx/seg/alpha/beta.py\n/abs/plain.py\nrel/rg-style.ts:10:content\n"
         count, paths = extract_paths(raw)
         assert count == 3
         # qmd splits on "/" maxsplit=3, so parts[3]="seg/alpha/beta.py"

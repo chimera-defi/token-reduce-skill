@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Summarize a running Cost Caliper Control Tower for token-reduce review."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,9 +11,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
 from typing import Any
-
+from urllib.parse import urlencode
 
 DEFAULT_CALIPER_URL = "http://127.0.0.1:49123"
 DEFAULT_AGGREGATE_BUDGET_MS = 4000
@@ -43,12 +43,16 @@ def _fetch_json(url: str, timeout: float) -> dict[str, Any]:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             payload = response.read().decode("utf-8")
     except (OSError, urllib.error.URLError) as exc:
-        raise CaliperUnavailable(f"could not reach Caliper API at {url}: {exc}") from exc
+        raise CaliperUnavailable(
+            f"could not reach Caliper API at {url}: {exc}"
+        ) from exc
 
     try:
         data = json.loads(payload)
     except json.JSONDecodeError as exc:
-        raise CaliperUnavailable(f"Caliper API returned non-JSON payload at {url}") from exc
+        raise CaliperUnavailable(
+            f"Caliper API returned non-JSON payload at {url}"
+        ) from exc
     if not isinstance(data, dict):
         raise CaliperUnavailable(f"Caliper API returned unexpected payload at {url}")
     return data
@@ -102,7 +106,9 @@ def fetch_caliper_payload(
     }
 
 
-def _normalize_named_rows(rows: Any, name_key: str = "name", cost_key: str = "costUsd") -> list[dict[str, Any]]:
+def _normalize_named_rows(
+    rows: Any, name_key: str = "name", cost_key: str = "costUsd"
+) -> list[dict[str, Any]]:
     if isinstance(rows, dict):
         iterable = []
         for key, value in rows.items():
@@ -130,7 +136,9 @@ def _normalize_named_rows(rows: Any, name_key: str = "name", cost_key: str = "co
         normalized.append(
             {
                 "name": name,
-                "cost_usd": round(_float(item.get(cost_key, item.get("cost", item.get("usd")))), 6),
+                "cost_usd": round(
+                    _float(item.get(cost_key, item.get("cost", item.get("usd")))), 6
+                ),
                 "sessions": _int(item.get("sessions", item.get("sessionCount", 0))),
                 "input_tokens": _int(item.get("inputTokens", item.get("input", 0))),
                 "output_tokens": _int(item.get("outputTokens", item.get("output", 0))),
@@ -139,28 +147,52 @@ def _normalize_named_rows(rows: Any, name_key: str = "name", cost_key: str = "co
     return sorted(normalized, key=lambda item: item["cost_usd"], reverse=True)
 
 
-def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[str, Any]:
+def normalize_caliper_summary(
+    payload: dict[str, Any], source_url: str
+) -> dict[str, Any]:
     aggregate = payload.get("aggregate", {})
     health = payload.get("health", {})
-    totals = aggregate.get("totals", {}) if isinstance(aggregate.get("totals"), dict) else {}
-    token_bucket = totals.get("tokens", {}) if isinstance(totals.get("tokens"), dict) else {}
+    totals = (
+        aggregate.get("totals", {}) if isinstance(aggregate.get("totals"), dict) else {}
+    )
+    token_bucket = (
+        totals.get("tokens", {}) if isinstance(totals.get("tokens"), dict) else {}
+    )
 
-    by_repo = _normalize_named_rows(aggregate.get("byRepo", aggregate.get("byFolder")), "repo")
-    by_tier = _normalize_named_rows(aggregate.get("byTier", aggregate.get("byModel")), "tier")
+    by_repo = _normalize_named_rows(
+        aggregate.get("byRepo", aggregate.get("byFolder")), "repo"
+    )
+    by_tier = _normalize_named_rows(
+        aggregate.get("byTier", aggregate.get("byModel")), "tier"
+    )
     by_day = _normalize_named_rows(aggregate.get("byDay"), "day")
 
     cache_write_tokens = _int(
         token_bucket.get(
             "cacheWr",
-            totals.get("cacheCreationInputTokens", totals.get("cacheWriteTokens", totals.get("cache_write_tokens", 0))),
+            totals.get(
+                "cacheCreationInputTokens",
+                totals.get("cacheWriteTokens", totals.get("cache_write_tokens", 0)),
+            ),
         )
     )
     cache_read_tokens = _int(
-        token_bucket.get("cacheRd", totals.get("cacheReadInputTokens", totals.get("cacheReadTokens", 0)))
+        token_bucket.get(
+            "cacheRd",
+            totals.get("cacheReadInputTokens", totals.get("cacheReadTokens", 0)),
+        )
     )
-    input_tokens = _int(token_bucket.get("in", totals.get("inputTokens", totals.get("input_tokens", 0))))
-    output_tokens = _int(token_bucket.get("out", totals.get("outputTokens", totals.get("output_tokens", 0))))
-    token_total = max(1, input_tokens + output_tokens + cache_write_tokens + cache_read_tokens)
+    input_tokens = _int(
+        token_bucket.get("in", totals.get("inputTokens", totals.get("input_tokens", 0)))
+    )
+    output_tokens = _int(
+        token_bucket.get(
+            "out", totals.get("outputTokens", totals.get("output_tokens", 0))
+        )
+    )
+    token_total = max(
+        1, input_tokens + output_tokens + cache_write_tokens + cache_read_tokens
+    )
 
     return {
         "source": "cost-caliper",
@@ -169,21 +201,41 @@ def normalize_caliper_summary(payload: dict[str, Any], source_url: str) -> dict[
         "api_health": {
             "ok": bool(health.get("ok", health.get("status") == "ok")),
             "version": str(health.get("version", health.get("lensVersion", "unknown"))),
-            "workflow_count": _int(health.get("workflowCount", health.get("workflows", 0))),
-            "cassette_count": _int(health.get("cassetteCount", health.get("cassettes", 0))),
+            "workflow_count": _int(
+                health.get("workflowCount", health.get("workflows", 0))
+            ),
+            "cassette_count": _int(
+                health.get("cassetteCount", health.get("cassettes", 0))
+            ),
         },
         "aggregate": {
-            "complete": bool(aggregate.get("_token_reduce_complete", aggregate.get("done", True))),
+            "complete": bool(
+                aggregate.get("_token_reduce_complete", aggregate.get("done", True))
+            ),
             "polls": _int(aggregate.get("_token_reduce_polls", 1), 1),
-            "progress": aggregate.get("progress") if isinstance(aggregate.get("progress"), dict) else {},
+            "progress": aggregate.get("progress")
+            if isinstance(aggregate.get("progress"), dict)
+            else {},
         },
         "summary": {
             "estimated_cost_usd": round(
-                _float(totals.get("costUsd", totals.get("cost_usd", aggregate.get("totalCost")))),
+                _float(
+                    totals.get(
+                        "costUsd", totals.get("cost_usd", aggregate.get("totalCost"))
+                    )
+                ),
                 6,
             ),
-            "sessions": _int(totals.get("sessions", totals.get("sessionCount", aggregate.get("sessions", 0)))),
-            "folders": _int(totals.get("folders", totals.get("repoCount", aggregate.get("folders", 0)))),
+            "sessions": _int(
+                totals.get(
+                    "sessions", totals.get("sessionCount", aggregate.get("sessions", 0))
+                )
+            ),
+            "folders": _int(
+                totals.get(
+                    "folders", totals.get("repoCount", aggregate.get("folders", 0))
+                )
+            ),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cache_write_tokens": cache_write_tokens,
@@ -214,7 +266,11 @@ def fetch_summary(
 def build_spend_findings(summary: dict[str, Any]) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     data = summary.get("summary", {})
-    aggregate = summary.get("aggregate", {}) if isinstance(summary.get("aggregate"), dict) else {}
+    aggregate = (
+        summary.get("aggregate", {})
+        if isinstance(summary.get("aggregate"), dict)
+        else {}
+    )
     estimated_cost = _float(data.get("estimated_cost_usd"))
     sessions = _int(data.get("sessions"))
     cache_write_pct = _float(data.get("cache_write_token_pct"))
@@ -248,11 +304,15 @@ def build_spend_findings(summary: dict[str, Any]) -> list[dict[str, str]]:
             )
 
     expensive_tiers = [
-        item for item in by_tier
-        if item.get("name", "").lower() in {"opus", "fable"} and _float(item.get("cost_usd")) > 0
+        item
+        for item in by_tier
+        if item.get("name", "").lower() in {"opus", "fable"}
+        and _float(item.get("cost_usd")) > 0
     ]
     if expensive_tiers:
-        tier_text = ", ".join(f"{item['name']}=${item['cost_usd']:.2f}" for item in expensive_tiers[:3])
+        tier_text = ", ".join(
+            f"{item['name']}=${item['cost_usd']:.2f}" for item in expensive_tiers[:3]
+        )
         findings.append(
             {
                 "priority": "medium",
@@ -308,14 +368,18 @@ def render_markdown(summary: dict[str, Any]) -> str:
     findings = build_spend_findings(summary)
     if findings:
         for finding in findings:
-            lines.append(f"- **{finding['priority'].upper()} · {finding['area']}**: {finding['finding']}")
+            lines.append(
+                f"- **{finding['priority'].upper()} · {finding['area']}**: {finding['finding']}"
+            )
             lines.append(f"  Recommendation: {finding['recommendation']}")
     else:
         lines.append("- No Caliper spend findings crossed the default thresholds.")
 
     lines.extend(["", "## Top Repos", ""])
     for item in summary.get("by_repo", [])[:5]:
-        lines.append(f"- `{item['name']}`: ${_float(item.get('cost_usd')):.4f} across `{_int(item.get('sessions'))}` sessions")
+        lines.append(
+            f"- `{item['name']}`: ${_float(item.get('cost_usd')):.4f} across `{_int(item.get('sessions'))}` sessions"
+        )
 
     lines.extend(["", "## Model Tiers", ""])
     for item in summary.get("by_tier", [])[:5]:
@@ -326,7 +390,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default=os.environ.get("CALIPER_URL", DEFAULT_CALIPER_URL))
+    parser.add_argument(
+        "--url", default=os.environ.get("CALIPER_URL", DEFAULT_CALIPER_URL)
+    )
     parser.add_argument("--timeout", type=float, default=2.0)
     parser.add_argument("--budget-ms", type=int, default=DEFAULT_AGGREGATE_BUDGET_MS)
     parser.add_argument("--max-polls", type=int, default=DEFAULT_AGGREGATE_MAX_POLLS)

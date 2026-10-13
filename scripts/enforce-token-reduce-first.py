@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """PreToolUse hook: require token-reduce helper before exploratory Grep/Glob/Read/Bash."""
+
 from __future__ import annotations
 
 import json
@@ -25,10 +26,10 @@ try:
         broad_attempt_count,
         consume_block,
         discovery_hint,
+        recent_decision,
         record_block,
         record_broad_attempt,
         record_decision,
-        recent_decision,
         repo_root,
         session_key,
     )
@@ -176,7 +177,9 @@ def _decision_fingerprint_source(data: dict[str, object]) -> str:
     return f"{tool_name}:{tool_input_json}"
 
 
-def _record_decision_for(data: dict[str, object], *, blocked: bool, stdout: str) -> None:
+def _record_decision_for(
+    data: dict[str, object], *, blocked: bool, stdout: str
+) -> None:
     """R5: cache this invocation's decision under (session, tool_use_id) so
     a second hook-wiring layer for the SAME tool call can replay it
     verbatim (main() checks this at the very top, before any other side
@@ -210,13 +213,21 @@ def _advisory_discovery_mode() -> bool:
     The host config is intentionally consulted at tool-call time so operators can
     change this without respawning long-running Claude sessions.
     """
-    if os.environ.get("TOKEN_REDUCE_DISCOVERY_MODE", "").strip().lower() in {"warn", "advisory"}:
+    if os.environ.get("TOKEN_REDUCE_DISCOVERY_MODE", "").strip().lower() in {
+        "warn",
+        "advisory",
+    }:
         return True
     try:
         from token_reduce_config import load_config
-        return str(load_config().get("enforcement", "")).strip().lower() in {"advisory", "warn_only"}
+
+        return str(load_config().get("enforcement", "")).strip().lower() in {
+            "advisory",
+            "warn_only",
+        }
     except Exception:
         return False
+
 
 def block(
     reason: str,
@@ -232,15 +243,16 @@ def block(
     # stderr warnings). Normal mode (env unset/anything else) is unchanged.
     policy = str((extra_meta or {}).get("policy", ""))
     hard_guard = policy in {"catastrophic", "symlink_root_guard"}
-    warn_mode = (
-        os.environ.get("TOKEN_REDUCE_ENFORCE_MODE") == "warn"
-        or (_advisory_discovery_mode() and not hard_guard)
+    warn_mode = os.environ.get("TOKEN_REDUCE_ENFORCE_MODE") == "warn" or (
+        _advisory_discovery_mode() and not hard_guard
     )
     # Compute the exact bytes/exit-code up front so both the real emission
     # below AND the R5 decision marker record the SAME actual outcome (a
     # replay must reproduce what really happened, not what the policy
     # nominally wanted before an F9 warn-mode downgrade).
-    stdout_payload = "" if warn_mode else json.dumps({"decision": "block", "reason": reason}) + "\n"
+    stdout_payload = (
+        "" if warn_mode else json.dumps({"decision": "block", "reason": reason}) + "\n"
+    )
     rc = 0 if warn_mode else 2
 
     if data is not None:
@@ -412,7 +424,12 @@ def rg_paths(command: str) -> list[str]:
                 or token.startswith("-g")
                 or token.startswith("-e")
             ):
-                if token.startswith("--regexp=") or token.startswith("--file=") or token.startswith("-e") or token.startswith("-f"):
+                if (
+                    token.startswith("--regexp=")
+                    or token.startswith("--file=")
+                    or token.startswith("-e")
+                    or token.startswith("-f")
+                ):
                     saw_pattern = True
                 i += 1
                 continue
@@ -434,7 +451,9 @@ def is_exploratory_rg(command: str, repo: Path) -> bool:
         return False
     if re.search(r"(?:^|\s)(?:-g|--glob)(?:\s|=)", first):
         return False
-    if re.search(r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", first):
+    if re.search(
+        r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", first
+    ):
         return True
 
     paths = rg_paths(first)
@@ -511,7 +530,9 @@ def uv_run_needs_scan(command: str) -> bool:
     return matches_any_broad_pattern(inner)
 
 
-def classify_bash_command(lines: list[str], repo: Path) -> tuple[bool, bool, bool, bool]:
+def classify_bash_command(
+    lines: list[str], repo: Path
+) -> tuple[bool, bool, bool, bool]:
     """Quote-aware broad/catastrophic classification for a Bash command's
     lines. Returns (catastrophic, broad_hit, rg_hit, coverage_hit).
     """
@@ -672,7 +693,9 @@ def handle_broad_bash(
         command=first_line,
         helper_hint=discovery_hint(),
     )
-    return block(msg, data, extra_meta={"policy": "repeat_broad", "attempt_count": count + 1})
+    return block(
+        msg, data, extra_meta={"policy": "repeat_broad", "attempt_count": count + 1}
+    )
 
 
 def _record_hook_error(stage: str, exc: Exception, data: object = None) -> None:
@@ -764,23 +787,33 @@ def main() -> int:
                 is_broad_attempt = False
                 if tool_name == "Bash" and isinstance(tool_input, dict):
                     cmd = str(tool_input.get("command", ""))
-                    lines = [line_.rstrip("\\").strip() for line_ in cmd.split("\n") if line_.strip() and line_.strip() != "\\"]
+                    lines = [
+                        line_.rstrip("\\").strip()
+                        for line_ in cmd.split("\n")
+                        if line_.strip() and line_.strip() != "\\"
+                    ]
                     # R7(c): quote-aware surfaces, not raw lines -- this is
                     # telemetry classification only (never a gate decision),
                     # but it should apply the same F3 quote-handling as
                     # everywhere else so it isn't fooled by inert quoted
                     # text the same way the earlier raw-line version was.
-                    surfaces = [s for line_ in lines for s in command_scan_surfaces(line_)]
-                    is_broad_attempt = any(matches_broad_bash(s) for s in surfaces) or any(
-                        is_exploratory_rg(s, repo) for s in surfaces
-                    )
+                    surfaces = [
+                        s for line_ in lines for s in command_scan_surfaces(line_)
+                    ]
+                    is_broad_attempt = any(
+                        matches_broad_bash(s) for s in surfaces
+                    ) or any(is_exploratory_rg(s, repo) for s in surfaces)
                 if tool_name == "Glob" and isinstance(tool_input, dict):
                     pattern = str(tool_input.get("pattern", ""))
-                    is_broad_attempt = is_broad_glob(pattern) or is_exploratory_glob(pattern)
+                    is_broad_attempt = is_broad_glob(pattern) or is_exploratory_glob(
+                        pattern
+                    )
                 if tool_name == "Grep" and isinstance(tool_input, dict):
                     is_broad_attempt = is_exploratory_grep(tool_input, repo)
 
-                event_type = "post_block_escape" if is_broad_attempt else "post_block_abandon"
+                event_type = (
+                    "post_block_escape" if is_broad_attempt else "post_block_abandon"
+                )
                 record_event(
                     repo,
                     event=event_type,
@@ -808,19 +841,29 @@ def main() -> int:
 
             guard_msg = find_symlink_guard(command)
             if guard_msg:
-                return block(guard_msg, data, extra_meta={"policy": "symlink_root_guard"})
+                return block(
+                    guard_msg, data, extra_meta={"policy": "symlink_root_guard"}
+                )
 
             # Safe orchestrators: may carry broad-looking strings as
             # arguments. N1 fix: python3 -c/-m must fall through to coverage
             # checks; only plain `python3 script.py` is safe.
-            if _PYTHON_MODULE_OR_COMMAND_RE.match(first_line) or uv_run_needs_scan(first_line):
+            if _PYTHON_MODULE_OR_COMMAND_RE.match(first_line) or uv_run_needs_scan(
+                first_line
+            ):
                 pass  # fall through to broad-pattern checks below
             elif _SAFE_TOOL_RE.match(first_line):
                 return 0
             # Check all lines — broad scans may be on continuation lines
-            lines = [line_.rstrip("\\").strip() for line_ in command.split("\n") if line_.strip() and line_.strip() != "\\"]
+            lines = [
+                line_.rstrip("\\").strip()
+                for line_ in command.split("\n")
+                if line_.strip() and line_.strip() != "\\"
+            ]
             lines.extend(
-                inner for inner in (uv_run_inner_command(line) for line in list(lines)) if inner
+                inner
+                for inner in (uv_run_inner_command(line) for line in list(lines))
+                if inner
             )
             return handle_broad_bash(data, repo, lines, first_line)
 

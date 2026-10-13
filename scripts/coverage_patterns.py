@@ -6,11 +6,11 @@ two stay in sync. The previous bug was that one side would gain a pattern
 and the other wouldn't, so a violation either escaped enforcement or
 escaped measurement.
 """
+
 from __future__ import annotations
 
 import re
 import shlex
-
 
 # C1 — unscoped rg ----------------------------------------------------------- #
 
@@ -31,19 +31,38 @@ def is_unscoped_rg(command: str) -> bool:
     if not tokens or tokens[0] != "rg":
         return False
     # --files is its own category; not "unscoped rg pattern"
-    if any(t in {"--files", "--files-with-matches", "--files-without-match"} for t in tokens):
+    if any(
+        t in {"--files", "--files-with-matches", "--files-without-match"}
+        for t in tokens
+    ):
         return False
     # Has glob? then it's scoped
-    if any(t in {"-g", "--glob"} or t.startswith("--glob=") or t.startswith("-g=") for t in tokens):
+    if any(
+        t in {"-g", "--glob"} or t.startswith("--glob=") or t.startswith("-g=")
+        for t in tokens
+    ):
         return False
     # Walk tokens: skip option flags + their values, then expect <pattern> [<path>...]
     positional: list[str] = []
     i = 1
-    SKIP_NEXT = {"-e", "--regexp", "-f", "--file", "-t", "--type", "-T", "--type-not", "-m", "-A", "-B", "-C"}
+    SKIP_NEXT = {
+        "-e",
+        "--regexp",
+        "-f",
+        "--file",
+        "-t",
+        "--type",
+        "-T",
+        "--type-not",
+        "-m",
+        "-A",
+        "-B",
+        "-C",
+    }
     while i < len(tokens):
         t = tokens[i]
         if t == "--":
-            positional.extend(tokens[i + 1:])
+            positional.extend(tokens[i + 1 :])
             break
         if t.startswith("-"):
             if t in SKIP_NEXT:

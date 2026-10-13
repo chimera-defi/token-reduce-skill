@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Benchmark routing profile presets for load vs savings tradeoffs."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,6 @@ import subprocess
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "profile-presets-benchmark.json"
@@ -38,11 +38,20 @@ def main() -> int:
             env["TOKEN_REDUCE_CONFIG_PATH"] = str(config_path)
 
             code, out, err = run(
-                ["uv", "run", "scripts/token-reduce-settings.py", "profile", "apply", profile],
+                [
+                    "uv",
+                    "run",
+                    "scripts/token-reduce-settings.py",
+                    "profile",
+                    "apply",
+                    profile,
+                ],
                 env=env,
             )
             if code != 0:
-                raise SystemExit(f"profile apply failed for {profile}: {(out + err).strip()}")
+                raise SystemExit(
+                    f"profile apply failed for {profile}: {(out + err).strip()}"
+                )
 
             code, out, err = run(
                 [
@@ -57,7 +66,9 @@ def main() -> int:
                 env=env,
             )
             if code != 0:
-                raise SystemExit(f"profile benchmark failed for {profile}: {(out + err).strip()}")
+                raise SystemExit(
+                    f"profile benchmark failed for {profile}: {(out + err).strip()}"
+                )
 
             bench = json.loads(bench_path.read_text(encoding="utf-8"))
             summary = bench.get("summary", {})
@@ -70,8 +81,12 @@ def main() -> int:
                     "adaptive_savings_vs_baseline_pct": float(
                         summary.get("adaptive_savings_vs_baseline_pct", 0.0) or 0.0
                     ),
-                    "adaptive_quality_pass": bool(summary.get("adaptive_quality_pass", False)),
-                    "promote_adaptive_default": bool(verdict.get("promote_adaptive_default", False)),
+                    "adaptive_quality_pass": bool(
+                        summary.get("adaptive_quality_pass", False)
+                    ),
+                    "promote_adaptive_default": bool(
+                        verdict.get("promote_adaptive_default", False)
+                    ),
                 }
             )
 

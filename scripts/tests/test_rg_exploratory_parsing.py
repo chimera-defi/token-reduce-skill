@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -82,7 +81,9 @@ def test_rg_quoted_bare_pattern_against_known_file_not_exploratory() -> None:
     )
     assert not catastrophic
     assert not broad_hit
-    assert rg_hit is False, "quoted bare rg pattern against a known file must not be exploratory"
+    assert rg_hit is False, (
+        "quoted bare rg pattern against a known file must not be exploratory"
+    )
     assert not coverage_hit
 
 

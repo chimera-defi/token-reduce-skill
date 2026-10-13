@@ -11,10 +11,10 @@ Numbers are deliberately coarse — the value is the *direction* (helper
 sessions save tokens, broad-scan sessions spend them) more than the
 exact magnitude.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
-
 
 # Pulled from references/benchmarks/local-benchmark.json (broad_inventory
 # tokens and token_reduce_paths_warm tokens, rounded for stability).
@@ -74,15 +74,17 @@ def aggregate_by_source(items: list[dict]) -> dict[str, dict]:
     Each per-source bucket includes session counts by kind, avg helper
     and broad token spend, and totals for the saved/spent columns.
     """
-    by_source: dict[str, dict] = defaultdict(lambda: {
-        "sessions": 0,
-        "helper_sessions": 0,
-        "broad_sessions": 0,
-        "mixed_sessions": 0,
-        "none_sessions": 0,
-        "total_estimated_tokens_saved": 0,
-        "total_estimated_tokens_spent_on_broad": 0,
-    })
+    by_source: dict[str, dict] = defaultdict(
+        lambda: {
+            "sessions": 0,
+            "helper_sessions": 0,
+            "broad_sessions": 0,
+            "mixed_sessions": 0,
+            "none_sessions": 0,
+            "total_estimated_tokens_saved": 0,
+            "total_estimated_tokens_spent_on_broad": 0,
+        }
+    )
     for item in items:
         cost = estimate_session_cost(item)
         kind = cost["session_kind"]
@@ -91,7 +93,9 @@ def aggregate_by_source(items: list[dict]) -> dict[str, dict]:
         bucket["sessions"] += 1
         bucket[f"{kind}_sessions"] += 1
         bucket["total_estimated_tokens_saved"] += cost["estimated_tokens_saved"]
-        bucket["total_estimated_tokens_spent_on_broad"] += cost["estimated_tokens_spent_on_broad"]
+        bucket["total_estimated_tokens_spent_on_broad"] += cost[
+            "estimated_tokens_spent_on_broad"
+        ]
 
     for bucket in by_source.values():
         helper_n = bucket["helper_sessions"] + bucket["mixed_sessions"]

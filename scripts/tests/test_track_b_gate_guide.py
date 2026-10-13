@@ -7,26 +7,26 @@ Covers:
 - B4 cost-aware telemetry meta fields
 - B5 pre-flight estimate annotation
 """
+
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from command_rewrites import (  # noqa: E402
+from command_rewrites import (
     is_catastrophic,
     suggest_rewrite,
 )
-from token_reduce_state import (  # noqa: E402
+from token_reduce_state import (
     broad_attempt_count,
     record_broad_attempt,
 )
-
 
 # --------------------------------------------------------------------------- #
 # B1 — auto-rewrite suggestions
@@ -43,14 +43,6 @@ def test_suggest_rewrite_find_name_to_rg_glob() -> None:
     assert "rg --files --hidden --no-ignore -g '*.py'" in s
 
 
-
-
-
-
-
-
-
-
 def test_suggest_rewrite_returns_none_when_no_pattern_matches() -> None:
     assert suggest_rewrite("echo hello") is None
     assert suggest_rewrite("git status") is None
@@ -61,7 +53,9 @@ def test_suggest_rewrite_returns_none_when_no_pattern_matches() -> None:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("command", ["ls -R /", "ls -lR /", "rg --files .", "rg --files ./"])
+@pytest.mark.parametrize(
+    "command", ["ls -R /", "ls -lR /", "rg --files .", "rg --files ./"]
+)
 def test_is_catastrophic_ls_and_rg_files_at_root(command: str) -> None:
     assert is_catastrophic(command) is True
 
@@ -71,12 +65,6 @@ def test_is_catastrophic_find_root() -> None:
     assert is_catastrophic("find /usr -type f") is True
 
 
-
-
-
-
-
-
 def test_is_catastrophic_find_deep_scoped_path_not_catastrophic() -> None:
     # A find rooted several levels deep in one specific, named directory
     # (>2 path segments) is scoped, not catastrophic -- regression test for
@@ -84,11 +72,10 @@ def test_is_catastrophic_find_deep_scoped_path_not_catastrophic() -> None:
     # -maxdepth 2` hard-blocked as "catastrophic scan" even though it's a
     # narrow, bounded scan. It still hits the broad-scan warn-once path via
     # BROAD_BASH_PATTERNS, just not the always-block catastrophic path.
-    assert is_catastrophic(
-        "find /home/agents/.claude/skills/token-reduce -maxdepth 2"
-    ) is False
-
-
+    assert (
+        is_catastrophic("find /home/agents/.claude/skills/token-reduce -maxdepth 2")
+        is False
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -96,23 +83,9 @@ def test_is_catastrophic_find_deep_scoped_path_not_catastrophic() -> None:
 # --------------------------------------------------------------------------- #
 
 
-
-
-
-
-
-
-
-
 # --------------------------------------------------------------------------- #
 # B5 — pre-flight token estimate
 # --------------------------------------------------------------------------- #
-
-
-
-
-
-
 
 
 # --------------------------------------------------------------------------- #

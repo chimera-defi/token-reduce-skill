@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Tests for token_reduce_state.py pure helper functions."""
+
 from __future__ import annotations
 
 import os
@@ -11,13 +12,13 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from token_reduce_state import (  # noqa: E402
-    normalize_session_key,
-    session_key,
+from token_reduce_state import (
     broad_attempt_count,
-    record_broad_attempt,
     clear_broad_attempts,
     discovery_hint,
+    normalize_session_key,
+    record_broad_attempt,
+    session_key,
 )
 
 # ---------------------------------------------------------------------------
@@ -29,17 +30,11 @@ def test_normalize_session_key_returns_default_for_none() -> None:
     assert normalize_session_key(None) == "default"
 
 
-
-
 def test_normalize_session_key_replaces_special_chars() -> None:
     result = normalize_session_key("session/abc 123!")
     assert "/" not in result
     assert " " not in result
     assert "!" not in result
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -56,10 +51,6 @@ def test_session_key_falls_back_through_field_priority() -> None:
     data = {"conversationId": "conv-456"}
     result = session_key(data)
     assert result == "conv-456"
-
-
-
-
 
 
 # ---------------------------------------------------------------------------

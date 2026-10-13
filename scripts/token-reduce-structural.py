@@ -4,6 +4,7 @@
 This is an accelerator for exact symbol / impact questions. It does not replace
 the repo-agnostic token-reduce helper workflow.
 """
+
 from __future__ import annotations
 
 import argparse
