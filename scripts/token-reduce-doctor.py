@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run a compact health pass for token-reduce tooling and configuration."""
+
 from __future__ import annotations
 
 import argparse
@@ -35,15 +36,25 @@ def parse_json_output(result: dict[str, Any]) -> dict[str, Any] | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--strict-deps", action="store_true", help="Fail when dependency health is not clean")
+    parser.add_argument(
+        "--strict-deps",
+        action="store_true",
+        help="Fail when dependency health is not clean",
+    )
     args = parser.parse_args()
 
     root = repo_root()
 
     skill_validation = run(["uv", "run", "scripts/validate_skill_package.py"], root)
-    benchmark_validation = run(["uv", "run", "scripts/validate-benchmark-artifacts.py"], root)
-    deps = run(["uv", "run", "scripts/token-reduce-dependency-health.py", "--json"], root)
-    updates = run(["uv", "run", "scripts/token-reduce-update-check.py", "--no-fetch"], root)
+    benchmark_validation = run(
+        ["uv", "run", "scripts/validate-benchmark-artifacts.py"], root
+    )
+    deps = run(
+        ["uv", "run", "scripts/token-reduce-dependency-health.py", "--json"], root
+    )
+    updates = run(
+        ["uv", "run", "scripts/token-reduce-update-check.py", "--no-fetch"], root
+    )
     settings = run(["uv", "run", "scripts/token-reduce-settings.py", "show"], root)
 
     deps_json = parse_json_output(deps) or {}
@@ -56,9 +67,14 @@ def main() -> int:
 
     checks = {
         "skill_package": {"ok": skill_validation["exit_code"] == 0, **skill_validation},
-        "benchmark_artifacts": {"ok": benchmark_validation["exit_code"] == 0, **benchmark_validation},
+        "benchmark_artifacts": {
+            "ok": benchmark_validation["exit_code"] == 0,
+            **benchmark_validation,
+        },
         "dependency_health": {
-            "ok": deps["exit_code"] == 0 and dep_missing == 0 and (dep_outdated == 0 or not args.strict_deps),
+            "ok": deps["exit_code"] == 0
+            and dep_missing == 0
+            and (dep_outdated == 0 or not args.strict_deps),
             **deps,
             "summary": deps_summary,
         },

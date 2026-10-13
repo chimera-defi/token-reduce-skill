@@ -6,6 +6,7 @@ N5: gstack_skill_available param in decide() was never set by main().
 N7: Rationale + headroom commands built in decide() but never printed to stderr.
     Fix: emit rationale as '# token-reduce: ...' and headroom commands after running.
 """
+
 from __future__ import annotations
 
 import sys
@@ -13,10 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from token_reduce_adaptive import decide, BehaviorProfile, Availability, RoutingPolicy
+from token_reduce_adaptive import Availability, BehaviorProfile, RoutingPolicy, decide
 
 
-def _behavior(*, helper_calls: int = 10, repeated: float = 0.1, rapid: float = 0.0) -> BehaviorProfile:
+def _behavior(
+    *, helper_calls: int = 10, repeated: float = 0.1, rapid: float = 0.0
+) -> BehaviorProfile:
     return BehaviorProfile(
         helper_calls=helper_calls,
         repeated_ratio=repeated,
@@ -50,6 +53,7 @@ def _policy(*, enable_headroom: bool = True) -> RoutingPolicy:
 # N5: gstack detection wired in main()
 # ---------------------------------------------------------------------------
 
+
 def test_gstack_available_plus_multi_repo_sets_session_spawn_recommended() -> None:
     """N5: multi-repo query + gstack_available=True → session_spawn_recommended=True."""
     decision = decide(
@@ -82,11 +86,6 @@ def test_gstack_not_available_keeps_session_spawn_false() -> None:
     )
 
 
-
-
 # ---------------------------------------------------------------------------
 # N7: rationale and headroom commands surface to stderr
 # ---------------------------------------------------------------------------
-
-
-

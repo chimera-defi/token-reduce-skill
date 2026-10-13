@@ -4,6 +4,7 @@
 Reads raw helper output from stdin (one path per line), handles qmd:// URLs,
 rg file:line output, and plain paths. Writes compact JSON to stdout.
 """
+
 from __future__ import annotations
 
 import json

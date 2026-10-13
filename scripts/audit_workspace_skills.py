@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Audit token-reduce installation and usage across sibling repositories."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,10 +10,9 @@ import re
 import shutil
 import subprocess
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
 
 TOKEN_REDUCE_DOC_RE = re.compile(r"token-reduce|token-reduce-paths", re.IGNORECASE)
 TOKEN_REDUCE_HELPER_RE = re.compile(
@@ -24,7 +24,15 @@ AXI_RE = re.compile(r"\b(?:axi|gh-axi|chrome-devtools-axi)\b", re.IGNORECASE)
 HEADROOM_RE = re.compile(r"(?:^|[^a-z])headroom(?:[^a-z]|$)", re.IGNORECASE)
 
 DOC_FILES = ("AGENTS.md", "CLAUDE.md", ".cursorrules", "README.md")
-SKILL_NAMES = ("token-reduce", "axi", "caveman", "caveman-cn", "caveman-es", "compress", "headroom")
+SKILL_NAMES = (
+    "token-reduce",
+    "axi",
+    "caveman",
+    "caveman-cn",
+    "caveman-es",
+    "compress",
+    "headroom",
+)
 
 
 @dataclass
@@ -93,7 +101,9 @@ def default_excluded_repo(workspace_root: Path) -> str | None:
     return None
 
 
-def workspace_repos(workspace_root: Path, excluded: set[str] | None = None) -> list[Path]:
+def workspace_repos(
+    workspace_root: Path, excluded: set[str] | None = None
+) -> list[Path]:
     excluded = excluded or set()
     repos: list[Path] = []
     for child in sorted(workspace_root.iterdir()):
@@ -145,7 +155,9 @@ def doc_signals(repo: Path) -> tuple[list[str], bool, bool, bool]:
 
 def local_skill_state(repo: Path) -> bool:
     skill_dir = repo / "skills" / "token-reduce"
-    return (skill_dir / "SKILL.md").exists() and (skill_dir / "scripts" / "token-reduce-paths.sh").exists()
+    return (skill_dir / "SKILL.md").exists() and (
+        skill_dir / "scripts" / "token-reduce-paths.sh"
+    ).exists()
 
 
 def package_version(path: Path) -> str:
@@ -264,13 +276,17 @@ def parse_claude_file_for_helper(path: Path) -> bool:
     return False
 
 
-def claude_usage_by_repo(workspace_root: Path, repos: list[Path], cutoff: datetime) -> dict[str, dict[str, int]]:
+def claude_usage_by_repo(
+    workspace_root: Path, repos: list[Path], cutoff: datetime
+) -> dict[str, dict[str, int]]:
     base = Path.home() / ".claude" / "projects"
     if not base.exists():
         return {}
 
     cutoff_ts = cutoff.timestamp()
-    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"sessions": 0, "helper_sessions": 0})
+    stats: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"sessions": 0, "helper_sessions": 0}
+    )
 
     for repo in repos:
         slug = "-" + repo.resolve().as_posix().lstrip("/").replace("/", "-")
@@ -295,7 +311,9 @@ def claude_usage_by_repo(workspace_root: Path, repos: list[Path], cutoff: dateti
     return stats
 
 
-def parse_codex_session_usage(path: Path, workspace_root: Path) -> tuple[str | None, bool]:
+def parse_codex_session_usage(
+    path: Path, workspace_root: Path
+) -> tuple[str | None, bool]:
     try:
         lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
     except OSError:
@@ -315,7 +333,10 @@ def parse_codex_session_usage(path: Path, workspace_root: Path) -> tuple[str | N
             if isinstance(cwd, str):
                 repo_name = repo_from_cwd(cwd, workspace_root)
 
-        if payload.get("type") != "function_call" or payload.get("name") != "exec_command":
+        if (
+            payload.get("type") != "function_call"
+            or payload.get("name") != "exec_command"
+        ):
             continue
         arguments_raw = payload.get("arguments", "{}")
         try:
@@ -329,13 +350,17 @@ def parse_codex_session_usage(path: Path, workspace_root: Path) -> tuple[str | N
     return repo_name, helper_used
 
 
-def codex_usage_by_repo(workspace_root: Path, cutoff: datetime) -> dict[str, dict[str, int]]:
+def codex_usage_by_repo(
+    workspace_root: Path, cutoff: datetime
+) -> dict[str, dict[str, int]]:
     root = Path.home() / ".codex" / "sessions"
     if not root.exists():
         return {}
 
     cutoff_ts = cutoff.timestamp()
-    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"sessions": 0, "helper_sessions": 0})
+    stats: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"sessions": 0, "helper_sessions": 0}
+    )
     for session_file in sorted(root.rglob("*.jsonl")):
         try:
             if session_file.stat().st_mtime < cutoff_ts:
@@ -351,8 +376,12 @@ def codex_usage_by_repo(workspace_root: Path, cutoff: datetime) -> dict[str, dic
     return stats
 
 
-def merge_usage_stats(*payloads: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
-    merged: dict[str, dict[str, int]] = defaultdict(lambda: {"sessions": 0, "helper_sessions": 0})
+def merge_usage_stats(
+    *payloads: dict[str, dict[str, int]],
+) -> dict[str, dict[str, int]]:
+    merged: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"sessions": 0, "helper_sessions": 0}
+    )
     for payload in payloads:
         for repo, values in payload.items():
             merged[repo]["sessions"] += int(values.get("sessions", 0))
@@ -427,7 +456,9 @@ def build_rows(
         elif telemetry_helper > 0:
             usage_status = "telemetry_only"
         else:
-            usage_status = "no_recent_sessions" if session_count == 0 else "no_helper_usage"
+            usage_status = (
+                "no_recent_sessions" if session_count == 0 else "no_helper_usage"
+            )
         skill_meta = skill_install_details(
             repo,
             expected_root=expected_root,
@@ -439,7 +470,9 @@ def build_rows(
         install_and_docs = installed and docs_ok
         version_match = bool(skill_meta["version_match"])
         commit_match = bool(skill_meta["commit_match"])
-        fully_compliant = install_and_docs and helper_used_recently and version_match and commit_match
+        fully_compliant = (
+            install_and_docs and helper_used_recently and version_match and commit_match
+        )
         rows.append(
             RepoSignals(
                 repo=repo.name,
@@ -479,20 +512,34 @@ def summarize(rows: list[RepoSignals], extra: dict[str, object]) -> dict:
     sessions = sum(r.session_count for r in rows)
     repos_with_sessions = sum(int(r.session_count > 0) for r in rows)
     helper_used_repos = sum(int(r.helper_used_recently) for r in rows)
-    active_repos_with_helper = sum(int(r.helper_used_recently and r.session_count > 0) for r in rows)
-    telemetry_only_repos = sum(int(r.telemetry_helper_calls > 0 and r.helper_sessions == 0) for r in rows)
-    version_drift = sum(int(r.local_skill_installed and not r.skill_version_match) for r in rows)
-    commit_drift = sum(int(r.local_skill_installed and not r.skill_commit_match) for r in rows)
+    active_repos_with_helper = sum(
+        int(r.helper_used_recently and r.session_count > 0) for r in rows
+    )
+    telemetry_only_repos = sum(
+        int(r.telemetry_helper_calls > 0 and r.helper_sessions == 0) for r in rows
+    )
+    version_drift = sum(
+        int(r.local_skill_installed and not r.skill_version_match) for r in rows
+    )
+    commit_drift = sum(
+        int(r.local_skill_installed and not r.skill_commit_match) for r in rows
+    )
     symlink_expected = sum(
-        int(r.skill_install_mode == "symlink" and r.skill_source_path == str(extra.get("expected_skill_root", "")))
+        int(
+            r.skill_install_mode == "symlink"
+            and r.skill_source_path == str(extra.get("expected_skill_root", ""))
+        )
         for r in rows
     )
     fully_compliant = sum(int(r.fully_compliant) for r in rows)
+
     def pct(n: float) -> float:
         return round((n * 100.0 / total), 1) if total else 0.0
 
     def pct_active(n: float) -> float:
-        return round((n * 100.0 / repos_with_sessions), 1) if repos_with_sessions else 0.0
+        return (
+            round((n * 100.0 / repos_with_sessions), 1) if repos_with_sessions else 0.0
+        )
 
     return {
         "repo_count": total,
@@ -525,7 +572,9 @@ def summarize(rows: list[RepoSignals], extra: dict[str, object]) -> dict:
 
 
 def build_payload(workspace_root: Path, days: int, include_source_repo: bool) -> dict:
-    rows, extra = build_rows(workspace_root, days, include_source_repo=include_source_repo)
+    rows, extra = build_rows(
+        workspace_root, days, include_source_repo=include_source_repo
+    )
     return {
         "measured_at": datetime.now(timezone.utc).isoformat(),
         "workspace_root": str(workspace_root),
@@ -540,11 +589,25 @@ def build_payload(workspace_root: Path, days: int, include_source_repo: bool) ->
             "commit": extra.get("expected_skill_commit", ""),
         },
         "gaps": {
-            "missing_local_skill": [r.repo for r in rows if not r.local_skill_installed],
+            "missing_local_skill": [
+                r.repo for r in rows if not r.local_skill_installed
+            ],
             "missing_doc_guidance": [r.repo for r in rows if not r.token_reduce_docs],
-            "active_without_helper_usage": [r.repo for r in rows if r.session_count > 0 and not r.helper_used_recently],
-            "skill_version_drift": [r.repo for r in rows if r.local_skill_installed and not r.skill_version_match],
-            "skill_commit_drift": [r.repo for r in rows if r.local_skill_installed and not r.skill_commit_match],
+            "active_without_helper_usage": [
+                r.repo
+                for r in rows
+                if r.session_count > 0 and not r.helper_used_recently
+            ],
+            "skill_version_drift": [
+                r.repo
+                for r in rows
+                if r.local_skill_installed and not r.skill_version_match
+            ],
+            "skill_commit_drift": [
+                r.repo
+                for r in rows
+                if r.local_skill_installed and not r.skill_commit_match
+            ],
             "fully_compliant": [r.repo for r in rows if r.fully_compliant],
         },
         "repos": [asdict(r) for r in rows],
@@ -555,7 +618,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--workspace-root",
-        default=os.environ.get("TOKEN_REDUCE_WORKSPACE_ROOT", "/root/.openclaw/workspace/dev"),
+        default=os.environ.get(
+            "TOKEN_REDUCE_WORKSPACE_ROOT", "/root/.openclaw/workspace/dev"
+        ),
     )
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--include-source-repo", action="store_true")

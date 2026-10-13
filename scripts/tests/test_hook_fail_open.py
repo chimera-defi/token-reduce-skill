@@ -15,6 +15,7 @@ These tests exercise the *actual* command strings configured in
 bug lived in the shell/spawn layer, not in the scripts' internal logic (which
 already had try/except fail-open guards around runtime errors).
 """
+
 from __future__ import annotations
 
 import json
@@ -91,8 +92,12 @@ def test_enforce_hook_fails_open_when_script_is_unreachable(scratch_repo: Path) 
     fake_project = scratch_repo / "fake-project"
     (fake_project / "scripts").mkdir(parents=True)
 
-    payload = json.dumps({"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}})
-    result = _run_shell(command, cwd=scratch_repo, project_dir=fake_project, stdin=payload)
+    payload = json.dumps(
+        {"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}}
+    )
+    result = _run_shell(
+        command, cwd=scratch_repo, project_dir=fake_project, stdin=payload
+    )
 
     assert result.returncode == 0, (
         f"enforce hook must fail open (not block) when its script is unreachable, "
@@ -113,8 +118,12 @@ def test_enforce_hook_fails_open_when_script_crashes(scratch_repo: Path) -> None
         "raise RuntimeError('deliberately broken for the fail-open regression test')\n"
     )
 
-    payload = json.dumps({"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}})
-    result = _run_shell(command, cwd=scratch_repo, project_dir=fake_project, stdin=payload)
+    payload = json.dumps(
+        {"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}}
+    )
+    result = _run_shell(
+        command, cwd=scratch_repo, project_dir=fake_project, stdin=payload
+    )
 
     assert result.returncode == 0, (
         f"enforce hook must fail open when the script crashes, "
@@ -131,7 +140,9 @@ def test_enforce_hook_fails_open_on_cwd_drift_alone(scratch_repo: Path) -> None:
     fail open rather than block.
     """
     command = _hook_command("PreToolUse", "Bash", "enforce-token-reduce-first.py")
-    payload = json.dumps({"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}})
+    payload = json.dumps(
+        {"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}}
+    )
 
     result = _run_shell(command, cwd=scratch_repo, project_dir=None, stdin=payload)
 
@@ -142,7 +153,9 @@ def test_enforce_hook_fails_open_on_cwd_drift_alone(scratch_repo: Path) -> None:
     assert "decision" not in result.stdout
 
 
-def test_enforce_hook_still_blocks_a_genuine_catastrophic_command(tmp_path: Path) -> None:
+def test_enforce_hook_still_blocks_a_genuine_catastrophic_command(
+    tmp_path: Path,
+) -> None:
     """Control case: with a real, reachable repo, an actual block must still fire.
 
     This is the guard against overcorrecting -- proves the fail-open fix didn't
@@ -153,11 +166,23 @@ def test_enforce_hook_still_blocks_a_genuine_catastrophic_command(tmp_path: Path
     # Real checkout of the repo's scripts dir, anchored via CLAUDE_PROJECT_DIR,
     # exercised from an unrelated cwd (also proves path-anchoring fixes cwd drift
     # for the *working* case, not just the failure case).
-    payload = json.dumps({"session_id": "s-catastrophic", "tool_name": "Bash", "tool_input": {"command": "find /etc/passwd"}})
+    payload = json.dumps(
+        {
+            "session_id": "s-catastrophic",
+            "tool_name": "Bash",
+            "tool_input": {"command": "find /etc/passwd"},
+        }
+    )
 
     state_root = tmp_path / "state-root"
     state_root.mkdir()
-    result = _run_shell(command, cwd=tmp_path, project_dir=REPO_ROOT, stdin=payload, state_root=state_root)
+    result = _run_shell(
+        command,
+        cwd=tmp_path,
+        project_dir=REPO_ROOT,
+        stdin=payload,
+        state_root=state_root,
+    )
 
     assert result.returncode == 2, (
         f"genuine catastrophic command must still block, "
@@ -274,5 +299,3 @@ def test_enforce_script_exits_zero_when_runtime_helper_throws(tmp_path: Path) ->
         f"got returncode={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
     )
     assert "decision" not in result.stdout
-
-

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run a consistent checkpoint suite and write auditable artifacts."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +9,6 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-
 
 CHECKPOINT_COMMANDS: list[tuple[str, list[str]]] = [
     ("release_gate", ["./scripts/token-reduce-manage.sh", "release-gate"]),
@@ -20,7 +20,10 @@ CHECKPOINT_COMMANDS: list[tuple[str, list[str]]] = [
     ("review_global", ["./scripts/token-reduce-manage.sh", "review-global"]),
     ("sync_benchmarks", ["./scripts/token-reduce-manage.sh", "sync-benchmarks"]),
     ("workspace_audit", ["./scripts/token-reduce-manage.sh", "workspace-audit"]),
-    ("telemetry_sync_dry_run", ["./scripts/token-reduce-manage.sh", "telemetry-sync", "--dry-run"]),
+    (
+        "telemetry_sync_dry_run",
+        ["./scripts/token-reduce-manage.sh", "telemetry-sync", "--dry-run"],
+    ),
 ]
 
 
@@ -51,7 +54,9 @@ def run_step(name: str, command: list[str], cwd: Path) -> dict:
     except subprocess.TimeoutExpired as exc:
         exit_code = -1
         stdout = exc.stdout or ""
-        stderr = ((exc.stderr or "") + f"\nstep timed out after {STEP_TIMEOUT_SECONDS}s").strip()
+        stderr = (
+            (exc.stderr or "") + f"\nstep timed out after {STEP_TIMEOUT_SECONDS}s"
+        ).strip()
     except (FileNotFoundError, OSError) as exc:
         exit_code = 127
         stdout = ""
@@ -128,7 +133,9 @@ def main() -> int:
     json_path = output_dir / f"checkpoint-{stamp}.json"
     md_path = output_dir / f"checkpoint-{stamp}.md"
 
-    steps = [run_step(name, command, repo_root) for name, command in CHECKPOINT_COMMANDS]
+    steps = [
+        run_step(name, command, repo_root) for name, command in CHECKPOINT_COMMANDS
+    ]
     overall_pass = all(step["exit_code"] == 0 for step in steps)
 
     report = {

@@ -16,6 +16,7 @@ an unattributed local edit. These tests pin the two things that matter:
 Skipped automatically where ``node`` is unavailable so the Python suite stays
 runnable without a JS toolchain.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,7 +37,7 @@ pytestmark = pytest.mark.skipif(
 
 def _frame(obj: dict) -> bytes:
     body = json.dumps(obj).encode("utf-8")
-    return f"Content-Length: {len(body)}\r\n\r\n".encode("utf-8") + body
+    return f"Content-Length: {len(body)}\r\n\r\n".encode() + body
 
 
 def _parse_frames(raw: bytes) -> list[dict]:
@@ -50,7 +51,7 @@ def _parse_frames(raw: bytes) -> list[dict]:
         idx = header.lower().find(marker.lower())
         if idx == -1:
             break
-        length = int(header[idx + len(marker):].split()[0])
+        length = int(header[idx + len(marker) :].split()[0])
         start = sep + 4
         end = start + length
         if len(raw) < end:
@@ -63,8 +64,14 @@ def _parse_frames(raw: bytes) -> list[dict]:
 def _handshake() -> list[dict]:
     stdin = b"".join(
         (
-            _frame({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                    "params": {"protocolVersion": "2024-11-05", "capabilities": {}}}),
+            _frame(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {"protocolVersion": "2024-11-05", "capabilities": {}},
+                }
+            ),
             _frame({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
     )

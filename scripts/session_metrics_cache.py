@@ -36,6 +36,7 @@ write, so a run that gets killed partway through still leaves the files it
 did finish processing cached for the next attempt, instead of losing all
 progress and starting cold again.
 """
+
 from __future__ import annotations
 
 import json

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Turn token-reduce metrics into prioritized recommendations."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,6 +11,8 @@ from caliper_summary import (
     CaliperUnavailable,
     build_spend_findings,
     fetch_summary,
+)
+from caliper_summary import (
     render_markdown as render_caliper_markdown,
 )
 from cost_playbook import (
@@ -53,32 +56,54 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     session_count = int(report.get("session_count", 0))
     compliance_all = float(report["compliance"]["discovery_compliance_pct"])
-    compliance_observed = float(report["compliance"].get("discovery_compliance_pct_observed", compliance_all))
+    compliance_observed = float(
+        report["compliance"].get("discovery_compliance_pct_observed", compliance_all)
+    )
     helper_all = float(report["routing"]["helper_first_or_helper_any_pct"])
-    helper_observed = float(report["adoption"].get("helper_sessions_pct_observed_discovery", helper_all))
-    observed_discovery_sessions = int(report["compliance"].get("sessions_with_first_discovery_observed", 0))
-    compliance = compliance_observed if observed_discovery_sessions > 0 else compliance_all
+    helper_observed = float(
+        report["adoption"].get("helper_sessions_pct_observed_discovery", helper_all)
+    )
+    observed_discovery_sessions = int(
+        report["compliance"].get("sessions_with_first_discovery_observed", 0)
+    )
+    compliance = (
+        compliance_observed if observed_discovery_sessions > 0 else compliance_all
+    )
     helper = helper_observed if observed_discovery_sessions > 0 else helper_all
     broad = int(report["compliance"]["sessions_with_broad_scan_violation"])
-    mentions_without_helper_all = int(report["adoption"].get("mention_without_helper_sessions", 0))
+    mentions_without_helper_all = int(
+        report["adoption"].get("mention_without_helper_sessions", 0)
+    )
     mentions_without_helper_observed = int(
-        report["adoption"].get("mention_without_helper_sessions_observed", mentions_without_helper_all)
+        report["adoption"].get(
+            "mention_without_helper_sessions_observed", mentions_without_helper_all
+        )
     )
     mentions_without_helper = (
-        mentions_without_helper_observed if observed_discovery_sessions > 0 else mentions_without_helper_all
+        mentions_without_helper_observed
+        if observed_discovery_sessions > 0
+        else mentions_without_helper_all
     )
     caveman_mentions = int(report["adoption"].get("caveman_mentions", 0))
-    caveman_command_sessions = int(report["adoption"].get("caveman_command_sessions", 0))
+    caveman_command_sessions = int(
+        report["adoption"].get("caveman_command_sessions", 0)
+    )
     caveman_command_pct = float(report["adoption"].get("caveman_command_pct", 0.0))
     headroom_mentions = int(report["adoption"].get("headroom_mentions", 0))
-    headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0))
+    headroom_command_sessions = int(
+        report["adoption"].get("headroom_command_sessions", 0)
+    )
     headroom_command_pct = float(report["adoption"].get("headroom_command_pct", 0.0))
     axi_tool_pct = float(report["adoption"].get("axi_tool_sessions_pct", 0.0))
     telemetry_events = int(report["telemetry"]["event_count"])
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
-    headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
+    headroom_recommended_events = int(
+        companion_recommendations.get("headroom_recommended_events", 0) or 0
+    )
     telemetry_windows = report.get("telemetry_windows", {})
-    window_1d = telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    window_1d = (
+        telemetry_windows.get("1d", {}) if isinstance(telemetry_windows, dict) else {}
+    )
     efficiency = report["telemetry"].get("efficiency", {})
     logging = report["telemetry"].get("logging", {})
     helper_error_rate = float(efficiency.get("helper_error_rate_pct", 0.0))
@@ -92,11 +117,15 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     latency_coverage_pct = float(logging.get("helper_latency_coverage_pct", 0.0))
     exit_code_coverage_pct = float(logging.get("helper_exit_code_coverage_pct", 0.0))
     backend_coverage_pct = float(logging.get("helper_backend_coverage_pct", 0.0))
-    status_exit_mismatch_count = int(logging.get("helper_status_exit_mismatch_count", 0))
+    status_exit_mismatch_count = int(
+        logging.get("helper_status_exit_mismatch_count", 0)
+    )
     window_1d_helper_calls = int(window_1d.get("helper_calls", 0) or 0)
     window_1d_latency_p95 = float(window_1d.get("helper_latency_p95_ms", 0.0) or 0.0)
     window_1d_logging_score = float(window_1d.get("logging_quality_score", 0.0) or 0.0)
-    recent_runtime_latency_healthy = window_1d_helper_calls >= 1 and 0.0 < window_1d_latency_p95 <= 2000.0
+    recent_runtime_latency_healthy = (
+        window_1d_helper_calls >= 1 and 0.0 < window_1d_latency_p95 <= 2000.0
+    )
 
     codex = report["by_source"].get("codex", {})
     claude = report["by_source"].get("claude", {})
@@ -114,9 +143,15 @@ def build_findings(report: dict) -> list[dict[str, str]]:
     post_block_abandon = int(post_block_events.get("post_block_abandon", 0))
     post_block_total = post_block_compliance + post_block_escape + post_block_abandon
     discovery_outcomes = report["adoption"]
-    discovery_miss_pct = float(discovery_outcomes.get("discovery_outcome_miss_pct", 0.0))
-    discovery_standoff_pct = float(discovery_outcomes.get("discovery_outcome_standoff_pct", 0.0))
-    discovery_direct_hit_pct = float(discovery_outcomes.get("discovery_outcome_direct_hit_pct", 0.0))
+    discovery_miss_pct = float(
+        discovery_outcomes.get("discovery_outcome_miss_pct", 0.0)
+    )
+    discovery_standoff_pct = float(
+        discovery_outcomes.get("discovery_outcome_standoff_pct", 0.0)
+    )
+    discovery_direct_hit_pct = float(
+        discovery_outcomes.get("discovery_outcome_direct_hit_pct", 0.0)
+    )
 
     if session_count == 0:
         findings.append(
@@ -248,7 +283,11 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "Emit backend tags (qmd/rg/token-savior/path-hint) so latency can be traced to the right tier.",
             }
         )
-    if window_1d_helper_calls >= 5 and window_1d_logging_score >= 90.0 and logging_quality_score < 80.0:
+    if (
+        window_1d_helper_calls >= 5
+        and window_1d_logging_score >= 90.0
+        and logging_quality_score < 80.0
+    ):
         findings.append(
             {
                 "priority": "low",
@@ -260,7 +299,10 @@ def build_findings(report: dict) -> list[dict[str, str]]:
                 "recommendation": "Keep collecting runtime sessions; treat current low 14d score as mixed legacy+current instrumentation until the window rolls forward.",
             }
         )
-    if window_1d_helper_calls >= 5 and 0 < window_1d_latency_p95 < helper_latency_p95_ms:
+    if (
+        window_1d_helper_calls >= 5
+        and 0 < window_1d_latency_p95 < helper_latency_p95_ms
+    ):
         findings.append(
             {
                 "priority": "low",
@@ -585,7 +627,9 @@ def build_companion_funnels(report: dict) -> list[dict]:
         _funnel_row(
             "code_review_graph",
             mentions=int(adoption.get("code_review_graph_mentions", 0) or 0),
-            recommended=int(rec_events.get("code_review_graph_recommended_events", 0) or 0),
+            recommended=int(
+                rec_events.get("code_review_graph_recommended_events", 0) or 0
+            ),
             used=int(adoption.get("code_review_graph_command_sessions", 0) or 0),
             sessions_total=sessions_total,
         )
@@ -629,8 +673,12 @@ def render_markdown(
     dependency_health: dict | None = None,
 ) -> str:
     companion_recommendations = report["telemetry"].get("companion_recommendations", {})
-    headroom_recommended_events = int(companion_recommendations.get("headroom_recommended_events", 0) or 0)
-    headroom_command_sessions = int(report["adoption"].get("headroom_command_sessions", 0) or 0)
+    headroom_recommended_events = int(
+        companion_recommendations.get("headroom_recommended_events", 0) or 0
+    )
+    headroom_command_sessions = int(
+        report["adoption"].get("headroom_command_sessions", 0) or 0
+    )
     headroom_conversion_pct = (
         round((headroom_command_sessions * 100.0 / headroom_recommended_events), 1)
         if headroom_recommended_events
@@ -690,7 +738,14 @@ def render_markdown(
         )
     lines.extend(["", "## Discovery Outcomes", ""])
     outcomes = report["adoption"]
-    for outcome in ("direct_hit", "indirect_hit", "miss", "standoff", "bypass", "direct"):
+    for outcome in (
+        "direct_hit",
+        "indirect_hit",
+        "miss",
+        "standoff",
+        "bypass",
+        "direct",
+    ):
         pct_val = outcomes.get(f"discovery_outcome_{outcome}_pct", 0.0)
         lines.append(f"- **{outcome}**: `{pct_val:.1f}%`")
     # Track D4 + F2 — companion funnel and context impact sections appear
@@ -699,11 +754,14 @@ def render_markdown(
     raw_sessions = report.get("raw_session_metrics") or []
     if raw_sessions:
         from cost_ledger import build_context_impact_markdown
+
         lines.extend(["", build_context_impact_markdown(raw_sessions)])
     if caliper_summary:
         lines.extend(["", "## Caliper Spend Telemetry", ""])
         caliper_lines = render_caliper_markdown(caliper_summary).splitlines()
-        lines.extend(line for line in caliper_lines[2:] if line != "# Caliper Spend Summary")
+        lines.extend(
+            line for line in caliper_lines[2:] if line != "# Caliper Spend Summary"
+        )
     scorecard = build_playbook_scorecard(
         report,
         config=load_config(),
@@ -728,10 +786,24 @@ def main() -> int:
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--output-json")
     parser.add_argument("--output-md")
-    parser.add_argument("--with-caliper", action="store_true", help="Include a running Cost Caliper Control Tower API summary")
-    parser.add_argument("--caliper-url", help="Cost Caliper Control Tower base URL; defaults to CALIPER_URL or localhost:49123")
-    parser.add_argument("--caliper-summary-json", help="Reuse a precomputed Caliper summary JSON artifact")
-    parser.add_argument("--check-deps", action="store_true", help="Include optional companion dependency readiness in cost-playbook findings")
+    parser.add_argument(
+        "--with-caliper",
+        action="store_true",
+        help="Include a running Cost Caliper Control Tower API summary",
+    )
+    parser.add_argument(
+        "--caliper-url",
+        help="Cost Caliper Control Tower base URL; defaults to CALIPER_URL or localhost:49123",
+    )
+    parser.add_argument(
+        "--caliper-summary-json",
+        help="Reuse a precomputed Caliper summary JSON artifact",
+    )
+    parser.add_argument(
+        "--check-deps",
+        action="store_true",
+        help="Include optional companion dependency readiness in cost-playbook findings",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -756,7 +828,9 @@ def main() -> int:
                     "recommendation": "Start Caliper with `/caliper` or pass `--caliper-url`/`CALIPER_URL`, then rerun review with `--with-caliper`.",
                 }
             )
-    dependency_health = build_dependency_health(include_conditional=True) if args.check_deps else None
+    dependency_health = (
+        build_dependency_health(include_conditional=True) if args.check_deps else None
+    )
     playbook_scorecard = build_playbook_scorecard(
         report,
         config=load_config(),
@@ -771,18 +845,24 @@ def main() -> int:
         "health_score": health_score(report),
         "summary": {
             "session_count": report["session_count"],
-            "discovery_compliance_pct": report["compliance"]["discovery_compliance_pct"],
+            "discovery_compliance_pct": report["compliance"][
+                "discovery_compliance_pct"
+            ],
             "discovery_compliance_pct_observed": report["compliance"].get(
                 "discovery_compliance_pct_observed",
                 report["compliance"]["discovery_compliance_pct"],
             ),
-            "helper_first_or_helper_any_pct": report["routing"]["helper_first_or_helper_any_pct"],
+            "helper_first_or_helper_any_pct": report["routing"][
+                "helper_first_or_helper_any_pct"
+            ],
             "helper_sessions_pct_observed_discovery": report["adoption"].get(
                 "helper_sessions_pct_observed_discovery",
                 report["routing"]["helper_first_or_helper_any_pct"],
             ),
             "telemetry_event_count": report["telemetry"]["event_count"],
-            "telemetry_excluded_event_count": report["telemetry"].get("excluded_event_count", 0),
+            "telemetry_excluded_event_count": report["telemetry"].get(
+                "excluded_event_count", 0
+            ),
         },
         "findings": findings,
         "caliper": {

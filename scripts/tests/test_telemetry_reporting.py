@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -13,7 +12,9 @@ from measure_token_reduction import compact_console_result
 from token_reduce_telemetry import summarize_events
 
 
-def _helper_event(*, status: str, latency_ms: int, exit_code: int, backend: str = "qmd") -> dict:
+def _helper_event(
+    *, status: str, latency_ms: int, exit_code: int, backend: str = "qmd"
+) -> dict:
     return {
         "timestamp": "2026-04-25T00:00:00+00:00",
         "event": "helper_invocation",
@@ -35,8 +36,12 @@ def _helper_event(*, status: str, latency_ms: int, exit_code: int, backend: str 
 def test_summarize_events_reports_high_logging_coverage() -> None:
     summary = summarize_events(
         [
-            _helper_event(status="ok", latency_ms=120, exit_code=0, backend="qmd_files"),
-            _helper_event(status="ok", latency_ms=180, exit_code=0, backend="qmd_files"),
+            _helper_event(
+                status="ok", latency_ms=120, exit_code=0, backend="qmd_files"
+            ),
+            _helper_event(
+                status="ok", latency_ms=180, exit_code=0, backend="qmd_files"
+            ),
         ]
     )
     logging = summary["logging"]
@@ -49,8 +54,15 @@ def test_summarize_events_reports_high_logging_coverage() -> None:
 def test_summarize_events_detects_status_exit_mismatch() -> None:
     summary = summarize_events(
         [
-            _helper_event(status="ok", latency_ms=120, exit_code=1, backend="qmd_files"),
-            _helper_event(status="error", latency_ms=300, exit_code=2, backend="rg_qmd_error_fallback"),
+            _helper_event(
+                status="ok", latency_ms=120, exit_code=1, backend="qmd_files"
+            ),
+            _helper_event(
+                status="error",
+                latency_ms=300,
+                exit_code=2,
+                backend="rg_qmd_error_fallback",
+            ),
         ]
     )
     logging = summary["logging"]
@@ -90,10 +102,20 @@ def test_realized_outcomes_discount_potential_by_runtime_factors() -> None:
         "potential_savings_pct": 86.6,
     }
 
-    realized = realized_outcomes_summary(token_reduce, benchmark, dependency_overhead={})
-    assert realized["realized_savings_estimate_pct"] < benchmark["potential_savings_pct"]
-    assert realized["realized_savings_conservative_pct"] <= realized["realized_savings_estimate_pct"]
-    assert realized["realized_savings_optimistic_pct"] >= realized["realized_savings_estimate_pct"]
+    realized = realized_outcomes_summary(
+        token_reduce, benchmark, dependency_overhead={}
+    )
+    assert (
+        realized["realized_savings_estimate_pct"] < benchmark["potential_savings_pct"]
+    )
+    assert (
+        realized["realized_savings_conservative_pct"]
+        <= realized["realized_savings_estimate_pct"]
+    )
+    assert (
+        realized["realized_savings_optimistic_pct"]
+        >= realized["realized_savings_estimate_pct"]
+    )
     assert "low_confidence_sample" in realized["honesty"]["flags"]
 
 

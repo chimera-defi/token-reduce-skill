@@ -19,11 +19,12 @@ expensive parse functions, not just wall-clock timing -- that:
    finished processing cached for the next attempt instead of losing all
    progress.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -31,9 +32,8 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-import measure_token_reduction as mtr  # noqa: E402
-from session_metrics_cache import cache_path as smc_cache_path  # noqa: E402
-
+import measure_token_reduction as mtr
+from session_metrics_cache import cache_path as smc_cache_path
 
 CODEX_LINE = json.dumps(
     {
@@ -197,9 +197,13 @@ def test_measure_persists_progress_incrementally_so_a_killed_run_can_resume(
         mtr.measure("global", str(repo_root), cache_flush_every=1)
 
     cache_file = smc_cache_path(repo_root)
-    assert cache_file.exists(), "partial progress must be flushed to disk before the crash"
+    assert cache_file.exists(), (
+        "partial progress must be flushed to disk before the crash"
+    )
     on_disk = json.loads(cache_file.read_text())
-    assert len(on_disk["entries"]) == 2, "only the 2 files that finished before the crash are cached"
+    assert len(on_disk["entries"]) == 2, (
+        "only the 2 files that finished before the crash are cached"
+    )
 
     # Resume: the crashed 3rd file plus the 2 never-attempted files must be
     # reparsed; the 2 that finished before the crash must not be.
