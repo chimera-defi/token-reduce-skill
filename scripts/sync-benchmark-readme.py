@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Sync README benchmark token cells with benchmark artifacts."""
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +32,9 @@ def sync_rows(readme_text: str, artifact_path: Path) -> tuple[str, int]:
             continue
 
         # Sync token count column
-        token_pattern = re.compile(rf"^\| `{re.escape(name)}` \| `\d+` \|", re.MULTILINE)
+        token_pattern = re.compile(
+            rf"^\| `{re.escape(name)}` \| `\d+` \|", re.MULTILINE
+        )
         token_replacement = f"| `{name}` | `{tokens}` |"
         text, count = token_pattern.subn(token_replacement, text, count=1)
         updates += count
@@ -62,15 +65,21 @@ _LLMS_LOCAL_MAP: dict[str, str] = {
 }
 
 
-def sync_llms_txt(llms_text: str, local_artifact: Path, composite_artifact: Path) -> tuple[str, int]:
+def sync_llms_txt(
+    llms_text: str, local_artifact: Path, composite_artifact: Path
+) -> tuple[str, int]:
     """Sync llms.txt benchmark table rows from local-benchmark.json and composite-benchmark.json."""
     updates = 0
     text = llms_text
 
     local_payload = load_json(local_artifact)
-    local_rows = {r["name"]: r for r in local_payload.get("benchmarks", []) if isinstance(r, dict)}
+    local_rows = {
+        r["name"]: r for r in local_payload.get("benchmarks", []) if isinstance(r, dict)
+    }
     # local-benchmark stores savings in top-level dict, not per-row
-    local_savings_map: dict[str, float] = local_payload.get("savings_vs_broad_inventory", {})
+    local_savings_map: dict[str, float] = local_payload.get(
+        "savings_vs_broad_inventory", {}
+    )
 
     for name, label_fragment in _LLMS_LOCAL_MAP.items():
         row = local_rows.get(name)
@@ -102,7 +111,11 @@ def sync_llms_txt(llms_text: str, local_artifact: Path, composite_artifact: Path
     # Sync composite-stack summary line: "Full composite-stack benchmark … `NN.N%` saved, quality-pass."
     composite_payload = load_json(composite_artifact)
     composite_row = next(
-        (r for r in composite_payload.get("benchmarks", []) if isinstance(r, dict) and r.get("name") == "composite_stack"),
+        (
+            r
+            for r in composite_payload.get("benchmarks", [])
+            if isinstance(r, dict) and r.get("name") == "composite_stack"
+        ),
         None,
     )
     if isinstance(composite_row, dict) and composite_row.get("quality_pass"):
@@ -146,7 +159,9 @@ def main() -> int:
     llms_updates = 0
     if llms_path.exists():
         llms = llms_path.read_text(encoding="utf-8")
-        llms_updated, llms_updates = sync_llms_txt(llms, local_artifact, composite_artifact)
+        llms_updated, llms_updates = sync_llms_txt(
+            llms, local_artifact, composite_artifact
+        )
         if llms_updated != llms:
             llms_path.write_text(llms_updated, encoding="utf-8")
 

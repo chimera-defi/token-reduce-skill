@@ -5,6 +5,7 @@ PATH. Kept deliberately small to avoid the 50-150ms import tax of pulling
 in ``token_reduce_adaptive`` from shell helpers; the router still owns
 the canonical implementation in ``brain_hint_line``.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -13,6 +14,7 @@ import sys
 
 def hint_line(query: str) -> str | None:
     from token_reduce_config import layer_enabled
+
     if not layer_enabled("memory"):
         return None
     have_qmd = shutil.which("qmd") is not None and layer_enabled("search_qmd")

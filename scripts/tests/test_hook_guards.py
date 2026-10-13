@@ -14,6 +14,7 @@ That live policy is intentionally stricter than the old script's -- it blocks
 src/**/*.ts that the old script explicitly allowed -- so these tests assert
 the live behavior rather than the retired, more permissive one.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,6 +32,7 @@ if str(SCRIPT_DIR) not in sys.path:
 # Dynamic import to handle hyphenated filenames
 import importlib.util
 
+
 def _load(name: str):
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"),
@@ -39,6 +41,7 @@ def _load(name: str):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
 
 enforce_guard = _load("enforce-token-reduce-first")
 
@@ -50,14 +53,10 @@ enforce_guard = _load("enforce-token-reduce-first")
 # is_exploratory_glob() is a broad catch-all (any of "*?[" present), so it fires
 # on nearly every wildcard pattern -- these cases document that combined policy.
 
+
 class TestIsBroadGlob:
     def test_unscoped_double_star_prefix(self):
         assert enforce_guard.is_broad_glob("**/*.ts") is True
-
-
-
-
-
 
     def test_scoped_double_star_pattern_is_still_broad(self):
         # Unlike the retired enforce-glob-scope.py (which allowed this),
@@ -70,11 +69,6 @@ class TestIsBroadGlob:
         # but is_exploratory_glob still catches it (see below).
         assert enforce_guard.is_broad_glob("scripts/*.py") is False
         assert enforce_guard.is_exploratory_glob("scripts/*.py") is True
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -95,11 +89,19 @@ def _init_git_repo(path: Path) -> None:
     )
 
 
-def _run_glob_hook(pattern: str, repo_root: Path, session_id: str = "sess-glob-test") -> subprocess.CompletedProcess[str]:
+def _run_glob_hook(
+    pattern: str, repo_root: Path, session_id: str = "sess-glob-test"
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
     env["PYTHONPATH"] = str(SCRIPT_DIR) + os.pathsep + env.get("PYTHONPATH", "")
-    payload = json.dumps({"session_id": session_id, "tool_name": "Glob", "tool_input": {"pattern": pattern}})
+    payload = json.dumps(
+        {
+            "session_id": session_id,
+            "tool_name": "Glob",
+            "tool_input": {"pattern": pattern},
+        }
+    )
     return subprocess.run(
         [sys.executable, str(HOOK)],
         input=payload,
@@ -122,7 +124,13 @@ class TestGlobToolBlocking:
         env = os.environ.copy()
         env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
         env["PYTHONPATH"] = str(SCRIPT_DIR) + os.pathsep + env.get("PYTHONPATH", "")
-        payload = json.dumps({"session_id": "s1", "tool_name": "Bash", "tool_input": {"command": "echo hi"}})
+        payload = json.dumps(
+            {
+                "session_id": "s1",
+                "tool_name": "Bash",
+                "tool_input": {"command": "echo hi"},
+            }
+        )
         result = subprocess.run(
             [sys.executable, str(HOOK)],
             input=payload,

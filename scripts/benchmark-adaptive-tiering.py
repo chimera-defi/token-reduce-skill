@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Benchmark adaptive tier routing vs baseline token-reduce paths helper."""
+
 from __future__ import annotations
 
-import json
 import argparse
+import json
 import os
 import subprocess
 import time
@@ -65,7 +66,9 @@ def token_count(text: str) -> int:
     return len(enc.encode(text))
 
 
-def run(command: str, expected: list[str], *, cwd: Path, strategy: str, task: str) -> RunResult:
+def run(
+    command: str, expected: list[str], *, cwd: Path, strategy: str, task: str
+) -> RunResult:
     started = time.perf_counter()
     try:
         proc = subprocess.run(
@@ -126,11 +129,25 @@ def main() -> int:
         query = task["query"]
         expected = task["expected"]
         baseline_cmd = f"./scripts/token-reduce-paths.sh {json.dumps(query)} | head -80"
-        adaptive_cmd = (
-            f"./scripts/token-reduce-adaptive.sh --behavior-days 0 {json.dumps(query)} | head -80"
+        adaptive_cmd = f"./scripts/token-reduce-adaptive.sh --behavior-days 0 {json.dumps(query)} | head -80"
+        results.append(
+            run(
+                baseline_cmd,
+                expected,
+                cwd=ROOT,
+                strategy="baseline_paths",
+                task=task["name"],
+            )
         )
-        results.append(run(baseline_cmd, expected, cwd=ROOT, strategy="baseline_paths", task=task["name"]))
-        results.append(run(adaptive_cmd, expected, cwd=ROOT, strategy="adaptive_tier", task=task["name"]))
+        results.append(
+            run(
+                adaptive_cmd,
+                expected,
+                cwd=ROOT,
+                strategy="adaptive_tier",
+                task=task["name"],
+            )
+        )
 
     baseline_runs = [item for item in results if item.strategy == "baseline_paths"]
     adaptive_runs = [item for item in results if item.strategy == "adaptive_tier"]
@@ -139,7 +156,9 @@ def main() -> int:
     baseline_quality_pass = all(item.quality_pass for item in baseline_runs)
     adaptive_quality_pass = all(item.quality_pass for item in adaptive_runs)
     adaptive_savings_pct = savings(baseline_tokens, adaptive_tokens)
-    promote_adaptive = adaptive_quality_pass and adaptive_savings_pct >= (-PROMOTION_TOLERANCE_PCT)
+    promote_adaptive = adaptive_quality_pass and adaptive_savings_pct >= (
+        -PROMOTION_TOLERANCE_PCT
+    )
 
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Minimal telemetry receiver for token-reduce opt-in payloads."""
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ class TelemetryHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         if self.path != self.ingest_path:
             self._write_json(404, {"ok": False, "error": "not_found"})
             return
@@ -64,13 +65,13 @@ class TelemetryHandler(BaseHTTPRequestHandler):
             handle.write(json.dumps(event) + "\n")
         self._write_json(200, {"ok": True})
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         if self.path == "/healthz":
             self._write_json(200, {"ok": True})
             return
         self._write_json(404, {"ok": False, "error": "not_found"})
 
-    def log_message(self, fmt: str, *args) -> None:  # noqa: A003
+    def log_message(self, fmt: str, *args) -> None:
         return
 
 

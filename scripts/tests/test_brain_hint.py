@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Tests for brain_hint.py — previously zero coverage."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 from unittest.mock import patch
-
 
 scripts_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(scripts_dir))
@@ -21,6 +21,7 @@ class TestHintLineToolAvailability:
     def test_returns_qmd_command_when_only_qmd_available(self):
         def which_qmd_only(name):
             return "/usr/bin/qmd" if name == "qmd" else None
+
         with patch("brain_hint.shutil.which", side_effect=which_qmd_only):
             result = hint_line("find auth module")
         assert result is not None
@@ -30,6 +31,7 @@ class TestHintLineToolAvailability:
     def test_returns_gbrain_command_when_only_gbrain_available(self):
         def which_gbrain_only(name):
             return "/usr/bin/gbrain" if name == "gbrain" else None
+
         with patch("brain_hint.shutil.which", side_effect=which_gbrain_only):
             result = hint_line("find auth module")
         assert result is not None
@@ -39,6 +41,7 @@ class TestHintLineToolAvailability:
     def test_returns_both_when_both_available(self):
         def which_both(name):
             return f"/usr/bin/{name}"
+
         with patch("brain_hint.shutil.which", side_effect=which_both):
             result = hint_line("find auth module")
         assert result is not None
@@ -81,6 +84,7 @@ class TestMain:
     def test_main_prints_hint_when_qmd_available(self, capsys):
         def which_qmd(name):
             return "/usr/bin/qmd" if name == "qmd" else None
+
         with patch("brain_hint.shutil.which", side_effect=which_qmd):
             rc = main(["my", "topic"])
         assert rc == 0

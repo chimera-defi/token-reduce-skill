@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Measure token-reduction adoption from Claude and Codex session logs."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,6 @@ from pathlib import Path
 from session_metrics_cache import SessionMetricsCache, cache_path, fingerprint_files
 from token_reduce_telemetry import load_events, summarize_events
 
-
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b"
@@ -24,9 +24,13 @@ TOKEN_REDUCE_STRUCTURAL_RE = re.compile(
 SCOPED_RG_RE = re.compile(r"\brg\b(?=.*(?:\s-g\s|\s--glob\s))(?!.*\s--files\b)")
 RG_FILES_BROAD_RE = re.compile(r"\brg\b.*\s--files(?:\s+\.|\s*$)")
 TARGETED_BASH_RE = re.compile(r"\b(head|tail)\b|\bsed\s+-n\b|\bqmd\s+get\b")
-BROAD_SCAN_RE = re.compile(r"\bfind\s+(\.|/)|\bls\s+-R\b|\bgrep\s+-R\b|\bgrep\s+--recursive\b")
+BROAD_SCAN_RE = re.compile(
+    r"\bfind\s+(\.|/)|\bls\s+-R\b|\bgrep\s+-R\b|\bgrep\s+--recursive\b"
+)
 TOKEN_REDUCE_RE = re.compile(r"token-reduce|/token-reduce", re.IGNORECASE)
-CAVEMAN_RE = re.compile(r"(?:^|[^a-z])(?:caveman|/caveman|\$caveman)(?:[^a-z]|$)", re.IGNORECASE)
+CAVEMAN_RE = re.compile(
+    r"(?:^|[^a-z])(?:caveman|/caveman|\$caveman)(?:[^a-z]|$)", re.IGNORECASE
+)
 HEADROOM_RE = re.compile(r"(?:^|[^a-z])headroom(?:[^a-z]|$)", re.IGNORECASE)
 GH_AXI_RE = re.compile(r"\bgh-axi\b")
 CHROME_DEVTOOLS_AXI_RE = re.compile(r"\bchrome-devtools-axi\b")
@@ -38,7 +42,9 @@ HEADROOM_COMMAND_RE = re.compile(
     r"(?:^|\s)(?:uvx\s+.*?\s)?headroom(?:\s+--[\w-]+(?:=\S+)?)*\s+(?:install|proxy|wrap|compress|retrieve)\b|(?:^|\s)headroom\s+(?:--version|--help)\b",
     re.IGNORECASE,
 )
-HEADROOM_TOOL_RE = re.compile(r"(?:^|__)headroom(?:__|_|-)?(?:compress|retrieve|stats)?\b", re.IGNORECASE)
+HEADROOM_TOOL_RE = re.compile(
+    r"(?:^|__)headroom(?:__|_|-)?(?:compress|retrieve|stats)?\b", re.IGNORECASE
+)
 RG_OPTIONS_WITH_VALUE = {
     "-e",
     "--regexp",
@@ -70,17 +76,11 @@ def repo_session_roots(scope: str, repo_root: str) -> list[Path]:
     if scope == "global":
         return [base]
     repo_slug = "-" + Path(repo_root).resolve().as_posix().lstrip("/").replace("/", "-")
-    return sorted(
-        p for p in base.glob(f"{repo_slug}*") if p.exists()
-    )
+    return sorted(p for p in base.glob(f"{repo_slug}*") if p.exists())
 
 
 def top_level_session_files(root: Path) -> list[Path]:
-    return sorted(
-        p
-        for p in root.glob("*.jsonl")
-        if p.is_file()
-    )
+    return sorted(p for p in root.glob("*.jsonl") if p.is_file())
 
 
 def session_related_files(session_file: Path) -> list[Path]:
@@ -113,7 +113,9 @@ def codex_session_files(scope: str, repo_root: str) -> list[Path]:
     return sorted(matches)
 
 
-def codex_session_matches_repo(session_file: Path, scope: str, repo_prefix: str) -> bool:
+def codex_session_matches_repo(
+    session_file: Path, scope: str, repo_prefix: str
+) -> bool:
     if scope == "global":
         return True
 
@@ -226,11 +228,16 @@ def apply_command_metrics(metrics: dict, command: str) -> None:
         note_first_discovery(metrics, True, "scoped_rg")
     if TARGETED_BASH_RE.search(command):
         metrics["targeted_reads"] = True
-    if BROAD_SCAN_RE.search(command) or RG_FILES_BROAD_RE.search(command) or is_exploratory_rg(command):
+    if (
+        BROAD_SCAN_RE.search(command)
+        or RG_FILES_BROAD_RE.search(command)
+        or is_exploratory_rg(command)
+    ):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
     # Track C: additional advisory broad patterns (kept in sync with enforce hook).
     from coverage_patterns import matches_any_broad_pattern
+
     if matches_any_broad_pattern(command):
         metrics["broad_scan_violation"] = True
         note_first_discovery(metrics, False, "broad_scan")
@@ -281,7 +288,12 @@ def rg_paths(command: str) -> list[str]:
                 or token.startswith("-g")
                 or token.startswith("-e")
             ):
-                if token.startswith("--regexp=") or token.startswith("--file=") or token.startswith("-e") or token.startswith("-f"):
+                if (
+                    token.startswith("--regexp=")
+                    or token.startswith("--file=")
+                    or token.startswith("-e")
+                    or token.startswith("-f")
+                ):
                     saw_pattern = True
                 i += 1
                 continue
@@ -303,7 +315,9 @@ def is_exploratory_rg(command: str) -> bool:
         return False
     if re.search(r"(?:^|\s)(?:-g|--glob)(?:\s|=)", text):
         return False
-    if re.search(r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", text):
+    if re.search(
+        r"(?:^|\s)(?:--files|--files-with-matches|--files-without-match)\b", text
+    ):
         return True
 
     paths = rg_paths(text)
@@ -355,7 +369,10 @@ def parse_claude_session(session_file: Path) -> dict:
                         apply_tool_name_metrics(metrics, name)
 
                     if name == "Read":
-                        if tool_input.get("limit") is not None or tool_input.get("offset") is not None:
+                        if (
+                            tool_input.get("limit") is not None
+                            or tool_input.get("offset") is not None
+                        ):
                             metrics["targeted_reads"] = True
                         note_first_discovery(metrics, True, "targeted_read")
 
@@ -420,7 +437,9 @@ def measure(
 
     cache = SessionMetricsCache(cache_path(Path(repo_root))) if use_cache else None
 
-    def cached_parse(source: str, session_file: Path, related_files: list[Path], parse_fn) -> dict:
+    def cached_parse(
+        source: str, session_file: Path, related_files: list[Path], parse_fn
+    ) -> dict:
         if cache is None:
             return parse_fn(session_file)
         fingerprint = fingerprint_files(related_files)
@@ -436,7 +455,9 @@ def measure(
     parsed: list[dict] = []
     processed_since_flush = 0
     for p in claude_session_files:
-        parsed.append(cached_parse("claude", p, session_related_files(p), parse_claude_session))
+        parsed.append(
+            cached_parse("claude", p, session_related_files(p), parse_claude_session)
+        )
         processed_since_flush += 1
         if cache is not None and processed_since_flush >= cache_flush_every:
             cache.save()
@@ -500,7 +521,9 @@ def measure(
         adoption["headroom_command_sessions"] += int(item["headroom_command"])
         adoption["axi_tool_sessions"] += int(item["axi_tool"])
         adoption["gh_axi_sessions"] += int(item["gh_axi_tool"])
-        adoption["chrome_devtools_axi_sessions"] += int(item["chrome_devtools_axi_tool"])
+        adoption["chrome_devtools_axi_sessions"] += int(
+            item["chrome_devtools_axi_tool"]
+        )
         helper_session = helper_used(item)
         adoption["helper_sessions"] += int(helper_session)
         adoption["structural_helper_sessions"] += int(item["structural_helper"])
@@ -508,14 +531,28 @@ def measure(
             item["token_reduce_mention"] and not helper_session
         )
         adoption["mention_without_helper_sessions_observed"] += int(
-            item["token_reduce_mention"] and item["first_discovery_seen"] and not helper_session
+            item["token_reduce_mention"]
+            and item["first_discovery_seen"]
+            and not helper_session
         )
-        adoption["discovery_outcome_direct_hit_sessions"] += int(item["discovery_outcome"] == "direct_hit")
-        adoption["discovery_outcome_indirect_hit_sessions"] += int(item["discovery_outcome"] == "indirect_hit")
-        adoption["discovery_outcome_miss_sessions"] += int(item["discovery_outcome"] == "miss")
-        adoption["discovery_outcome_standoff_sessions"] += int(item["discovery_outcome"] == "standoff")
-        adoption["discovery_outcome_bypass_sessions"] += int(item["discovery_outcome"] == "bypass")
-        adoption["discovery_outcome_direct_sessions"] += int(item["discovery_outcome"] == "direct")
+        adoption["discovery_outcome_direct_hit_sessions"] += int(
+            item["discovery_outcome"] == "direct_hit"
+        )
+        adoption["discovery_outcome_indirect_hit_sessions"] += int(
+            item["discovery_outcome"] == "indirect_hit"
+        )
+        adoption["discovery_outcome_miss_sessions"] += int(
+            item["discovery_outcome"] == "miss"
+        )
+        adoption["discovery_outcome_standoff_sessions"] += int(
+            item["discovery_outcome"] == "standoff"
+        )
+        adoption["discovery_outcome_bypass_sessions"] += int(
+            item["discovery_outcome"] == "bypass"
+        )
+        adoption["discovery_outcome_direct_sessions"] += int(
+            item["discovery_outcome"] == "direct"
+        )
         observed_discovery_sessions += int(item["first_discovery_seen"])
         compliant_sessions += int(item["first_discovery_compliant"])
         broad_violation_sessions += int(item["broad_scan_violation"])
@@ -525,7 +562,9 @@ def measure(
         source = str(item["source"])
         per_source[source]["sessions"] += 1
         per_source[source]["helper_sessions"] += int(helper_session)
-        per_source[source]["compliant_sessions"] += int(item["first_discovery_compliant"])
+        per_source[source]["compliant_sessions"] += int(
+            item["first_discovery_compliant"]
+        )
         per_source[source]["broad_scan_sessions"] += int(item["broad_scan_violation"])
         per_source[source]["caveman_command_sessions"] += int(item["caveman_command"])
         per_source[source]["headroom_command_sessions"] += int(item["headroom_command"])
@@ -535,7 +574,12 @@ def measure(
         return round((n * 100.0 / session_count), 1) if session_count else 0.0
 
     def pct_observed(n: float) -> float:
-        return round((n * 100.0 / observed_discovery_sessions), 1) if observed_discovery_sessions else 0.0
+        return (
+            round((n * 100.0 / observed_discovery_sessions), 1)
+            if observed_discovery_sessions
+            else 0.0
+        )
+
     telemetry = summarize_events(load_events(Path(repo_root).resolve(), days=14))
     telemetry_1d = summarize_events(load_events(Path(repo_root).resolve(), days=1))
 
@@ -545,9 +589,15 @@ def measure(
         return {
             "event_count": int(summary.get("event_count", 0) or 0),
             "helper_calls": int(efficiency.get("helper_calls", 0) or 0),
-            "helper_latency_p95_ms": float(efficiency.get("helper_latency_p95_ms", 0.0) or 0.0),
-            "failure_overhead_pct": float(efficiency.get("failure_overhead_pct", 0.0) or 0.0),
-            "logging_quality_score": float(logging.get("logging_quality_score", 0.0) or 0.0),
+            "helper_latency_p95_ms": float(
+                efficiency.get("helper_latency_p95_ms", 0.0) or 0.0
+            ),
+            "failure_overhead_pct": float(
+                efficiency.get("failure_overhead_pct", 0.0) or 0.0
+            ),
+            "logging_quality_score": float(
+                logging.get("logging_quality_score", 0.0) or 0.0
+            ),
             "logging_quality_tier": str(logging.get("logging_quality_tier", "no_data")),
         }
 
@@ -566,7 +616,9 @@ def measure(
             )
             if source_sessions
             else 0.0,
-            "broad_scan_pct": round((counts["broad_scan_sessions"] * 100.0 / source_sessions), 1)
+            "broad_scan_pct": round(
+                (counts["broad_scan_sessions"] * 100.0 / source_sessions), 1
+            )
             if source_sessions
             else 0.0,
             "caveman_command_pct": round(
@@ -579,7 +631,9 @@ def measure(
             )
             if source_sessions
             else 0.0,
-            "axi_tool_pct": round((counts["axi_tool_sessions"] * 100.0 / source_sessions), 1)
+            "axi_tool_pct": round(
+                (counts["axi_tool_sessions"] * 100.0 / source_sessions), 1
+            )
             if source_sessions
             else 0.0,
         }
@@ -608,25 +662,47 @@ def measure(
             "headroom_command_pct": pct(adoption["headroom_command_sessions"]),
             "axi_tool_sessions_pct": pct(adoption["axi_tool_sessions"]),
             "gh_axi_sessions_pct": pct(adoption["gh_axi_sessions"]),
-            "chrome_devtools_axi_sessions_pct": pct(adoption["chrome_devtools_axi_sessions"]),
+            "chrome_devtools_axi_sessions_pct": pct(
+                adoption["chrome_devtools_axi_sessions"]
+            ),
             "helper_sessions_pct": pct(adoption["helper_sessions"]),
-            "helper_sessions_pct_observed_discovery": pct_observed(adoption["helper_sessions"]),
-            "structural_helper_sessions_pct": pct(adoption["structural_helper_sessions"]),
-            "mention_without_helper_pct": pct(adoption["mention_without_helper_sessions"]),
+            "helper_sessions_pct_observed_discovery": pct_observed(
+                adoption["helper_sessions"]
+            ),
+            "structural_helper_sessions_pct": pct(
+                adoption["structural_helper_sessions"]
+            ),
+            "mention_without_helper_pct": pct(
+                adoption["mention_without_helper_sessions"]
+            ),
             "mention_without_helper_pct_observed_discovery": pct_observed(
                 adoption["mention_without_helper_sessions_observed"]
             ),
-            "discovery_outcome_direct_hit_pct": pct(adoption["discovery_outcome_direct_hit_sessions"]),
-            "discovery_outcome_indirect_hit_pct": pct(adoption["discovery_outcome_indirect_hit_sessions"]),
-            "discovery_outcome_miss_pct": pct(adoption["discovery_outcome_miss_sessions"]),
-            "discovery_outcome_standoff_pct": pct(adoption["discovery_outcome_standoff_sessions"]),
-            "discovery_outcome_bypass_pct": pct(adoption["discovery_outcome_bypass_sessions"]),
-            "discovery_outcome_direct_pct": pct(adoption["discovery_outcome_direct_sessions"]),
+            "discovery_outcome_direct_hit_pct": pct(
+                adoption["discovery_outcome_direct_hit_sessions"]
+            ),
+            "discovery_outcome_indirect_hit_pct": pct(
+                adoption["discovery_outcome_indirect_hit_sessions"]
+            ),
+            "discovery_outcome_miss_pct": pct(
+                adoption["discovery_outcome_miss_sessions"]
+            ),
+            "discovery_outcome_standoff_pct": pct(
+                adoption["discovery_outcome_standoff_sessions"]
+            ),
+            "discovery_outcome_bypass_pct": pct(
+                adoption["discovery_outcome_bypass_sessions"]
+            ),
+            "discovery_outcome_direct_pct": pct(
+                adoption["discovery_outcome_direct_sessions"]
+            ),
         },
         "compliance": {
             "sessions_with_compliant_first_discovery": compliant_sessions,
             "sessions_with_first_discovery_observed": observed_discovery_sessions,
-            "sessions_without_first_discovery_observed": max(0, session_count - observed_discovery_sessions),
+            "sessions_without_first_discovery_observed": max(
+                0, session_count - observed_discovery_sessions
+            ),
             "sessions_with_broad_scan_violation": broad_violation_sessions,
             "broad_scan_violations": broad_violation_count,
             "discovery_compliance_pct": pct(compliant_sessions),
@@ -654,7 +730,9 @@ def compact_console_result(result: dict) -> dict:
     create the context bloat this skill is meant to prevent.
     """
     compact = {k: v for k, v in result.items() if k != "raw_session_metrics"}
-    compact["raw_session_metrics_omitted"] = len(result.get("raw_session_metrics") or [])
+    compact["raw_session_metrics_omitted"] = len(
+        result.get("raw_session_metrics") or []
+    )
     return compact
 
 

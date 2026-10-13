@@ -9,6 +9,7 @@ sub-track from references/improvement-brief-2026-06-21.md:
 - A4 query expansion / stopwords
 - A5 click-through learning
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -21,7 +22,7 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from rank_paths import (  # noqa: E402  (path setup before import)
+from rank_paths import (
     PathScore,
     click_through_score,
     expand_query,
@@ -31,7 +32,6 @@ from rank_paths import (  # noqa: E402  (path setup before import)
     symbol_match_score,
     tokenize_query,
 )
-
 
 # ---------------------------------------------------------------------------
 # A4 query expansion / stopwords (no fixture needed)
@@ -144,11 +144,14 @@ def test_git_recency_score_clamps_after_max_age(recency_repo: Path) -> None:
 
 
 def test_git_recency_score_unknown_file_returns_zero(recency_repo: Path) -> None:
-    assert git_recency_score(
-        "does_not_exist.py",
-        repo_root=recency_repo,
-        now_epoch=1782000000,
-    ) == 0.0
+    assert (
+        git_recency_score(
+            "does_not_exist.py",
+            repo_root=recency_repo,
+            now_epoch=1782000000,
+        )
+        == 0.0
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -164,8 +167,7 @@ def symbol_corpus(tmp_path: Path) -> Path:
         "def measure_token_reduction(events):\n    return len(events)\n"
     )
     (repo / "mentioner.py").write_text(
-        "# this file just mentions measure_token_reduction in a comment\n"
-        "x = 1\n"
+        "# this file just mentions measure_token_reduction in a comment\nx = 1\n"
     )
     (repo / "shell_def.sh").write_text(
         "#!/usr/bin/env bash\nmeasure_token_reduction() { echo hi; }\n"
@@ -180,21 +182,15 @@ def symbol_corpus(tmp_path: Path) -> Path:
 
 def test_symbol_match_boost_finds_python_def(symbol_corpus: Path) -> None:
     tokens = ["measure_token_reduction"]
-    define = symbol_match_score(
-        "definer.py", tokens, repo_root=symbol_corpus
-    )
-    mention = symbol_match_score(
-        "mentioner.py", tokens, repo_root=symbol_corpus
-    )
+    define = symbol_match_score("definer.py", tokens, repo_root=symbol_corpus)
+    mention = symbol_match_score("mentioner.py", tokens, repo_root=symbol_corpus)
     assert define > 0
     assert mention == 0
 
 
 def test_symbol_match_boost_finds_shell_function(symbol_corpus: Path) -> None:
     tokens = ["measure_token_reduction"]
-    score = symbol_match_score(
-        "shell_def.sh", tokens, repo_root=symbol_corpus
-    )
+    score = symbol_match_score("shell_def.sh", tokens, repo_root=symbol_corpus)
     assert score > 0
 
 
@@ -202,9 +198,7 @@ def test_symbol_match_boost_finds_typescript_camel_to_snake(
     symbol_corpus: Path,
 ) -> None:
     tokens = ["measure_token_reduction"]
-    score = symbol_match_score(
-        "ts_def.ts", tokens, repo_root=symbol_corpus
-    )
+    score = symbol_match_score("ts_def.ts", tokens, repo_root=symbol_corpus)
     assert score > 0
 
 
@@ -277,11 +271,14 @@ def test_click_through_prior_normalizes_query_for_lookup() -> None:
         "ranking helper": {"scripts/rank_paths.py": 0.5},
     }
     # case/whitespace normalization should still hit
-    assert click_through_score(
-        "scripts/rank_paths.py",
-        "  RANKING   helper  ",
-        priors,
-    ) > 0
+    assert (
+        click_through_score(
+            "scripts/rank_paths.py",
+            "  RANKING   helper  ",
+            priors,
+        )
+        > 0
+    )
 
 
 def test_click_through_prior_missing_query_returns_zero() -> None:
@@ -365,10 +362,7 @@ def test_rank_paths_definition_beats_mention_and_tests(
     assert ranked[0] == "scripts/measure_token_reduction.py"
     # vendor + tests demoted below docs
     assert ranked.index("vendor/old_lib.py") > ranked.index("docs/notes.md")
-    assert (
-        ranked.index("scripts/tests/test_measure.py")
-        > ranked.index("docs/notes.md")
-    )
+    assert ranked.index("scripts/tests/test_measure.py") > ranked.index("docs/notes.md")
 
 
 def test_rank_paths_click_through_overrides_close_call(

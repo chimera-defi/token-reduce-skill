@@ -1,26 +1,25 @@
 """Tests for previously zero-coverage modules: validate_skill_package and rolling_baseline_report."""
+
 from __future__ import annotations
 
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from validate_skill_package import validate
 from rolling_baseline_report import (
-    MetricSpec,
     build_report,
     render_markdown,
 )
-
+from validate_skill_package import validate
 
 # ---------------------------------------------------------------------------
 # validate
 # ---------------------------------------------------------------------------
+
 
 def _make_valid_skill_md() -> str:
     """Return a minimal SKILL.md that passes all checks."""
@@ -63,7 +62,6 @@ class TestValidate:
         errors = validate(skill_md, openai_yaml, readme)
         assert errors == []
 
-
     def test_multiple_errors_accumulated(self, tmp_path):
         # Missing two frontmatter fields and missing openai.yaml
         text = (
@@ -93,27 +91,26 @@ class TestValidate:
 # ---------------------------------------------------------------------------
 
 
-
-
 # ---------------------------------------------------------------------------
 # build_report
 # ---------------------------------------------------------------------------
+
 
 def _make_timestamped_rows(n: int) -> list[dict]:
     """Create rows with _parsed_timestamp fields (as build_report expects pre-parsed rows)."""
     rows = []
     for i in range(n):
         ts = datetime(2024, 1, i + 1, tzinfo=timezone.utc)
-        rows.append({
-            "_parsed_timestamp": ts,
-            "global_measure_summary": {"helper_sessions_pct": float(i * 10)},
-        })
+        rows.append(
+            {
+                "_parsed_timestamp": ts,
+                "global_measure_summary": {"helper_sessions_pct": float(i * 10)},
+            }
+        )
     return rows
 
 
 class TestBuildReport:
-
-
     def test_delta_is_post_minus_pre(self, tmp_path):
         rows = _make_timestamped_rows(4)
         source = tmp_path / "data.jsonl"
@@ -126,6 +123,7 @@ class TestBuildReport:
 # ---------------------------------------------------------------------------
 # render_markdown
 # ---------------------------------------------------------------------------
+
 
 def _minimal_report() -> dict:
     return {
@@ -148,11 +146,7 @@ def _minimal_report() -> dict:
 
 
 class TestRenderMarkdown:
-
-
     def test_contains_pre_and_post_avgs(self):
         result = render_markdown(_minimal_report())
         assert "42.0" in result
         assert "55.0" in result
-
-

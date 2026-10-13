@@ -11,13 +11,12 @@ import json
 import shutil
 import subprocess
 import time
-from hashlib import sha1
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from hashlib import sha1
 from pathlib import Path
 
 import tiktoken
-
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "local-benchmark.json"
@@ -48,15 +47,15 @@ BENCHMARKS = (
     ),
     (
         "qmd_files",
-        f"qmd search \"token reduction\" -n 8 --files -c {QMD_COLLECTION}",
+        f'qmd search "token reduction" -n 8 --files -c {QMD_COLLECTION}',
     ),
     (
         "token_reduce_paths_warm",
-        "./scripts/token-reduce-paths.sh \"token reduction\"",
+        './scripts/token-reduce-paths.sh "token reduction"',
     ),
     (
         "token_reduce_snippet_warm",
-        "./scripts/token-reduce-snippet.sh \"token reduction\"",
+        './scripts/token-reduce-snippet.sh "token reduction"',
     ),
 )
 
@@ -87,7 +86,7 @@ def run_command(command: str) -> BenchmarkResult:
 
 def warm_qmd_helper() -> None:
     subprocess.run(
-        ["bash", "-lc", "./scripts/token-reduce-paths.sh \"token reduction\" >/dev/null"],
+        ["bash", "-lc", './scripts/token-reduce-paths.sh "token reduction" >/dev/null'],
         cwd=ROOT,
         check=False,
         capture_output=True,
@@ -96,7 +95,9 @@ def warm_qmd_helper() -> None:
 
 
 def compute_savings(results: list[BenchmarkResult]) -> dict[str, float]:
-    baseline = next(result for result in results if result.name == "broad_inventory").tokens
+    baseline = next(
+        result for result in results if result.name == "broad_inventory"
+    ).tokens
     savings = {}
     for result in results:
         if result.name == "broad_inventory":
@@ -112,7 +113,11 @@ def render_table(results: list[BenchmarkResult], savings: dict[str, float]) -> s
         "|----------|--------|----------------------------|----------|",
     ]
     for result in results:
-        saving = "baseline" if result.name == "broad_inventory" else f"{savings[result.name]}%"
+        saving = (
+            "baseline"
+            if result.name == "broad_inventory"
+            else f"{savings[result.name]}%"
+        )
         lines.append(
             f"| `{result.name}` | `{result.tokens}` | {saving} | `{result.duration_ms} ms` |"
         )
