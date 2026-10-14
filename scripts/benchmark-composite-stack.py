@@ -27,7 +27,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "composite-benchmark.json"
-QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8')).hexdigest()[:12]}"
+QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8'), usedforsecurity=False).hexdigest()[:12]}"
 BENCH_ENV = {**os.environ, "TOKEN_REDUCE_TELEMETRY_CONTEXT": "benchmark"}
 QMD_EXTENSIONS_DEFAULT = "md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
 

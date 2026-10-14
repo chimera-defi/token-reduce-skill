@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import time
@@ -61,11 +62,11 @@ SEARCH_TASKS = [
 RG_NAIVE = "rg -n -i {words} ."
 
 
-def run(argv: list[str] | str, cwd: Path, env: dict | None = None, shell: bool = False, timeout: int = 20):
+def run(argv: list[str], cwd: Path, env: dict | None = None, timeout: int = 20):
     start = time.monotonic()
     try:
         proc = subprocess.run(
-            argv, cwd=cwd, shell=shell, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
+            argv, cwd=cwd, shell=False, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
             env={**os.environ, **(env or {})},
         )
     except subprocess.TimeoutExpired:
@@ -78,8 +79,8 @@ def bench_rtk(repo: Path) -> list[dict]:
         return []
     rows = []
     for cmd in RTK_CMDS:
-        raw, raw_ms, raw_rc = run(cmd, repo, shell=True)
-        wrapped, rtk_ms, rtk_rc = run(f"rtk {cmd}", repo, shell=True)
+        raw, raw_ms, raw_rc = run(shlex.split(cmd), repo)
+        wrapped, rtk_ms, rtk_rc = run(shlex.split(f"rtk {cmd}"), repo)
         if 124 in (raw_rc, rtk_rc):
             continue  # a timed-out case has no honest token count
         rows.append({
@@ -97,7 +98,7 @@ def bench_search(repo: Path) -> list[dict]:
     for words, expect in SEARCH_TASKS:
         if repo != ROOT:
             continue  # expected files only exist in this repo
-        naive, naive_ms, _ = run(RG_NAIVE.format(words=" ".join(f"-e {w}" for w in words.split())), repo, shell=True)
+        naive, naive_ms, _ = run(shlex.split(RG_NAIVE.format(words=" ".join(f"-e {w}" for w in words.split()))), repo)
         for mode, env in (("qmd", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "on"}), ("rg_fallback", {"TOKEN_REDUCE_LAYER_SEARCH_QMD": "off"})):
             out, ms, rc = run([str(helper), *words.split()], repo, env=env)
             if rc == 124:
@@ -125,7 +126,7 @@ def bench_context_audit() -> dict:
 
 def headroom_live() -> dict:
     try:
-        with urllib.request.urlopen("http://127.0.0.1:8787/stats", timeout=3) as r:
+        with urllib.request.urlopen("http://127.0.0.1:8787/stats", timeout=3) as r:  # nosec B310 - hardcoded localhost
             s = json.load(r)["summary"]
     except Exception as exc:  # noqa: BLE001 - report, never fail the benchmark
         return {"layer": "headroom", "available": False, "reason": str(exc)[:80]}
