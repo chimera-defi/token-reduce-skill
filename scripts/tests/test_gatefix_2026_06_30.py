@@ -383,7 +383,7 @@ def test_composite_stack_available_without_token_savior(
         )
 
     monkeypatch.setattr(bcs, "run_cmd", fake_run_cmd)
-    monkeypatch.setattr(bcs, "ensure_qmd_collection", lambda: None)
+    monkeypatch.setattr(bcs, "ensure_qmd_collection", lambda: False)
 
     bcs.main()
 
@@ -396,6 +396,32 @@ def test_composite_stack_available_without_token_savior(
         "composite_stack must be available=True even without token-savior — "
         "token-reduce-structural and rtk must not be hard requirements."
     )
+    qmd_only = next(b for b in result["benchmarks"] if b["name"] == "qmd_only")
+    assert not qmd_only["available"]
+    assert "not registered" in qmd_only["skipped_reason"]
+
+
+@pytest.mark.parametrize("listed,registered", [("", False), ("repo-test /tmp/repo\n", True)])
+def test_benchmark_qmd_registration_check_is_read_only(
+    monkeypatch: pytest.MonkeyPatch,
+    listed: str,
+    registered: bool,
+) -> None:
+    bcs = _load_bcs()
+    calls: list[list[str]] = []
+    monkeypatch.setattr(bcs, "QMD_COLLECTION", "repo-test")
+    monkeypatch.setattr(bcs.shutil, "which", lambda tool: "/fake/qmd" if tool == "qmd" else None)
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(argv)
+        assert kwargs["capture_output"] is True
+        assert kwargs["check"] is False
+        return subprocess.CompletedProcess(argv, 0, stdout=listed, stderr="")
+
+    monkeypatch.setattr(bcs.subprocess, "run", fake_run)
+    assert bcs.ensure_qmd_collection() is registered
+    assert calls == [["/fake/qmd", "collection", "list"]]
+
 
 
 def test_while_read_includes_last_token_without_underscore(tmp_path: Path) -> None:
