@@ -125,6 +125,9 @@ def test_wrapper_sh_preserves_real_exit_code_on_search_failure(
     work_scripts.mkdir()
     (work_scripts / wrapper_name).write_text((SCRIPTS_DIR / wrapper_name).read_text())
     (work_scripts / wrapper_name).chmod(0o755)
+    (work_scripts / "token-reduce-qmd-guard.sh").write_text(
+        (SCRIPTS_DIR / "token-reduce-qmd-guard.sh").read_text()
+    )
     (work_scripts / "token_reduce_telemetry.py").write_text(
         (SCRIPTS_DIR / "token_reduce_telemetry.py").read_text()
     )

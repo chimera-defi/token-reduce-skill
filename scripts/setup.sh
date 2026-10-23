@@ -8,7 +8,9 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 ok()   { printf "${GREEN}✔${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}!${NC} %s\n" "$*"; }
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
+REPO_ROOT="$(token_reduce_resolve_repo_root)"
 BIN_DIR="${HOME}/.local/bin"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_SKILLS_DIR="${CODEX_HOME_DIR}/skills"
@@ -310,7 +312,7 @@ fi
 
 # ── Index this repo in QMD ────────────────────────────────────────────────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-if command -v qmd >/dev/null 2>&1; then
+if token_reduce_qmd_root_is_eligible "$REPO_ROOT" && command -v qmd >/dev/null 2>&1; then
   index_started="$(date +%s)"
   if qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask "$QMD_MASK" >/dev/null 2>&1; then
     index_elapsed="$(( $(date +%s) - index_started ))"
@@ -320,6 +322,8 @@ if command -v qmd >/dev/null 2>&1; then
   else
     warn "qmd collection add failed — run manually: qmd collection add . --name $COLLECTION --mask \"$QMD_MASK\""
   fi
+elif command -v qmd >/dev/null 2>&1; then
+  warn "skipping QMD auto-index for a non-repository or excluded aggregate root"
 fi
 
 # ── Telemetry opt-in onboarding (gstack-style prompt) ────────────────────────

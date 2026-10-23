@@ -8,7 +8,8 @@ fi
 
 QUERY="$*"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${TOKEN_REDUCE_REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
+REPO_ROOT="$(token_reduce_resolve_repo_root)"
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 DIAG_FILE="$(mktemp 2>/dev/null || true)"
 
@@ -50,7 +51,7 @@ now_ms() {
 START_MS="$(now_ms)"
 
 RANK_APPLIED=0
-if OUTPUT="$(TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY")"; then
+if OUTPUT="$(TOKEN_REDUCE_REPO_ROOT="$REPO_ROOT" TOKEN_REDUCE_DIAG_FILE="$DIAG_FILE" "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY")"; then
   # P2: single dispatch call replaces separate rank_paths + brain_hint spawns
   if [[ -s "$SCRIPT_DIR/token_reduce_dispatch.py" ]]; then
     EVENTS_FILE="$REPO_ROOT/artifacts/token-reduction/events.jsonl"
