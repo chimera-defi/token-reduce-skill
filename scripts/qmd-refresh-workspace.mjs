@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve, sep, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 
 function usage() {
@@ -63,6 +63,103 @@ function loadDatabaseConstructor(storeModulePath) {
   return require("better-sqlite3");
 }
 
+function expandBracePatterns(pattern, limit = 256) {
+  const start = pattern.indexOf("{");
+  if (start === -1) {
+    if (pattern.includes("}")) throw new Error("unmatched closing brace");
+    return [pattern];
+  }
+  let depth = 0;
+  let end = -1;
+  const separators = [];
+  for (let i = start; i < pattern.length; i++) {
+    if (pattern[i] === "{") depth++;
+    else if (pattern[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+      if (depth < 0) throw new Error("unmatched closing brace");
+    } else if (pattern[i] === "," && depth === 1) {
+      separators.push(i);
+    }
+  }
+  if (end === -1) throw new Error("unmatched opening brace");
+  if (separators.length === 0) throw new Error("brace groups must contain alternatives");
+  const bounds = [start, ...separators, end];
+  const alternatives = [];
+  for (let i = 0; i < bounds.length - 1; i++) {
+    alternatives.push(pattern.slice(bounds[i] + 1, bounds[i + 1]));
+  }
+  const prefix = pattern.slice(0, start);
+  const suffix = pattern.slice(end + 1);
+  const expanded = [];
+  for (const alternative of alternatives) {
+    expanded.push(...expandBracePatterns(`${prefix}${alternative}${suffix}`, limit - expanded.length));
+    if (expanded.length > limit) throw new Error("brace expansion exceeds safety limit");
+  }
+  return expanded;
+}
+
+function validateGlobPattern(pattern, collectionName) {
+  if (typeof pattern !== "string" || pattern.length === 0 || pattern.includes("\0")) {
+    throw new Error(`Invalid empty or non-text glob for collection ${collectionName}`);
+  }
+  if (pattern.includes("\\")) {
+    throw new Error(`Backslashes are not allowed in collection glob for ${collectionName}`);
+  }
+  let alternatives;
+  try {
+    alternatives = expandBracePatterns(pattern);
+  } catch (error) {
+    throw new Error(`Unsafe glob for collection ${collectionName}: ${error.message}`);
+  }
+  for (const alternative of alternatives) {
+    if (isAbsolute(alternative) || win32.isAbsolute(alternative) || /^[A-Za-z]:/.test(alternative)) {
+      throw new Error(`Absolute glob rejected for collection ${collectionName}`);
+    }
+    if (alternative.split("/").some((part) => part === "..")) {
+      throw new Error(`Parent traversal glob rejected for collection ${collectionName}`);
+    }
+  }
+}
+
+function pathIsWithin(root, candidate) {
+  const rel = relative(root, candidate);
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`));
+}
+
+async function preflightTargets(targets, fastGlob) {
+  const excludeDirs = ["node_modules", ".git", ".cache", "vendor", "dist", "build"];
+  for (const target of targets) {
+    validateGlobPattern(target.pattern, target.name);
+    const ignores = target.ignore_patterns ? JSON.parse(target.ignore_patterns) : [];
+    if (!Array.isArray(ignores) || ignores.some((pattern) => typeof pattern !== "string")) {
+      throw new Error(`Invalid ignore_patterns for collection ${target.name}`);
+    }
+    const files = await fastGlob(target.pattern, {
+      cwd: target.path,
+      onlyFiles: true,
+      followSymbolicLinks: false,
+      dot: false,
+      ignore: [...excludeDirs.map((dir) => `**/${dir}/**`), ...ignores],
+    });
+    for (const file of files) {
+      if (file.split("/").some((part) => part.startsWith("."))) continue;
+      let realFile;
+      try {
+        realFile = realpathSync(resolve(target.path, file));
+      } catch (error) {
+        throw new Error(`Cannot resolve indexed file ${file} in ${target.name}: ${error.message}`);
+      }
+      if (!pathIsWithin(target.path, realFile)) {
+        throw new Error(`Indexed file escapes collection root: ${file} in ${target.name}`);
+      }
+    }
+  }
+}
+
 function lookupTargets(db, repos) {
   const rows = db.prepare(
     "SELECT name, path, pattern, ignore_patterns, include_by_default FROM store_collections",
@@ -110,10 +207,13 @@ async function main() {
     throw new Error(`Unsupported QMD store API at ${storeModulePath}: expected createStore and reindexCollection`);
   }
   const Database = loadDatabaseConstructor(storeModulePath);
+  const require = createRequire(pathToFileURL(storeModulePath));
+  const fastGlob = require("fast-glob");
   if (options.dryRun) {
     const db = new Database(dbPath, { readonly: true, fileMustExist: true });
     try {
       const targets = lookupTargets(db, options.repos);
+      await preflightTargets(targets, fastGlob);
       for (const target of targets) console.log(`DRY-RUN ${target.path}: ${target.name}`);
       console.log(`DRY-RUN eligible collections: ${targets.length}`);
     } finally {
@@ -125,6 +225,7 @@ async function main() {
   const store = qmd.createStore(dbPath);
   try {
     const targets = lookupTargets(store.db, options.repos);
+    await preflightTargets(targets, fastGlob);
     store.db.exec(`
       CREATE TEMP TRIGGER qmd_preserve_content_history
       BEFORE DELETE ON main.content
@@ -135,9 +236,6 @@ async function main() {
     try {
       for (const target of targets) {
         const ignores = target.ignore_patterns ? JSON.parse(target.ignore_patterns) : [];
-        if (!Array.isArray(ignores) || ignores.some((pattern) => typeof pattern !== "string")) {
-          throw new Error(`Invalid ignore_patterns for collection ${target.name}`);
-        }
         store.db.exec("BEGIN IMMEDIATE");
         try {
           const stats = await qmd.reindexCollection(

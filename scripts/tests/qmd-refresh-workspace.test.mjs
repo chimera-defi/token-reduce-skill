@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -38,16 +38,19 @@ try {
   const archive = join(root, "archive");
   const unclassified = join(root, "unclassified");
   const memory = join(root, "agent-memory");
+  const privateDir = join(root, "private");
   const badApi = join(root, "bad-api.mjs");
   mkdirSync(repo);
   mkdirSync(archive);
   mkdirSync(unclassified);
   mkdirSync(memory);
+  mkdirSync(privateDir);
   gitInit(repo);
   gitInit(archive);
   gitInit(unclassified);
   writeFileSync(join(repo, "updated.md"), "# New version\ncurrent body\n");
   writeFileSync(join(repo, "added.md"), "# Added\nnew document\n");
+  writeFileSync(join(privateDir, "private.md"), "# Outside\nmust not be indexed\n");
   writeFileSync(badApi, "export const incompatible = true;\n");
 
   const store = qmd.createStore(dbPath);
@@ -70,6 +73,10 @@ try {
   `);
   putContent.run("old-updated-hash", "# Old version\nold body\n", now);
   putDocument.run("repo-fixture", "updated.md", "Old version", "old-updated-hash", now, now);
+  db.prepare(`
+    INSERT INTO content_vectors (hash, seq, pos, model, embed_fingerprint, total_chunks, embedded_at)
+    VALUES (?, 0, 0, ?, ?, 1, ?)
+  `).run("old-updated-hash", "fixture-model", "fixture-fingerprint", now);
   putContent.run("deleted-history-hash", "# Removed file\nhistorical body\n", now);
   putDocument.run("repo-fixture", "deleted.md", "Removed file", "deleted-history-hash", now, now);
   putContent.run("archive-hash", "# Archive\narchive body\n", now);
@@ -82,6 +89,28 @@ try {
 
   const before = snapshot(dbPath);
   const commonArgs = ["--db", dbPath, "--store-module", storeModulePath];
+
+  const setPattern = (pattern) => {
+    const updateStore = qmd.createStore(dbPath);
+    updateStore.db.prepare("UPDATE store_collections SET pattern = ? WHERE name = 'repo-fixture'").run(pattern);
+    updateStore.close();
+  };
+  const assertRejectedPattern = (pattern, expectedError) => {
+    setPattern(pattern);
+    const baseline = snapshot(dbPath);
+    const rejected = spawnSync("node", [refreshScript, ...commonArgs, "--repo", repo], { encoding: "utf8" });
+    assert.notEqual(rejected.status, 0, `unsafe pattern should fail: ${pattern}`);
+    assert.match(rejected.stderr, expectedError);
+    assert.deepEqual(snapshot(dbPath), baseline, `unsafe pattern must not write the DB: ${pattern}`);
+  };
+  assertRejectedPattern(join(privateDir, "*.md"), /Absolute glob rejected/);
+  assertRejectedPattern("../private/*.md", /Parent traversal glob rejected/);
+  assertRejectedPattern("**/{*.md,../private/*.md}", /Parent traversal glob rejected/);
+  assertRejectedPattern("..\\private\\*.md", /Backslashes are not allowed/);
+  setPattern("**/*.md");
+
+  const symlinkPath = join(repo, "linked.md");
+  symlinkSync(join(privateDir, "private.md"), symlinkPath);
   const dry = spawnSync("node", [refreshScript, ...commonArgs, "--dry-run", "--repo", repo], { encoding: "utf8" });
   assert.equal(dry.status, 0, dry.stderr);
   assert.match(dry.stdout, /DRY-RUN eligible collections: 1/);
@@ -119,7 +148,16 @@ try {
   assert.equal(contentByHash.get("old-updated-hash").doc, "# Old version\nold body\n");
   assert.equal(contentByHash.get("deleted-history-hash").doc, "# Removed file\nhistorical body\n");
   assert.equal(contentByHash.get("private-memory-hash").doc, "# Private memory\nkeep this\n");
+  assert.equal(after.vectors.length, 1, "fixture must exercise a real indexed vector row");
+  assert.equal(after.vectors[0].hash, "old-updated-hash");
   assert.deepEqual(after.vectors, before.vectors, "refresh must not embed or change vectors");
+
+  const symlinkRun = spawnSync("node", [refreshScript, ...commonArgs, "--repo", repo], { encoding: "utf8" });
+  assert.equal(symlinkRun.status, 0, symlinkRun.stderr);
+  const afterSymlink = snapshot(dbPath);
+  assert.ok(!afterSymlink.documents.some((row) => row.collection === "repo-fixture" && row.path === "linked.md"));
+  assert.ok(!afterSymlink.content.some((row) => row.doc.includes("must not be indexed")));
+  unlinkSync(symlinkPath);
   console.log("PASS qmd refresh E2E: dry-run read-only, compatible API, scoped collection, retained history, excluded archive, untouched memory, no embedding");
 } finally {
   rmSync(root, { recursive: true, force: true });
