@@ -200,6 +200,23 @@ def test_search_does_not_register_git_pytest_fixture(tmp_path: Path) -> None:
     assert not (tmp_path / "artifacts").exists()
 
 
+def test_search_does_not_register_nested_alternate_pytest_root(tmp_path: Path) -> None:
+    """A pytest-of-* path component stays excluded below any temp parent."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-custom-root-") as raw_parent:
+        root = Path(raw_parent) / "pytest-of-alternate" / "session" / "repo"
+        root.mkdir(parents=True)
+        _init_git_repo(root)
+        (root / "needle.txt").write_text("needle\n")
+        stub_dir, log = _qmd_stub(tmp_path / "qmd-stub")
+
+        result = _run_search_with_qmd(root, stub_dir, log)
+
+        assert result.returncode == 0, result.stderr
+        assert "needle.txt" in result.stdout
+        assert not log.exists() or log.read_text() == ""
+        assert not (root / "artifacts").exists()
+
+
 @pytest.mark.parametrize("aggregate", ["home", "workspace"])
 def test_paths_wrapper_honors_aggregate_root_override(
     aggregate: str, tmp_path: Path
@@ -240,6 +257,41 @@ def test_search_keeps_qmd_for_regular_git_repository(tmp_path: Path) -> None:
         assert "collection add" in calls
         assert "search needle" in calls
         assert list((root / "artifacts").glob("qmd-repo-*.stamp"))
+
+
+def test_search_keeps_qmd_for_linked_git_worktree(tmp_path: Path) -> None:
+    """A regular linked worktree outside pytest roots remains QMD-eligible."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-linked-control-") as raw_root:
+        sandbox = Path(raw_root)
+        source = sandbox / "source"
+        linked = sandbox / "linked"
+        source.mkdir()
+        _init_git_repo(source)
+        (source / "needle.txt").write_text("needle\n")
+        subprocess.run(
+            ["git", "-C", str(source), "add", "needle.txt"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(source), "commit", "-m", "fixture"],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(source), "worktree", "add", "--detach", str(linked)],
+            check=True,
+            capture_output=True,
+        )
+        stub_dir, log = _qmd_stub(tmp_path)
+
+        result = _run_search_with_qmd(linked, stub_dir, log)
+
+        assert result.returncode == 0, result.stderr
+        calls = log.read_text()
+        assert "collection add" in calls
+        assert "search needle" in calls
+        assert list((linked / "artifacts").glob("qmd-repo-*.stamp"))
 
 
 # ---------------------------------------------------------------------------

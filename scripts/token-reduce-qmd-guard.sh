@@ -29,7 +29,7 @@ token_reduce_qmd_root_is_eligible() {
   fi
 
   case "$root" in
-    /tmp/pytest-of-*|/tmp/pytest-of-*/*) return 1 ;;
+    */pytest-of-*) return 1 ;;
   esac
 
   git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || return 1
