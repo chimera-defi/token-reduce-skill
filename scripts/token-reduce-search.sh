@@ -22,14 +22,18 @@ fi
 
 QUERY="$1"
 GLOB="${2:-}"
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
+REPO_ROOT="$(token_reduce_resolve_repo_root)"
 # Only a fixed mode is printed; no config text is evaluated as shell code.
 if command -v uv >/dev/null 2>&1; then
   QMD_LAYER="$(uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" mode search_qmd)"
 else
   # No uv: keep the plain rg fallback working; honor only the session override.
   QMD_LAYER="${TOKEN_REDUCE_LAYER_SEARCH_QMD:-auto}"
+fi
+if ! token_reduce_qmd_root_is_eligible "$REPO_ROOT"; then
+  QMD_LAYER="off"
 fi
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"

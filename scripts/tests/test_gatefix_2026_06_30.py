@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,57 @@ def _path_without(tool: str) -> str:
     """Return PATH with directories that contain `tool` removed."""
     dirs = os.environ.get("PATH", "").split(":")
     return ":".join(d for d in dirs if d and not (Path(d) / tool).exists())
+
+
+def _qmd_stub(tmp_path: Path) -> tuple[Path, Path]:
+    """Create a QMD executable that records calls without touching a real index."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir(parents=True, exist_ok=True)
+    log = tmp_path / "qmd-calls.log"
+    qmd = bindir / "qmd"
+    qmd.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"$QMD_TEST_LOG\"\n"
+        "if [[ \"$1 $2\" == 'collection list' ]]; then exit 0; fi\n"
+        "if [[ \"$1\" == search ]]; then printf 'No results found.\\n'; fi\n"
+        "exit 0\n"
+    )
+    qmd.chmod(0o755)
+    uv = bindir / "uv"
+    uv.write_text(
+        "#!/usr/bin/env bash\n"
+        "case \"$*\" in\n"
+        "  *token_reduce_layers.py*) printf '%s\\n' \"${TOKEN_REDUCE_LAYER_SEARCH_QMD:-auto}\" ;;\n"
+        "esac\n"
+        "exit 0\n"
+    )
+    uv.chmod(0o755)
+    return bindir, log
+
+
+def _run_search_with_qmd(
+    cwd: Path,
+    stub_dir: Path,
+    log: Path,
+    *,
+    repo_root: Path | None = None,
+    home: Path | None = None,
+    wrapper: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    env = {
+        **os.environ,
+        "PATH": f"{stub_dir}:{_path_without('uv')}",
+        "QMD_TEST_LOG": str(log),
+        "TOKEN_REDUCE_LAYER_SEARCH_QMD": "auto",
+        "TOKEN_REDUCE_TELEMETRY_CONTEXT": "test",
+    }
+    if repo_root is not None:
+        env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
+    if home is not None:
+        env["HOME"] = str(home)
+    script = SCRIPTS_DIR / ("token-reduce-paths.sh" if wrapper else "token-reduce-search.sh")
+    args = ["bash", str(script), "needle"] if wrapper else ["bash", str(script), "--paths-only", "needle"]
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True, env=env, timeout=30)
 
 
 def _load_bcs():
@@ -113,6 +165,81 @@ def test_while_read_includes_last_underscore_token(tmp_path: Path) -> None:
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# QMD collection root eligibility
+# ---------------------------------------------------------------------------
+
+def test_search_does_not_register_non_git_directory(tmp_path: Path) -> None:
+    """Non-Git cwd falls back to rg without creating a QMD collection or stamp."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-nonrepo-") as raw_root:
+        root = Path(raw_root)
+        (root / "needle.txt").write_text("needle\n")
+        stub_dir, log = _qmd_stub(tmp_path)
+
+        result = _run_search_with_qmd(root, stub_dir, log)
+
+        assert result.returncode == 0, result.stderr
+        assert "needle.txt" in result.stdout
+        assert not log.exists() or log.read_text() == ""
+        assert not (root / "artifacts").exists()
+
+
+def test_search_does_not_register_git_pytest_fixture(tmp_path: Path) -> None:
+    """A Git-initialized pytest temporary tree still stays out of QMD."""
+    _init_git_repo(tmp_path)
+    (tmp_path / "needle.txt").write_text("needle\n")
+    stub_dir, log = _qmd_stub(tmp_path / "qmd-stub")
+
+    result = _run_search_with_qmd(tmp_path, stub_dir, log)
+
+    assert result.returncode == 0, result.stderr
+    assert "needle.txt" in result.stdout
+    assert not log.exists() or log.read_text() == ""
+    assert not (tmp_path / "artifacts").exists()
+
+
+@pytest.mark.parametrize("aggregate", ["home", "workspace"])
+def test_paths_wrapper_honors_aggregate_root_override(
+    aggregate: str, tmp_path: Path
+) -> None:
+    """The wrapper propagates root overrides and skips aggregate QMD indexing."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-root-override-") as raw_root:
+        sandbox = Path(raw_root)
+        home = sandbox / "home"
+        root = home if aggregate == "home" else home / "workspace"
+        root.mkdir(parents=True)
+        repo = sandbox / "valid-repo"
+        repo.mkdir()
+        _init_git_repo(repo)
+        (repo / "needle.txt").write_text("needle\n")
+        stub_dir, log = _qmd_stub(tmp_path / "qmd-stub")
+
+        result = _run_search_with_qmd(
+            repo, stub_dir, log, repo_root=root, home=home, wrapper=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert not log.exists() or log.read_text() == ""
+        assert not (root / "artifacts").exists()
+
+
+def test_search_keeps_qmd_for_regular_git_repository(tmp_path: Path) -> None:
+    """A normal Git checkout remains eligible for QMD indexing and search."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-valid-repo-") as raw_root:
+        root = Path(raw_root)
+        _init_git_repo(root)
+        (root / "needle.txt").write_text("needle\n")
+        stub_dir, log = _qmd_stub(tmp_path)
+
+        result = _run_search_with_qmd(root, stub_dir, log)
+
+        assert result.returncode == 0, result.stderr
+        calls = log.read_text()
+        assert "collection add" in calls
+        assert "search needle" in calls
+        assert list((root / "artifacts").glob("qmd-repo-*.stamp"))
 
 
 # ---------------------------------------------------------------------------
