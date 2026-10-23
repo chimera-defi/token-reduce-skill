@@ -37,19 +37,7 @@ if ! token_reduce_qmd_root_is_eligible "$REPO_ROOT"; then
 fi
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
-QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
-if [[ -f "$QMD_EXTENSION_FILE" ]]; then
-  QMD_EXTENSIONS_DEFAULT="$(tr -d '[:space:]' <"$QMD_EXTENSION_FILE")"
-fi
-QMD_EXTENSIONS="${TOKEN_REDUCE_QMD_EXTENSIONS:-$QMD_EXTENSIONS_DEFAULT}"
-QMD_MASK_DEFAULT="**/*.{${QMD_EXTENSIONS}}"
-QMD_MASK="${TOKEN_REDUCE_QMD_MASK:-$QMD_MASK_DEFAULT}"
-IFS=',' read -r -a QMD_EXTENSION_LIST <<<"$QMD_EXTENSIONS"
 QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
-QMD_STAMP_DIR="${REPO_ROOT}/artifacts"
-QMD_STAMP_PATH="${QMD_STAMP_DIR}/qmd-${COLLECTION_NAME}.stamp"
-QMD_REFRESH_TTL_SECONDS="${TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS:-900}"
 QMD_SEARCH_TIMEOUT_SECONDS="${TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS:-}"
 if [[ -z "$QMD_SEARCH_TIMEOUT_SECONDS" ]]; then
   if [[ "$TELEMETRY_CONTEXT" == "runtime" ]]; then
@@ -79,15 +67,6 @@ DEFAULT_EXCLUDES=(
   -g '!artifacts/token-reduction/snapshots/**'
   -g '!tools/token-reduce-skill/**'
 )
-FINGERPRINT_EXCLUDES=(
-  -g '!.git/**'
-  -g '!node_modules/**'
-  -g '!graphify-out/**'
-  -g '!artifacts/**'
-  -g '!.worktrees/**'
-  -g '!tools/token-reduce-skill/**'
-)
-
 debug() {
   if [[ "${TOKEN_REDUCE_DEBUG:-0}" == "1" ]]; then
     printf '%s\n' "$*" >&2
@@ -259,52 +238,6 @@ content_pattern() {
   printf '%s' "$pattern"
 }
 
-collection_fingerprint() {
-  local globs ext listed path stat_payload
-  globs=()
-  for ext in "${QMD_EXTENSION_LIST[@]}"; do
-    ext="${ext//[[:space:]]/}"
-    [[ -z "$ext" ]] && continue
-    globs+=(-g "*.${ext}")
-  done
-  globs+=("${FINGERPRINT_EXCLUDES[@]}")
-
-  listed="$(
-    cd "$REPO_ROOT" &&
-      rg --files "${globs[@]}" . 2>>"${DIAG_FILE:-/dev/null}" | sort || true
-  )"
-  if [[ -z "$listed" ]]; then
-    printf '%s' "empty"
-    return 0
-  fi
-
-  while IFS= read -r path; do
-    path="${path#./}"
-    [[ -z "$path" ]] && continue
-    if [[ -f "$REPO_ROOT/$path" ]]; then
-      stat_payload="$(stat -c '%Y\t%s' "$REPO_ROOT/$path" 2>/dev/null || true)"
-      [[ -n "$stat_payload" ]] && printf '%s\t%s\n' "$path" "$stat_payload"
-    fi
-  done <<<"$listed" | sort | sha1sum | cut -d' ' -f1
-}
-
-stamp_is_fresh() {
-  local stamp_path="$1"
-  local ttl_seconds="$2"
-  local now_s mtime_s
-
-  if [[ "${ttl_seconds:-0}" -le 0 ]]; then
-    return 1
-  fi
-  if [[ ! -f "$stamp_path" ]]; then
-    return 1
-  fi
-  now_s="$(date +%s)"
-  mtime_s="$(stat -c '%Y' "$stamp_path" 2>/dev/null || printf '0')"
-  [[ "$mtime_s" =~ ^[0-9]+$ ]] || return 1
-  (( now_s - mtime_s <= ttl_seconds ))
-}
-
 sanitize_qmd_files_output() {
   local raw_output="$1"
   local filtered_output
@@ -330,61 +263,12 @@ sanitize_qmd_files_output() {
 }
 
 ensure_qmd_collection() {
-  local current_fingerprint existing_fingerprint collection_exists
-  mkdir -p "$QMD_STAMP_DIR"
-  collection_exists=0
-
-  # A fresh stamp is only written after the collection was ensured, so check it before the
-  # ~6 s `qmd collection list`; a collection deleted inside the TTL just falls back to rg.
-  if [[ -s "$QMD_STAMP_PATH" ]] && stamp_is_fresh "$QMD_STAMP_PATH" "$QMD_REFRESH_TTL_SECONDS"; then
-    debug "[token-reduce-search] using fresh qmd stamp (ttl=${QMD_REFRESH_TTL_SECONDS}s)"
-    QMD_COLLECTION_ACTION="fresh_stamp"
-    return 0
-  fi
   if qmd_collection_exists; then
-    collection_exists=1
-  fi
-
-  current_fingerprint="$(collection_fingerprint)"
-  existing_fingerprint=""
-  if [[ -f "$QMD_STAMP_PATH" ]]; then
-    existing_fingerprint="$(<"$QMD_STAMP_PATH")"
-  fi
-
-  if [[ "$collection_exists" -eq 1 && -z "$existing_fingerprint" ]]; then
-    printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
-    QMD_COLLECTION_ACTION="stamp_bootstrap"
+    QMD_COLLECTION_ACTION="registered_read_only"
     return 0
   fi
-
-  if [[ "$collection_exists" -eq 1 && "$current_fingerprint" == "$existing_fingerprint" ]]; then
-    printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
-    QMD_COLLECTION_ACTION="fingerprint_match"
-    return 0
-  fi
-
-  if [[ "$collection_exists" -eq 1 ]]; then
-    debug "[token-reduce-search] refreshing qmd collection ${COLLECTION_NAME}"
-    qmd collection remove "$COLLECTION_NAME" >/dev/null 2>&1 || true
-    QMD_COLLECTION_ACTION="refresh"
-  else
-    debug "[token-reduce-search] indexing repo docs and source files for qmd collection ${COLLECTION_NAME}"
-    QMD_COLLECTION_ACTION="create"
-  fi
-
-  if ! qmd collection add "$REPO_ROOT" --name "$COLLECTION_NAME" --mask "$QMD_MASK" >/dev/null 2>&1; then
-    if qmd_collection_exists; then
-      printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
-      QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_add_failed_reuse"
-      return 0
-    fi
-    QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_add_failed"
-    return 1
-  fi
-
-  printf '%s' "$current_fingerprint" >"$QMD_STAMP_PATH"
-  QMD_COLLECTION_ACTION="${QMD_COLLECTION_ACTION}_ok"
-  return 0
+  QMD_COLLECTION_ACTION="missing_read_only"
+  return 1
 }
 
 filter_candidates() {
@@ -642,9 +526,9 @@ if [[ "$QMD_LAYER" != "off" ]] && command -v qmd >/dev/null 2>&1; then
   ensure_start_ms="$(now_ms)"
   if ! ensure_qmd_collection; then
     QMD_ENSURE_MS="$(( $(now_ms) - ensure_start_ms ))"
-    QMD_FILES_STATUS_TAG="collection_failed"
-    BACKEND="rg_qmd_collection_failed"
-    warn "[token-reduce-search] qmd collection add failed; falling back to rg"
+    QMD_FILES_STATUS_TAG="collection_missing"
+    BACKEND="rg_qmd_collection_missing"
+    warn "[token-reduce-search] qmd collection is not registered; falling back to rg"
     cd "$REPO_ROOT"
     fallback_start_ms="$(now_ms)"
     if [[ "$MODE" == "snippets" ]]; then
