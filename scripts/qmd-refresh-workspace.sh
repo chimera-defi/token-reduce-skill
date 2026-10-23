@@ -4,7 +4,8 @@ set -euo pipefail
 PATH="/home/agents/.local/bin:/home/agents/.npm-global/bin:/home/agents/.bun/bin:$PATH"
 QMD_STORE_MODULE="${QMD_STORE_MODULE:-/home/agents/.bun/install/global/node_modules/@tobilu/qmd/dist/store.js}"
 QMD_INDEX_PATH="${QMD_INDEX_PATH:-${XDG_CACHE_HOME:-$HOME/.cache}/qmd/index.sqlite}"
-LOCK_DIR="${HOME:?HOME must be set}/.cache/qmd"
+STATE_DIR="${HOME:?HOME must be set}/.local/state"
+LOCK_DIR="$STATE_DIR/qmd-refresh"
 LOCK_PATH="$LOCK_DIR/workspace-refresh.lock"
 
 if ! command -v flock >/dev/null 2>&1; then
@@ -12,16 +13,26 @@ if ! command -v flock >/dev/null 2>&1; then
   exit 1
 fi
 umask 077
-mkdir -p "$LOCK_DIR"
-if [[ -L "$LOCK_DIR" || "$(stat -c '%u' "$LOCK_DIR")" != "$UID" ]]; then
-  echo "qmd-refresh-workspace: lock directory must be a real directory owned by uid $UID: $LOCK_DIR" >&2
-  exit 1
-fi
-lock_dir_mode="$(stat -c '%a' "$LOCK_DIR")"
-if (( (8#$lock_dir_mode & 8#022) != 0 )); then
-  echo "qmd-refresh-workspace: lock directory must not be group/world writable: $LOCK_DIR" >&2
-  exit 1
-fi
+for directory in "$HOME" "$HOME/.local" "$STATE_DIR" "$LOCK_DIR"; do
+  if [[ -L "$directory" ]]; then
+    echo "qmd-refresh-workspace: refusing symlink lock directory: $directory" >&2
+    exit 1
+  fi
+  if [[ ! -e "$directory" ]]; then mkdir -m 700 "$directory"; fi
+  if [[ ! -d "$directory" || "$(stat -c '%u' "$directory")" != "$UID" ]]; then
+    echo "qmd-refresh-workspace: lock path must be a real directory owned by uid $UID: $directory" >&2
+    exit 1
+  fi
+  directory_mode="$(stat -c '%a' "$directory")"
+  if (( (8#$directory_mode & 8#022) != 0 || (8#$directory_mode & 8#300) != 8#300 )); then
+    echo "qmd-refresh-workspace: lock path must be owner-writable and not group/world writable: $directory" >&2
+    exit 1
+  fi
+  if [[ "$directory" == "$LOCK_DIR" ]] && (( (8#$directory_mode & 8#077) != 0 )); then
+    echo "qmd-refresh-workspace: lock leaf must be private (mode 0700): $directory" >&2
+    exit 1
+  fi
+done
 if [[ -L "$LOCK_PATH" ]]; then
   echo "qmd-refresh-workspace: refusing symlink lock file: $LOCK_PATH" >&2
   exit 1
