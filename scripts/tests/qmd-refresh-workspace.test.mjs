@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createRequire } from "node:module";
@@ -12,6 +12,7 @@ const qmd = await import(pathToFileURL(resolve(storeModulePath)).href);
 const require = createRequire(pathToFileURL(resolve(storeModulePath)));
 const Database = require("better-sqlite3");
 const refreshScript = resolve("scripts/qmd-refresh-workspace.mjs");
+const refreshWrapper = resolve("scripts/qmd-refresh-workspace.sh");
 
 function gitInit(path) {
   execFileSync("git", ["-c", "init.defaultBranch=main", "init", "-q", path]);
@@ -158,6 +159,41 @@ try {
   assert.ok(!afterSymlink.documents.some((row) => row.collection === "repo-fixture" && row.path === "linked.md"));
   assert.ok(!afterSymlink.content.some((row) => row.doc.includes("must not be indexed")));
   unlinkSync(symlinkPath);
+
+  const commonHome = join(root, "common-home");
+  const commonCache = join(commonHome, ".cache", "qmd");
+  mkdirSync(commonCache, { recursive: true });
+  chmodSync(commonHome, 0o700);
+  chmodSync(commonCache, 0o775);
+  const wrapperEnv = {
+    ...process.env,
+    HOME: commonHome,
+    QMD_INDEX_PATH: dbPath,
+    QMD_STORE_MODULE: storeModulePath,
+  };
+  const wrapperDryRun = spawnSync("bash", [refreshWrapper, "--dry-run"], { encoding: "utf8", env: wrapperEnv });
+  assert.equal(wrapperDryRun.status, 0, wrapperDryRun.stderr);
+  assert.equal(statSync(commonCache).mode & 0o777, 0o775, "shared cache permissions must not be changed");
+  const privateLockDir = join(commonHome, ".local", "state", "qmd-refresh");
+  assert.equal(statSync(privateLockDir).mode & 0o777, 0o700, "new lock leaf must be private");
+
+  const hostileHome = join(root, "hostile-home");
+  const hostileLockDir = join(hostileHome, ".local", "state", "qmd-refresh");
+  mkdirSync(hostileLockDir, { recursive: true, mode: 0o700 });
+  chmodSync(hostileHome, 0o700);
+  chmodSync(join(hostileHome, ".local"), 0o700);
+  chmodSync(join(hostileHome, ".local", "state"), 0o700);
+  chmodSync(hostileLockDir, 0o700);
+  const sentinel = join(root, "lock-symlink-sentinel");
+  writeFileSync(sentinel, "unchanged\n");
+  symlinkSync(sentinel, join(hostileLockDir, "workspace-refresh.lock"));
+  const hostileRun = spawnSync("bash", [refreshWrapper, "--dry-run"], {
+    encoding: "utf8",
+    env: { ...wrapperEnv, HOME: hostileHome },
+  });
+  assert.notEqual(hostileRun.status, 0);
+  assert.match(hostileRun.stderr, /refusing symlink lock file/);
+  assert.equal(readFileSync(sentinel, "utf8"), "unchanged\n", "symlink target must not be truncated");
   console.log("PASS qmd refresh E2E: dry-run read-only, compatible API, scoped collection, retained history, excluded archive, untouched memory, no embedding");
 } finally {
   rmSync(root, { recursive: true, force: true });
