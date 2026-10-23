@@ -12,6 +12,7 @@ composite_gate fails.  The fix makes those tools optional with rg fallbacks.
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
 import subprocess
@@ -61,7 +62,7 @@ def _qmd_stub(tmp_path: Path) -> tuple[Path, Path]:
     qmd.write_text(
         "#!/usr/bin/env bash\n"
         "printf '%s\\n' \"$*\" >> \"$QMD_TEST_LOG\"\n"
-        "if [[ \"$1 $2\" == 'collection list' ]]; then exit 0; fi\n"
+        "if [[ \"$1 $2\" == 'collection list' ]]; then printf '%s\\n' \"${QMD_TEST_COLLECTIONS:-}\"; exit 0; fi\n"
         "if [[ \"$1\" == search ]]; then printf 'No results found.\\n'; fi\n"
         "exit 0\n"
     )
@@ -86,6 +87,8 @@ def _run_search_with_qmd(
     repo_root: Path | None = None,
     home: Path | None = None,
     wrapper: bool = False,
+    collections: str = "",
+    refresh_ttl: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = {
         **os.environ,
@@ -93,11 +96,14 @@ def _run_search_with_qmd(
         "QMD_TEST_LOG": str(log),
         "TOKEN_REDUCE_LAYER_SEARCH_QMD": "auto",
         "TOKEN_REDUCE_TELEMETRY_CONTEXT": "test",
+        "QMD_TEST_COLLECTIONS": collections,
     }
     if repo_root is not None:
         env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
     if home is not None:
         env["HOME"] = str(home)
+    if refresh_ttl is not None:
+        env["TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS"] = refresh_ttl
     script = SCRIPTS_DIR / ("token-reduce-paths.sh" if wrapper else "token-reduce-search.sh")
     args = ["bash", str(script), "needle"] if wrapper else ["bash", str(script), "--paths-only", "needle"]
     return subprocess.run(args, cwd=cwd, capture_output=True, text=True, env=env, timeout=30)
@@ -242,8 +248,8 @@ def test_paths_wrapper_honors_aggregate_root_override(
         assert not (root / "artifacts").exists()
 
 
-def test_search_keeps_qmd_for_regular_git_repository(tmp_path: Path) -> None:
-    """A normal Git checkout remains eligible for QMD indexing and search."""
+def test_search_missing_qmd_collection_falls_back_without_registration(tmp_path: Path) -> None:
+    """An unregistered Git checkout uses rg without QMD collection mutation."""
     with tempfile.TemporaryDirectory(prefix="token-reduce-valid-repo-") as raw_root:
         root = Path(raw_root)
         _init_git_repo(root)
@@ -253,14 +259,42 @@ def test_search_keeps_qmd_for_regular_git_repository(tmp_path: Path) -> None:
         result = _run_search_with_qmd(root, stub_dir, log)
 
         assert result.returncode == 0, result.stderr
-        calls = log.read_text()
-        assert "collection add" in calls
-        assert "search needle" in calls
-        assert list((root / "artifacts").glob("qmd-repo-*.stamp"))
+        assert "needle.txt" in result.stdout
+        calls = log.read_text().splitlines()
+        assert calls == ["collection list"]
+        assert not (root / "artifacts").exists()
+
+
+def test_search_existing_collection_fingerprint_change_is_read_only(tmp_path: Path) -> None:
+    """A stale fingerprint never removes/re-adds an existing QMD collection."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-existing-repo-") as raw_root:
+        root = Path(raw_root)
+        _init_git_repo(root)
+        (root / "needle.txt").write_text("needle\n")
+        collection = f"repo-{hashlib.sha1(str(root).encode()).hexdigest()[:12]}"
+        stamp = root / "artifacts" / f"qmd-{collection}.stamp"
+        stamp.parent.mkdir(parents=True)
+        stamp.write_text("old-fingerprint")
+        stub_dir, log = _qmd_stub(tmp_path)
+
+        result = _run_search_with_qmd(
+            root,
+            stub_dir,
+            log,
+            collections=f"{collection} {root}",
+            refresh_ttl="0",
+        )
+
+        assert result.returncode == 0, result.stderr
+        calls = log.read_text().splitlines()
+        assert "collection list" in calls
+        assert any(call.startswith("search needle") for call in calls)
+        assert not any(call.startswith(("collection add", "collection remove", "update")) for call in calls)
+        assert stamp.read_text() == "old-fingerprint"
 
 
 def test_search_keeps_qmd_for_linked_git_worktree(tmp_path: Path) -> None:
-    """A regular linked worktree outside pytest roots remains QMD-eligible."""
+    """A linked worktree uses an existing QMD collection without mutation."""
     with tempfile.TemporaryDirectory(prefix="token-reduce-linked-control-") as raw_root:
         sandbox = Path(raw_root)
         source = sandbox / "source"
@@ -283,15 +317,25 @@ def test_search_keeps_qmd_for_linked_git_worktree(tmp_path: Path) -> None:
             check=True,
             capture_output=True,
         )
+        collection = f"repo-{hashlib.sha1(str(linked).encode()).hexdigest()[:12]}"
         stub_dir, log = _qmd_stub(tmp_path)
 
-        result = _run_search_with_qmd(linked, stub_dir, log)
+        result = _run_search_with_qmd(linked, stub_dir, log, collections=f"{collection} {linked}")
 
         assert result.returncode == 0, result.stderr
-        calls = log.read_text()
-        assert "collection add" in calls
-        assert "search needle" in calls
-        assert list((linked / "artifacts").glob("qmd-repo-*.stamp"))
+        calls = log.read_text().splitlines()
+        assert "collection list" in calls
+        assert any(call.startswith("search needle") for call in calls)
+        assert not any(call.startswith(("collection add", "collection remove", "update")) for call in calls)
+        assert not (linked / "artifacts").exists()
+
+
+def test_setup_never_auto_registers_qmd_collection() -> None:
+    """Setup may inspect registration but cannot mutate the shared QMD index."""
+    setup_source = (SCRIPTS_DIR / "setup.sh").read_text()
+    assert "qmd collection list" in setup_source
+    assert "qmd collection add" not in setup_source
+    assert "qmd collection remove" not in setup_source
 
 
 # ---------------------------------------------------------------------------

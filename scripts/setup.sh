@@ -18,15 +18,6 @@ CODEX_SKILL_DIR="${CODEX_SKILLS_DIR}/token-reduce"
 AGENTS_SKILLS_DIR="${HOME}/.agents/skills"
 TOKEN_SAVIOR_PY="${HOME}/.local/share/token-savior/.venv/bin/python"
 EXTENDED_STACK="${TOKEN_REDUCE_INSTALL_EXTENDED_STACK:-0}"
-QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
-QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
-if [[ -f "$QMD_EXTENSION_FILE" ]]; then
-  QMD_EXTENSIONS_DEFAULT="$(tr -d '[:space:]' <"$QMD_EXTENSION_FILE")"
-fi
-QMD_EXTENSIONS="${TOKEN_REDUCE_QMD_EXTENSIONS:-$QMD_EXTENSIONS_DEFAULT}"
-QMD_MASK_DEFAULT="**/*.{${QMD_EXTENSIONS}}"
-QMD_MASK="${TOKEN_REDUCE_QMD_MASK:-$QMD_MASK_DEFAULT}"
-
 mkdir -p "$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
 
@@ -310,20 +301,16 @@ if [[ "${TOKEN_REDUCE_SETUP_DELEGATE_SKILL:-${TOKEN_REDUCE_SETUP_KIMI_DELEGATE:-
   fi
 fi
 
-# ── Index this repo in QMD ────────────────────────────────────────────────────
+# ── Check existing QMD registration without mutating the shared index ─────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
 if token_reduce_qmd_root_is_eligible "$REPO_ROOT" && command -v qmd >/dev/null 2>&1; then
-  index_started="$(date +%s)"
-  if qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask "$QMD_MASK" >/dev/null 2>&1; then
-    index_elapsed="$(( $(date +%s) - index_started ))"
-    ok "qmd collection indexed ($COLLECTION) with docs+code mask in ${index_elapsed}s"
-  elif qmd collection list 2>/dev/null | grep -qE "^${COLLECTION}[[:space:]]"; then
-    ok "qmd collection already indexed ($COLLECTION)"
+  if qmd collection list 2>/dev/null | grep -qE "^${COLLECTION}[[:space:]]"; then
+    ok "qmd collection already registered ($COLLECTION); setup left the shared index unchanged"
   else
-    warn "qmd collection add failed — run manually: qmd collection add . --name $COLLECTION --mask \"$QMD_MASK\""
+    warn "qmd collection is not registered ($COLLECTION); search will use scoped rg until the collection is registered through a reviewed maintenance path"
   fi
 elif command -v qmd >/dev/null 2>&1; then
-  warn "skipping QMD auto-index for a non-repository or excluded aggregate root"
+  warn "skipping QMD registration check for a non-repository or excluded aggregate root"
 fi
 
 # ── Telemetry opt-in onboarding (gstack-style prompt) ────────────────────────
