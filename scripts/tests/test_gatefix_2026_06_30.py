@@ -62,6 +62,7 @@ def _qmd_stub(tmp_path: Path) -> tuple[Path, Path]:
     qmd.write_text(
         "#!/usr/bin/env bash\n"
         "printf '%s\\n' \"$*\" >> \"$QMD_TEST_LOG\"\n"
+        "if [[ \"$1 $2\" == 'collection show' ]]; then case \"${QMD_TEST_COLLECTIONS:-}\" in \"$3\"|\"$3 \"*) printf 'Collection: %s\\n' \"$3\"; exit 0;; esac; exit 1; fi\n"
         "if [[ \"$1 $2\" == 'collection list' ]]; then printf '%s\\n' \"${QMD_TEST_COLLECTIONS:-}\"; exit 0; fi\n"
         "if [[ \"$1\" == search ]]; then printf 'No results found.\\n'; fi\n"
         "exit 0\n"
@@ -227,7 +228,7 @@ def test_search_does_not_register_nested_alternate_pytest_root(tmp_path: Path) -
 def test_paths_wrapper_honors_aggregate_root_override(
     aggregate: str, tmp_path: Path
 ) -> None:
-    """The wrapper propagates root overrides and skips aggregate QMD indexing."""
+    """The wrapper refuses aggregate roots before QMD or broad rg fallback."""
     with tempfile.TemporaryDirectory(prefix="token-reduce-root-override-") as raw_root:
         sandbox = Path(raw_root)
         home = sandbox / "home"
@@ -243,7 +244,9 @@ def test_paths_wrapper_honors_aggregate_root_override(
             repo, stub_dir, log, repo_root=root, home=home, wrapper=True
         )
 
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 2
+        assert "refusing aggregate root" in result.stderr
+        assert "TOKEN_REDUCE_REPO_ROOT" in result.stderr
         assert not log.exists() or log.read_text() == ""
         assert not (root / "artifacts").exists()
 
@@ -254,6 +257,7 @@ def test_search_missing_qmd_collection_falls_back_without_registration(tmp_path:
         root = Path(raw_root)
         _init_git_repo(root)
         (root / "needle.txt").write_text("needle\n")
+        collection = f"repo-{hashlib.sha1(str(root).encode()).hexdigest()[:12]}"
         stub_dir, log = _qmd_stub(tmp_path)
 
         result = _run_search_with_qmd(root, stub_dir, log)
@@ -261,7 +265,7 @@ def test_search_missing_qmd_collection_falls_back_without_registration(tmp_path:
         assert result.returncode == 0, result.stderr
         assert "needle.txt" in result.stdout
         calls = log.read_text().splitlines()
-        assert calls == ["collection list"]
+        assert calls == [f"collection show {collection}"]
         assert not (root / "artifacts").exists()
 
 
@@ -287,7 +291,7 @@ def test_search_existing_collection_fingerprint_change_is_read_only(tmp_path: Pa
 
         assert result.returncode == 0, result.stderr
         calls = log.read_text().splitlines()
-        assert "collection list" in calls
+        assert f"collection show {collection}" in calls
         assert any(call.startswith("search needle") for call in calls)
         assert not any(call.startswith(("collection add", "collection remove", "update")) for call in calls)
         assert stamp.read_text() == "old-fingerprint"
@@ -324,7 +328,7 @@ def test_search_keeps_qmd_for_linked_git_worktree(tmp_path: Path) -> None:
 
         assert result.returncode == 0, result.stderr
         calls = log.read_text().splitlines()
-        assert "collection list" in calls
+        assert f"collection show {collection}" in calls
         assert any(call.startswith("search needle") for call in calls)
         assert not any(call.startswith(("collection add", "collection remove", "update")) for call in calls)
         assert not (linked / "artifacts").exists()
