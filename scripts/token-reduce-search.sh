@@ -25,6 +25,10 @@ GLOB="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
 REPO_ROOT="$(token_reduce_resolve_repo_root)"
+if token_reduce_qmd_root_is_aggregate "$REPO_ROOT"; then
+  printf '%s\n' "[token-reduce-search] refusing aggregate root '$REPO_ROOT'; set TOKEN_REDUCE_REPO_ROOT to a concrete repository or run from that repository" >&2
+  exit 2
+fi
 # Only a fixed mode is printed; no config text is evaluated as shell code.
 if command -v uv >/dev/null 2>&1; then
   QMD_LAYER="$(uv run --no-project "$SCRIPT_DIR/token_reduce_layers.py" mode search_qmd)"
@@ -119,7 +123,12 @@ run_qmd_search() {
 }
 
 qmd_collection_exists() {
-  qmd collection list 2>/dev/null | grep -q "$QMD_COLLECTION_EXISTS_REGEX"
+  local list_timeout="${TOKEN_REDUCE_QMD_COLLECTION_LIST_TIMEOUT_SECONDS:-8}"
+  local collection_list
+  [[ "$list_timeout" =~ ^[1-9][0-9]*$ ]] || return 1
+  command -v timeout >/dev/null 2>&1 || return 1
+  collection_list="$(timeout -k 2 "${list_timeout}s" qmd collection list 2>/dev/null)" || return 1
+  grep -q "$QMD_COLLECTION_EXISTS_REGEX" <<<"$collection_list"
 }
 
 if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* || "$QUERY" == *"_"* ]]; then
