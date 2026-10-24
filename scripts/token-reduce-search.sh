@@ -41,7 +41,6 @@ if ! token_reduce_qmd_root_is_eligible "$REPO_ROOT"; then
 fi
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 COLLECTION_NAME="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-QMD_COLLECTION_EXISTS_REGEX="^${COLLECTION_NAME}[[:space:]]"
 QMD_SEARCH_TIMEOUT_SECONDS="${TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS:-}"
 if [[ -z "$QMD_SEARCH_TIMEOUT_SECONDS" ]]; then
   if [[ "$TELEMETRY_CONTEXT" == "runtime" ]]; then
@@ -123,12 +122,10 @@ run_qmd_search() {
 }
 
 qmd_collection_exists() {
-  local list_timeout="${TOKEN_REDUCE_QMD_COLLECTION_LIST_TIMEOUT_SECONDS:-8}"
-  local collection_list
-  [[ "$list_timeout" =~ ^[1-9][0-9]*$ ]] || return 1
+  local check_timeout="${TOKEN_REDUCE_QMD_COLLECTION_CHECK_TIMEOUT_SECONDS:-4}"
+  [[ "$check_timeout" =~ ^[1-9][0-9]*$ ]] || return 1
   command -v timeout >/dev/null 2>&1 || return 1
-  collection_list="$(timeout -k 2 "${list_timeout}s" qmd collection list 2>/dev/null)" || return 1
-  grep -q "$QMD_COLLECTION_EXISTS_REGEX" <<<"$collection_list"
+  timeout -k 2 "${check_timeout}s" qmd collection show "$COLLECTION_NAME" >/dev/null 2>&1
 }
 
 if [[ "$QUERY" =~ (^|[[:space:]])(script|hook)([[:space:]]|$) || "$QUERY" == *".py"* || "$QUERY" == *".sh"* || "$QUERY" == *"_"* ]]; then

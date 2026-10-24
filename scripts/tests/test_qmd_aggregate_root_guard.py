@@ -86,7 +86,7 @@ def test_adaptive_refuses_aggregate_before_search_subprocesses(tmp_path, root_ki
     assert not calls.exists()
 
 
-def test_collection_list_is_bounded_and_falls_back_inside_repo(tmp_path):
+def test_collection_show_is_bounded_and_falls_back_inside_repo(tmp_path):
     temp_root = Path(tempfile.mkdtemp(prefix="qmd-eligible-repo-"))
     repo = temp_root / "repo"
     _git_repo(repo)
@@ -100,7 +100,7 @@ def test_collection_list_is_bounded_and_falls_back_inside_repo(tmp_path):
     env.update(
         HOME=str(tmp_path / "home"),
         TOKEN_REDUCE_REPO_ROOT=str(repo),
-        TOKEN_REDUCE_QMD_COLLECTION_LIST_TIMEOUT_SECONDS="1",
+        TOKEN_REDUCE_QMD_COLLECTION_CHECK_TIMEOUT_SECONDS="1",
         PATH=f"{bin_dir}:{env['PATH']}",
     )
     start = time.monotonic()
@@ -111,7 +111,7 @@ def test_collection_list_is_bounded_and_falls_back_inside_repo(tmp_path):
         assert time.monotonic() - start < 4
         assert result.returncode == 0
         recorded = calls.read_text()
-        assert "qmd:collection list" in recorded
+        assert "qmd:collection show " in recorded
         assert f"rg:{repo}:" in recorded
         assert str(tmp_path) not in recorded.replace(str(repo), "")
     finally:
@@ -127,7 +127,7 @@ def test_registered_collection_still_uses_qmd(tmp_path):
     bin_dir.mkdir()
     calls = tmp_path / "calls"
     _stub(bin_dir, "uv", 'printf auto\n')
-    _stub(bin_dir, "qmd", f'echo "qmd:$*" >> "{calls}"\nif [ "$1" = collection ]; then printf "{collection}  /tmp/docs\\n"; exit 0; fi\nexit 1\n')
+    _stub(bin_dir, "qmd", f'echo "qmd:$*" >> "{calls}"\nif [ "$1 $2" = "collection show" ]; then printf "Collection: {collection}\\n"; exit 0; fi\nif [ "$1" = search ]; then printf "qmd://{collection}/README.md  #abcdef\\n"; exit 0; fi\nexit 1\n')
     _stub(bin_dir, "rg", f'echo "rg:$PWD:$*" >> "{calls}"\nexit 1\n')
     env = os.environ.copy()
     env.update(HOME=str(tmp_path / "home"), TOKEN_REDUCE_REPO_ROOT=str(repo), PATH=f"{bin_dir}:{env['PATH']}")
@@ -137,38 +137,9 @@ def test_registered_collection_still_uses_qmd(tmp_path):
 
         assert result.returncode == 0
         recorded = calls.read_text()
-        assert "qmd:collection list" in recorded
+        assert f"qmd:collection show {collection}" in recorded
         assert "qmd:search" in recorded
-        assert f"rg:{repo}:" in recorded
-    finally:
-        shutil.rmtree(temp_root)
-
-
-def test_large_collection_list_completes_without_early_pipe_close(tmp_path):
-    temp_root = Path(tempfile.mkdtemp(prefix="qmd-eligible-repo-"))
-    repo = temp_root / "repo"
-    _git_repo(repo)
-    collection = "repo-" + hashlib.sha1(str(repo).encode()).hexdigest()[:12]
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    calls = tmp_path / "calls"
-    _stub(bin_dir, "uv", 'printf auto\n')
-    _stub(
-        bin_dir,
-        "qmd",
-        f'if [ "$1" = collection ]; then printf "{collection}  /tmp/docs\\n"; i=0; while [ "$i" -lt 12000 ]; do printf "collection-%s /tmp/docs\\n" "$i"; i=$((i+1)); done; exit 0; fi\necho "qmd:$*" >> "{calls}"\nprintf "qmd://{collection}/README.md  #abcdef\\n"\n',
-    )
-    _stub(bin_dir, "rg", f'echo "rg:$PWD:$*" >> "{calls}"\nexit 1\n')
-    env = os.environ.copy()
-    env.update(HOME=str(tmp_path / "home"), TOKEN_REDUCE_REPO_ROOT=str(repo), PATH=f"{bin_dir}:{env['PATH']}")
-
-    try:
-        result = subprocess.run([str(SEARCH), "--paths-only", "needle"], cwd=repo, env=env, capture_output=True, text=True, timeout=5)
-
-        assert result.returncode == 0
         assert f"qmd://{collection}/README.md" in result.stdout
-        recorded = calls.read_text()
-        assert "qmd:search" in recorded
         assert ":--files " not in recorded
         assert "falling back to rg" not in result.stderr
     finally:
