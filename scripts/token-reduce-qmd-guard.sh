@@ -14,7 +14,7 @@ token_reduce_resolve_repo_root() {
 }
 
 # QMD auto-indexing is limited to real Git worktrees. Aggregate home/workspace
-# roots and pytest's disposable trees must remain on the scoped-rg path.
+# roots are refused by search; pytest disposable trees remain on scoped rg.
 token_reduce_qmd_root_is_eligible() {
   local requested_root="${1:-}"
   local root home_root git_root
@@ -35,4 +35,16 @@ token_reduce_qmd_root_is_eligible() {
   git_root="$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" || return 1
   git_root="$(cd "$git_root" && pwd -P)" || return 1
   [[ "$root" == "$git_root" ]]
+}
+
+# Aggregate roots are unsafe for the generic rg fallback as well as for QMD:
+# searching them can traverse private state and unrelated repositories. Callers
+# should stop and ask for a concrete repository root instead.
+token_reduce_qmd_root_is_aggregate() {
+  local requested_root="${1:-}"
+  local root home_root
+  [[ -d "$requested_root" && -n "${HOME:-}" && -d "$HOME" ]] || return 1
+  root="$(cd "$requested_root" && pwd -P)" || return 1
+  home_root="$(cd "$HOME" && pwd -P)" || return 1
+  [[ "$root" == "$home_root" || "$root" == "$home_root/workspace" ]]
 }
