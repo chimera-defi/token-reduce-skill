@@ -2,6 +2,7 @@ import hashlib
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SEARCH = REPO_ROOT / "scripts" / "token-reduce-search.sh"
+ADAPTIVE = REPO_ROOT / "scripts" / "token_reduce_adaptive.py"
 
 
 def _stub(bin_dir: Path, name: str, body: str) -> None:
@@ -45,6 +47,38 @@ def test_aggregate_home_refuses_before_qmd_or_rg(tmp_path, root_kind):
     env.update(HOME=str(home), TOKEN_REDUCE_REPO_ROOT=str(root), PATH=f"{bin_dir}:{env['PATH']}")
 
     result = subprocess.run([str(SEARCH), "--paths-only", "needle"], env=env, capture_output=True, text=True)
+
+    assert result.returncode == 2
+    assert "refusing aggregate root" in result.stderr
+    assert "TOKEN_REDUCE_REPO_ROOT" in result.stderr
+    assert not calls.exists()
+
+
+@pytest.mark.parametrize("root_kind", ["home", "workspace", "workspace_symlink"])
+def test_adaptive_refuses_aggregate_before_search_subprocesses(tmp_path, root_kind):
+    home = tmp_path / "home"
+    (home / "workspace").mkdir(parents=True)
+    if root_kind == "home":
+        root = home
+    elif root_kind == "workspace":
+        root = home / "workspace"
+    else:
+        root = tmp_path / "workspace-link"
+        root.symlink_to(home / "workspace", target_is_directory=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls"
+    for name in ("rg", "qmd", "uv"):
+        _stub(bin_dir, name, f'echo {name} >> "{calls}"\nexit 0\n')
+    env = os.environ.copy()
+    env.update(HOME=str(home), PATH=f"{bin_dir}:{env['PATH']}")
+
+    result = subprocess.run(
+        [sys.executable, str(ADAPTIVE), "--repo-root", str(root), "--dry-run", "needle"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
 
     assert result.returncode == 2
     assert "refusing aggregate root" in result.stderr

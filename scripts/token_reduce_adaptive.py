@@ -235,6 +235,17 @@ def repo_root() -> Path:
         return base.resolve()
 
 
+def is_aggregate_root(root: Path) -> bool:
+    """Return true for physical HOME/workspace roots, including symlink aliases."""
+    physical_root = root.resolve()
+    home = Path.home().resolve()
+    aggregate_roots = {home}
+    workspace = home / "workspace"
+    if workspace.exists():
+        aggregate_roots.add(workspace.resolve())
+    return physical_root in aggregate_roots
+
+
 def script_dir() -> Path:
     return Path(__file__).resolve().parent
 
@@ -479,6 +490,13 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
+    if is_aggregate_root(root):
+        print(
+            f"[token-reduce-adaptive] refusing aggregate root '{root}'; "
+            "set TOKEN_REDUCE_REPO_ROOT to a concrete repository or run from that repository",
+            file=sys.stderr,
+        )
+        return 2
     query = " ".join(args.query).strip()
     config = load_config()
     routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
