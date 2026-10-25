@@ -26,8 +26,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
 REPO_ROOT="$(token_reduce_resolve_repo_root)"
 if token_reduce_qmd_root_is_aggregate "$REPO_ROOT"; then
-  printf '%s\n' "[token-reduce-search] refusing aggregate root '$REPO_ROOT'; set TOKEN_REDUCE_REPO_ROOT to a concrete repository or run from that repository" >&2
-  exit 2
+  token_reduce_aggregate_fallback "$REPO_ROOT" "$QUERY"
+  exit $?
 fi
 # Only a fixed mode is printed; no config text is evaluated as shell code.
 if command -v uv >/dev/null 2>&1; then

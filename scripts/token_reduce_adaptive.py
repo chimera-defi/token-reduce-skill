@@ -221,6 +221,8 @@ class RoutingPolicy:
 
 def repo_root() -> Path:
     base = Path(os.environ.get("TOKEN_REDUCE_REPO_ROOT") or os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
+    if is_aggregate_root(base):
+        return base.resolve()
     try:
         proc = subprocess.run(
             ["git", "-C", str(base), "rev-parse", "--show-toplevel"],
@@ -490,14 +492,15 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(args.repo_root).resolve() if args.repo_root else repo_root()
-    if is_aggregate_root(root):
-        print(
-            f"[token-reduce-adaptive] refusing aggregate root '{root}'; "
-            "set TOKEN_REDUCE_REPO_ROOT to a concrete repository or run from that repository",
-            file=sys.stderr,
-        )
-        return 2
     query = " ".join(args.query).strip()
+    if is_aggregate_root(root):
+        command = [str(script_dir() / "token-reduce-search.sh"), "--paths-only", query]
+        if args.dry_run:
+            print(json.dumps({"tier": "paths", "command": command, "query": query, "repo_root": str(root)}, indent=2))
+            return 0
+        env = os.environ.copy()
+        env["TOKEN_REDUCE_REPO_ROOT"] = str(root)
+        os.execve(command[0], command, env)
     config = load_config()
     routing = config.get("routing", {}) if isinstance(config.get("routing"), dict) else {}
     configured_behavior_days = int(routing.get("behavior_days", 3) or 3)
