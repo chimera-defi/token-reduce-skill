@@ -11,6 +11,7 @@ const SERVER = {
   name: "token-reduce-mcp",
   version: "0.2.3",
 };
+const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const TOOLS = [
   {
@@ -126,22 +127,39 @@ process.stdin.on("data", (chunk) => {
 
 function parseMessages() {
   while (true) {
-    const headerEnd = buffer.indexOf("\r\n\r\n");
-    if (headerEnd === -1) return;
+    let start = 0;
+    while (start < buffer.length && [0x20, 0x09, 0x0a, 0x0d].includes(buffer[start])) start++;
+    buffer = buffer.subarray(start);
+    if (!buffer.length) return;
 
-    const header = buffer.slice(0, headerEnd).toString("utf8");
-    const match = header.match(/Content-Length:\s*(\d+)/i);
-    if (!match) {
-      buffer = Buffer.alloc(0);
-      return;
+    // A header may arrive across multiple stdin chunks. Wait for its full prefix.
+    const prefix = buffer.subarray(0, 14).toString("ascii").toLowerCase();
+    if (buffer.length < 14 && "content-length".startsWith(prefix)) return;
+    const framing = prefix === "content-length" ? "content-length" : "ndjson";
+    let body;
+    if (framing === "content-length") {
+      const headerEnd = buffer.indexOf("\r\n\r\n");
+      if (headerEnd === -1) return;
+
+      const header = buffer.subarray(0, headerEnd).toString("utf8");
+      const match = header.match(/Content-Length:\s*(\d+)/i);
+      if (!match) {
+        buffer = Buffer.alloc(0);
+        return;
+      }
+
+      const length = Number(match[1]);
+      const total = headerEnd + 4 + length;
+      if (buffer.length < total) return;
+
+      body = buffer.subarray(headerEnd + 4, total).toString("utf8");
+      buffer = buffer.subarray(total);
+    } else {
+      const lineEnd = buffer.indexOf("\n");
+      if (lineEnd === -1) return;
+      body = buffer.subarray(0, lineEnd).toString("utf8");
+      buffer = buffer.subarray(lineEnd + 1);
     }
-
-    const length = Number(match[1]);
-    const total = headerEnd + 4 + length;
-    if (buffer.length < total) return;
-
-    const body = buffer.slice(headerEnd + 4, total).toString("utf8");
-    buffer = buffer.slice(total);
 
     let message;
     try {
@@ -150,24 +168,26 @@ function parseMessages() {
       continue;
     }
 
-    void handleMessage(message);
+    void handleMessage(message, framing);
   }
 }
 
-function send(payload) {
+function send(payload, framing) {
   const body = JSON.stringify(payload);
-  process.stdout.write(`Content-Length: ${Buffer.byteLength(body, "utf8")}\r\n\r\n${body}`);
+  process.stdout.write(framing === "ndjson"
+    ? `${body}\n`
+    : `Content-Length: ${Buffer.byteLength(body, "utf8")}\r\n\r\n${body}`);
 }
 
-function sendResult(id, result) {
-  send({ jsonrpc: "2.0", id, result });
+function sendResult(id, result, framing) {
+  send({ jsonrpc: "2.0", id, result }, framing);
 }
 
-function sendError(id, code, message) {
-  send({ jsonrpc: "2.0", id, error: { code, message } });
+function sendError(id, code, message, framing) {
+  send({ jsonrpc: "2.0", id, error: { code, message } }, framing);
 }
 
-async function handleMessage(message) {
+async function handleMessage(message, framing) {
   if (!message || message.jsonrpc !== "2.0") return;
   if (!message.id && !message.method) return;
 
@@ -177,22 +197,23 @@ async function handleMessage(message) {
     switch (message.method) {
       case "initialize":
         sendResult(message.id, {
-          protocolVersion: "2024-11-05",
+          protocolVersion: PROTOCOL_VERSIONS.includes(message.params?.protocolVersion)
+            ? message.params.protocolVersion : PROTOCOL_VERSIONS[0],
           capabilities: { tools: { listChanged: false } },
           serverInfo: SERVER,
-        });
+        }, framing);
         return;
       case "tools/list":
-        sendResult(message.id, { tools: TOOLS });
+        sendResult(message.id, { tools: TOOLS }, framing);
         return;
       case "tools/call":
-        sendResult(message.id, await callTool(message.params ?? {}));
+        sendResult(message.id, await callTool(message.params ?? {}), framing);
         return;
       default:
-        sendError(message.id, -32601, `Method not found: ${message.method}`);
+        sendError(message.id, -32601, `Method not found: ${message.method}`, framing);
     }
   } catch (error) {
-    sendError(message.id, -32000, error instanceof Error ? error.message : String(error));
+    sendError(message.id, -32000, error instanceof Error ? error.message : String(error), framing);
   }
 }
 

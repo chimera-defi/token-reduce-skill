@@ -21,7 +21,7 @@
     "token-reduce-mcp": {
       "command": "node",
       "args": [
-        "mcp/server.mjs"
+        "${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"
       ]
     }
   }

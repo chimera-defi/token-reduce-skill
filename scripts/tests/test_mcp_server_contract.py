@@ -4,7 +4,7 @@ Historically the server had no automated coverage. The `anthropic_cache_plan`
 tool shipped an invalid JSON Schema (a property with no ``type``; ``array``
 properties with no ``items``), which strict MCP clients can reject on load --
 the plausible reason the plugin's ``mcpServers`` registration was disabled by
-an unattributed local edit. These tests pin the two things that matter:
+an unattributed local edit. These tests pin the integration contract:
 
 1. The server completes the JSON-RPC handshake and lists its tools, and every
    tool's ``inputSchema`` is well-formed (every property has a ``type``; every
@@ -12,6 +12,8 @@ an unattributed local edit. These tests pin the two things that matter:
 2. ``.claude-plugin/plugin.json`` still registers the server -- so an accidental
    (or drive-by) removal of the integration fails CI instead of silently
    shipping.
+3. The plugin command works from an unrelated session directory, with both
+   NDJSON and legacy Content-Length framing and supported protocol versions.
 
 Skipped automatically where ``node`` is unavailable so the Python suite stays
 runnable without a JS toolchain.
@@ -60,6 +62,24 @@ def _parse_frames(raw: bytes) -> list[dict]:
     return messages
 
 
+def _run_server(stdin: bytes, cwd: Path = REPO_ROOT) -> bytes:
+    plugin = json.loads(PLUGIN_JSON.read_text())
+    server = plugin["mcpServers"]["token-reduce-mcp"]
+    args = [arg.replace("${CLAUDE_PLUGIN_ROOT}", str(REPO_ROOT))
+            for arg in server["args"]]
+    assert Path(args[0]) == SERVER, "plugin must launch the absolute server path"
+    proc = subprocess.run(
+        [server["command"], *args],
+        input=stdin,
+        capture_output=True,
+        cwd=str(cwd),
+        timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert not proc.stderr, proc.stderr.decode("utf-8", "replace")
+    return proc.stdout
+
+
 def _handshake() -> list[dict]:
     stdin = b"".join(
         (
@@ -68,14 +88,47 @@ def _handshake() -> list[dict]:
             _frame({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
         )
     )
-    proc = subprocess.run(
-        ["node", str(SERVER)],
-        input=stdin,
-        capture_output=True,
-        cwd=str(REPO_ROOT),
-        timeout=30,
-    )
-    return _parse_frames(proc.stdout)
+    return _parse_frames(_run_server(stdin))
+
+
+@pytest.mark.parametrize("framing", ["ndjson", "content-length"])
+@pytest.mark.parametrize("requested, expected", [
+    ("2025-06-18", "2025-06-18"),
+    ("2025-03-26", "2025-03-26"),
+    ("2024-11-05", "2024-11-05"),
+    ("unsupported", "2025-06-18"),
+    (None, "2025-06-18"),
+])
+def test_handshake_from_unrelated_cwd(
+    tmp_path: Path, framing: str, requested: str | None, expected: str
+) -> None:
+    """Exercise the expanded plugin command from a Claude session directory."""
+    params = {"capabilities": {}}
+    if requested is not None:
+        params["protocolVersion"] = requested
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": params},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+    ]
+    if framing == "ndjson":
+        stdin = b" \t\r\n" + b"".join(
+            json.dumps(request).encode("utf-8") + b"\n" for request in requests
+        )
+    else:
+        stdin = b" \t\r\n" + b"".join(_frame(request) for request in requests)
+    raw = _run_server(stdin, cwd=tmp_path)
+    if framing == "ndjson":
+        assert raw.endswith(b"\n"), f"missing newline-framed response: {raw!r}"
+        messages = [json.loads(line) for line in raw.splitlines()]
+    else:
+        messages = _parse_frames(raw)
+    assert len(messages) == 2, f"expected initialize and tools/list; got {messages!r}"
+    assert all(message["jsonrpc"] == "2.0" for message in messages)
+    assert [message["id"] for message in messages] == [1, 2]
+    assert messages[0]["result"]["protocolVersion"] == expected
+    assert messages[0]["result"]["capabilities"]["tools"] == {"listChanged": False}
+    assert messages[1]["result"]["tools"], "server advertised zero tools"
 
 
 def test_initialize_advertises_tools_capability() -> None:
@@ -119,4 +172,4 @@ def test_plugin_json_still_registers_the_mcp_server() -> None:
     assert "token-reduce-mcp" in servers, (
         "plugin.json must register the token-reduce-mcp server"
     )
-    assert servers["token-reduce-mcp"]["args"] == ["mcp/server.mjs"]
+    assert servers["token-reduce-mcp"]["args"] == ["${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"]
