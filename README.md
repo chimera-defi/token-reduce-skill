@@ -119,16 +119,18 @@ Codex fresh-context handoff generator:
 
 ### MCP
 
-```json
-{
-  "mcpServers": {
-    "token-reduce-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/token-reduce-skill/mcp/server.mjs"]
-    }
-  }
-}
+For an explicit project opt-in in Claude Code, run from the consuming project:
+
+```bash
+claude mcp add -s project --transport stdio token-reduce-mcp -- node /absolute/path/to/token-reduce-skill/mcp/server.mjs
 ```
+
+This writes `.mcp.json`; Claude Code does not load MCP registrations from
+`~/.claude/settings.json`. The plugin manifest already registers this server
+when using the plugin, so choose one installation method.
+
+The optional token-savior structural backend needs no MCP registration.
+Keep its MCP server opt-in; see the [registration decision and host cleanup](references/token-savior-evaluation.md#mcp-registration-decision--2026-10-25).
 
 #### Available MCP Tools
 
@@ -221,7 +223,7 @@ This prevents claiming benchmark-only wins when adoption/compliance or runtime s
 If helper usage looks weak despite clean installs/docs, run:
 
 ```bash
-./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
+./scripts/token-reduce-manage.sh improve-adoption --workspace-root ~/workspace --days 7
 ```
 
 The report writes:
