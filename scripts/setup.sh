@@ -8,7 +8,10 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 ok()   { printf "${GREEN}✔${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}!${NC} %s\n" "$*"; }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve with Bash builtins even when PATH lacks coreutils or the source has no slash.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || SCRIPT_DIR=.
+SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd)"
 source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
 REPO_ROOT="$(token_reduce_resolve_repo_root)"
 BIN_DIR="${HOME}/.local/bin"
