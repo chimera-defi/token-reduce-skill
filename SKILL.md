@@ -79,7 +79,7 @@ and relay the choices to the user via AskUserQuestion. Skip if config already ex
 | Parallel calls | fewer round-trips (unmeasured) | Independent lookups |
 | Caveman-style output profile (optional companion) | 20–65% output token reduction in upstream caveman benchmarks | When the user explicitly asks for extra brevity |
 | AXI companion tools (optional) | Fewer turns in upstream AXI studies for GitHub/browser tasks | When work is primarily GitHub or browser automation |
-| AI delegate router (`delegate-skill`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Let the router pick the delegate: devin (browser/sandbox), kimi (cheap research/review), grok (large codebase), spark (local Codex write-mode) |
+| AI delegate router (`delegate-skill`) | Offload bounded side work while parent agent keeps critical-path orchestration and verification | Let the router pick the delegate: devin (browser/sandbox/unknown scope), grok (large codebase), spark (local Codex write-mode) |
 | Adaptive tier router | Auto-promotes/demotes helper tier from behavior and query intent; recommends context-mode, Headroom, or code-review-graph when matching companions are installed | Default first move when path is unknown (`token-reduce-adaptive`) |
 | Context Mode companion (optional) | Up to ~98% reduction in output-heavy fixture comparisons | When tasks are dominated by huge tool payloads (logs, test output, API dumps) |
 | Headroom companion (optional pilot) | 24-33% saved in a June tool-result smoke test; live proxy removed ~3% of tokens (2026-10-09) | When large tool results or old turns keep inflating the context and a verified Headroom proxy is already available |

@@ -38,7 +38,7 @@ def _report() -> dict:
 def _config(*, budgets_enabled: bool = True) -> dict:
     return {
         "delegates": {
-            "kimi": {"enabled": True},
+            "devin": {"enabled": True},
         },
         "companions": {
             "headroom": {"enabled": True},

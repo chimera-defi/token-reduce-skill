@@ -141,17 +141,18 @@ Headroom is **off by default** (removed host-wide 2026-10-12: live proxy saved 2
 <!-- delegate-skill:begin -->
 ## AI Delegate Routing — MANDATORY
 
-All delegation MUST go through the `delegate-skill` router, which selects the backend and calls its wrapper. Direct `devin`, `pi --provider kimi-coding`, raw `grok`, or backgrounded delegate commands are **prohibited** — they bypass envelope checks, fallback routing, auth detection, timeout scaling, and telemetry.
+All delegation MUST go through the `delegate-skill` router, which selects the backend and calls its wrapper. Direct `devin`, raw `grok`, or backgrounded delegate commands are **prohibited** — they bypass envelope checks, fallback routing, auth detection, timeout scaling, and telemetry.
 
 **Pick the delegate with the router, then call the named wrapper:**
 
 | Task | Wrapper |
 |------|---------|
 | Browser / UI / screenshot / sandbox | `devin-delegate --task "..."` |
-| Cheap research / review / summarize / draft | `kimi-delegate --task "..."` |
+| Cheap research / review / summarize / draft | Haiku-high read-only subagent, or Codex `gpt-6.1-sol` low |
+| Builds / implementation | `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high` |
 | Multi-file refactor / large codebase | `grok-delegate --task "..."` |
 | Local Codex write-mode implementation | `/spark` |
-| Unknown scope | `kimi-delegate` to scope, then escalate |
+| Unknown scope | `devin-delegate --task "..."` |
 
 - **Interactive envelope builder:** `<delegate>-delegate --interactive`
 - **Print envelope only:** `<delegate>-delegate --print-envelope --task "..."`

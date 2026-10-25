@@ -13,14 +13,15 @@ wrapper — token-reduce no longer wires individual delegate skills directly.
 | Task | Router picks | Wrapper |
 |------|--------------|---------|
 | Browser / UI / screenshot / sandbox | devin | `devin-delegate` |
-| Cheap research / review / summarize / draft | kimi | `kimi-delegate` |
+| Cheap research / review / summarize / draft | Haiku-high subagent / Codex low | (no wrapper) |
+| Builds / implementation | Codex gpt-6.1-sol high | `codex exec` |
 | Multi-file refactor / large codebase | grok | `grok-delegate` |
 | Local Codex write-mode implementation | spark | `/spark` |
-| Unknown scope | kimi to scope, then escalate | `kimi-delegate` |
+| Unknown scope | devin | `devin-delegate` |
 
-`delegate-skill/setup.sh` installs and links all four wrappers and injects the global
+`delegate-skill/setup.sh` installs and links all wrappers and injects the global
 routing block. Always call the wrapper the router names — never raw `devin`,
-raw `pi --provider kimi-coding`, raw `grok`, or backgrounded delegate commands; the
+raw `grok`, or backgrounded delegate commands; the
 wrappers preserve envelope checks, fallback, auth detection, timeout scaling, and telemetry.
 
 ## Why standalone
@@ -38,13 +39,11 @@ git clone https://github.com/chimera-defi/delegate-skill "$HOME/.claude/skills/d
 
 `integrate-delegate-skill.sh` locates the delegate-skill repo (override with
 `DELEGATE_SKILL_REPO`) and runs its `setup.sh`. token-reduce's own `setup.sh` calls this
-automatically unless `TOKEN_REDUCE_SETUP_DELEGATE_SKILL=0`
-(legacy alias: `TOKEN_REDUCE_SETUP_KIMI_DELEGATE=0`).
+automatically unless `TOKEN_REDUCE_SETUP_DELEGATE_SKILL=0`.
 
 ## Health check
 
 ```bash
 devin-delegate --check
-kimi-delegate --check
 grok-delegate --check
 ```

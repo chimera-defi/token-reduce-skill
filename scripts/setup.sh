@@ -293,12 +293,12 @@ for companion_skill in axi caveman caveman-cn caveman-es compress; do
   ensure_codex_companion_link "$companion_skill" "$AGENTS_SKILLS_DIR/$companion_skill"
 done
 
-# Optional delegate-skill router integration (devin / kimi / grok / spark).
+# Optional delegate-skill router integration (devin / grok / spark).
 # delegate-skill is the single entry point; its setup.sh installs and links all
-# four wrappers. TOKEN_REDUCE_SETUP_KIMI_DELEGATE is honored as a legacy alias.
-if [[ "${TOKEN_REDUCE_SETUP_DELEGATE_SKILL:-${TOKEN_REDUCE_SETUP_KIMI_DELEGATE:-1}}" == "1" ]]; then
+# four wrappers.
+if [[ "${TOKEN_REDUCE_SETUP_DELEGATE_SKILL:-1}" == "1" ]]; then
   if "$REPO_ROOT/scripts/integrate-delegate-skill.sh" >/dev/null 2>&1; then
-    ok "delegate-skill router integrated (devin / kimi / grok / spark)"
+    ok "delegate-skill router integrated (devin / grok / spark)"
   else
     warn "delegate-skill integration skipped/failed (set TOKEN_REDUCE_SETUP_DELEGATE_SKILL=0 to silence)"
   fi
