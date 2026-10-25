@@ -36,7 +36,7 @@ Instead of manually managing tool-by-tool setup, it installs/wires defaults and 
 ### Conditional companions
 
 - [AXI](https://github.com/kunchenguid/axi) (`gh-axi`, `chrome-devtools-axi`) for GitHub/browser-heavy execution
-- [`delegate-skill`](https://github.com/chimera-defi/delegate-skill) router for planner-first delegation — routes to devin (browser/sandbox), kimi (cheap research/review), grok (large codebase), or spark (local Codex write-mode) (standalone repo integration)
+- [`delegate-skill`](https://github.com/chimera-defi/delegate-skill) router for planner-first delegation — routes to devin (browser/sandbox/unknown scope), grok (large codebase), or spark (local Codex write-mode) (standalone repo integration)
 - [`token-savior`](https://github.com/Mibayy/token-savior) for exact symbol / impact acceleration
 - [`context-mode`](https://github.com/mksglu/context-mode) for output-heavy payload sessions
 - [`headroom`](https://github.com/chopratejas/headroom) as an optional pilot proxy/MCP layer for large tool-result and long-session context pressure; token-reduce remains the master router
@@ -73,7 +73,7 @@ Optional QMD scope overrides:
 - `TOKEN_REDUCE_QMD_REFRESH_TTL_SECONDS`: controls how often collection fingerprints are recomputed before refresh checks (default runtime: `900`)
 - `TOKEN_REDUCE_QMD_SEARCH_TIMEOUT_SECONDS`: cap runtime `qmd search` latency before falling back to scoped `rg` (default: `8` in runtime, `0` in benchmark/test contexts)
 
-Standalone companion integration (`delegate-skill` router — devin / kimi / grok / spark):
+Standalone companion integration (`delegate-skill` router — devin / grok / spark):
 
 ```bash
 git clone https://github.com/chimera-defi/delegate-skill "$HOME/.claude/skills/delegate-skill"

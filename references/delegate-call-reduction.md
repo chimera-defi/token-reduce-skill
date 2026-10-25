@@ -5,16 +5,17 @@ Delegate *selection* goes through the `delegate-skill` router — do not hand-pi
 | Task | Router picks | Wrapper |
 |------|--------------|---------|
 | Browser / UI / screenshot / sandbox | devin | `devin-delegate` |
-| Cheap research / review / summarize / draft | kimi | `kimi-delegate` |
+| Cheap research / review / summarize / draft | Haiku-high subagent / Codex low | (no wrapper) |
+| Builds / implementation | Codex gpt-6.1-sol high | `codex exec` |
 | Multi-file refactor / large codebase | grok | `grok-delegate` |
 | Local Codex write-mode implementation | spark | `/spark` |
-| Unknown scope | kimi to scope, then escalate | `kimi-delegate` |
+| Unknown scope | devin | `devin-delegate` |
 
 For owned workspace projects, default to the PR-backed delegation workflow:
 
 1. Keep the parent agent as orchestrator, integrator, and final verifier.
 2. Pick the delegate with the `delegate-skill` router, not by hand. See `delegate-skill/SKILL.md` for the full routing table and health checks.
-3. Always call the wrapper the router names (`devin-delegate`, `kimi-delegate`, `grok-delegate`, `/spark`) — never raw `devin`, raw `pi --provider kimi-coding`, or backgrounded delegate commands. Wrappers preserve envelope checks, fallback, and telemetry.
+3. Always call the wrapper the router names (`devin-delegate`, `grok-delegate`, `/spark`) — never raw `devin`, or backgrounded delegate commands. Wrappers preserve envelope checks, fallback, and telemetry.
 4. Give every delegate the workspace path, scope, constraints, acceptance checks, and expected output. Prefer batched questions and file references over pasted code.
 5. For non-trivial owned-repo changes, stage only relevant files, run the repo's validation, push a feature branch, and open a PR so the work is backed up off the server.
 

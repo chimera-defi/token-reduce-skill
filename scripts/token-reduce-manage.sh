@@ -318,7 +318,7 @@ case "$cmd" in
   delegate-health)
     # O2: check installed/missing for each configured delegate and companion
     printf 'Delegates:\n'
-    for _delegate in devin kimi grok spark; do
+    for _delegate in devin grok spark; do
       _cmd="${_delegate}-delegate"
       if command -v "$_cmd" >/dev/null 2>&1; then
         _status="installed"
