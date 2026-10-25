@@ -134,6 +134,8 @@ For broad discovery, audits, or "sweep many files" work, delegating to a subagen
 
 Optional, exact-symbol only — do not auto-install. Run `uv tool install token-savior` only when you need `find-symbol` / `change-impact` on a known symbol. See: `references/token-savior-evaluation.md` and `references/tier-value-profile.md`.
 
+The helper imports Python directly; MCP stays project/session opt-in. No global registration or `mcpServers` in `~/.claude/settings.json`; see [the 2026-10-25 MCP registration decision](references/token-savior-evaluation.md#mcp-registration-decision--2026-10-25).
+
 ## Output-hook over-compression workaround
 
 If a global PostToolUse hook compresses `pytest` output, redirect to a file and `Read` it: `pytest ... > /tmp/pytest.out 2>&1`. See: `references/known-issues.md`.
@@ -160,7 +162,7 @@ Do not use Caliper as the first move for unknown-path discovery. Do not make it 
 When users ask whether Claude/Codex are actually using token-reduce, run:
 
 ```bash
-scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
+scripts/token-reduce-manage.sh improve-adoption --workspace-root ~/workspace --days 7
 ```
 
 This reads workspace audit/session/helper telemetry and writes:
