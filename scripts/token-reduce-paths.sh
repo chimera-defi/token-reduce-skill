@@ -10,6 +10,9 @@ QUERY="$*"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
 REPO_ROOT="$(token_reduce_resolve_repo_root)"
+if token_reduce_qmd_root_is_aggregate "$REPO_ROOT"; then
+  exec env TOKEN_REDUCE_REPO_ROOT="$REPO_ROOT" "$SCRIPT_DIR/token-reduce-search.sh" --paths-only "$QUERY"
+fi
 TELEMETRY_CONTEXT="${TOKEN_REDUCE_TELEMETRY_CONTEXT:-runtime}"
 DIAG_FILE="$(mktemp 2>/dev/null || true)"
 
