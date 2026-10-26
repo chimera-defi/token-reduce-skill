@@ -1,0 +1,32 @@
+{
+  "package_version": "4.24.0",
+  "mcp_sdk_version": "2.3.0",
+  "source": "direct list_tools handler; stdio handshake timed out",
+  "profile": "full (default)",
+  "tool_count": 72,
+  "payload_bytes": 53617,
+  "payload_chars": 53607,
+  "payload_tokens_approx_chars_div_4": 13402,
+  "schemas_compact_chars": 53505,
+  "schemas_tokens_approx_chars_div_4": 13376,
+  "date": "2026-10-25",
+  "executable": "~/.local/bin/token-savior",
+  "token_estimator": "round(characters / 4); not a provider tokenizer",
+  "modeled_payload_sha256": "91f77a9ad195d7009f8254aebcbad7c673c8f422df0a1dc0ea443f744ad8bab8",
+  "ndjson_validation": {
+    "protocol_version_requested": "2024-11-05",
+    "interactive_initialize": "no response before 45-second timeout",
+    "pipelined_methods": [
+      "initialize",
+      "notifications/initialized",
+      "tools/list"
+    ],
+    "pipelined_timeout_seconds": 12,
+    "pipelined_exit_code": 124,
+    "pipelined_stdout_bytes": 0,
+    "server_run_loop_observed": true,
+    "handshake_verified": false
+  },
+  "decision": "b: opt-in; remove dead settings.json entry; no user-scope registration",
+  "config_modified": false
+}
