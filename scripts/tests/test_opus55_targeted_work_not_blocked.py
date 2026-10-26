@@ -27,6 +27,7 @@ The targeted-vs-exploratory classification below is now simply the hook's
 only behavior, not one exempted from a gate; the former "_while_pending"
 test variants are gone along with the marker they set up.)
 """
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,11 @@ def _run_hook(payload: dict, repo_root: Path) -> subprocess.CompletedProcess[str
 
 
 def _bash_payload(command: str, session_id: str) -> dict:
-    return {"session_id": session_id, "tool_name": "Bash", "tool_input": {"command": command}}
+    return {
+        "session_id": session_id,
+        "tool_name": "Bash",
+        "tool_input": {"command": command},
+    }
 
 
 # --------------------------------------------------------------------------- #

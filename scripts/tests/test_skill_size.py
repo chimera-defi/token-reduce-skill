@@ -10,6 +10,7 @@ in a reference file instead.
 
 The threshold (230) is the 220-line brief target plus a 10-line buffer.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

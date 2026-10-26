@@ -2,6 +2,7 @@
 python3, outer timeout, and fail-open when neither runner nor the target
 script is available.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,7 +38,9 @@ def _run(args: list[str], *, path: str, cwd: Path) -> subprocess.CompletedProces
 
 
 def test_still_works_with_real_uv(tmp_path: Path) -> None:
-    result = _run(["--dry-run", "state", "ttl", "seconds"], path=os.environ["PATH"], cwd=tmp_path)
+    result = _run(
+        ["--dry-run", "state", "ttl", "seconds"], path=os.environ["PATH"], cwd=tmp_path
+    )
     assert result.returncode == 0, result.stderr
     assert '"tier"' in result.stdout
 
@@ -45,7 +48,9 @@ def test_still_works_with_real_uv(tmp_path: Path) -> None:
 def test_falls_back_to_python3_when_uv_missing(tmp_path: Path) -> None:
     # Build a PATH with a python3 shim but no uv.
     bindir = _make_bindir(tmp_path, ["python3", "bash", "timeout", "env", "dirname"])
-    result = _run(["--dry-run", "state", "ttl", "seconds"], path=str(bindir), cwd=tmp_path)
+    result = _run(
+        ["--dry-run", "state", "ttl", "seconds"], path=str(bindir), cwd=tmp_path
+    )
     assert result.returncode == 0, result.stderr
     assert '"tier"' in result.stdout
 

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from session_metrics_cache import (  # noqa: E402
+from session_metrics_cache import (
     SessionMetricsCache,
     cache_path,
     fingerprint_files,
@@ -16,7 +16,9 @@ from session_metrics_cache import (  # noqa: E402
 
 def test_cache_path_lives_under_artifacts_token_reduction(tmp_path: Path) -> None:
     p = cache_path(tmp_path)
-    assert p == (tmp_path / "artifacts" / "token-reduction" / "session-metrics-cache.json")
+    assert p == (
+        tmp_path / "artifacts" / "token-reduction" / "session-metrics-cache.json"
+    )
 
 
 def test_fingerprint_files_returns_none_for_missing_file(tmp_path: Path) -> None:
@@ -128,7 +130,11 @@ def test_cache_file_from_wrong_version_is_ignored(tmp_path: Path) -> None:
     import json
 
     path = tmp_path / "cache.json"
-    path.write_text(json.dumps({"version": 999, "entries": {"x": {"fingerprint": [], "metrics": {}}}}))
+    path.write_text(
+        json.dumps(
+            {"version": 999, "entries": {"x": {"fingerprint": [], "metrics": {}}}}
+        )
+    )
 
     cache = SessionMetricsCache(path)
 

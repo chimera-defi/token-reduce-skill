@@ -1,4 +1,5 @@
 """Regression tests for dispatch ranking and config-path consistency."""
+
 from __future__ import annotations
 
 import json
@@ -80,10 +81,7 @@ def test_config_path_is_consistent_with_token_reduce_config(tmp_path: Path) -> N
     """Setup docs and manage scripts should not hard-code a different config path."""
     env = os.environ.copy()
     env["TOKEN_REDUCE_CONFIG_PATH"] = str(tmp_path / "token-reduce-config.json")
-    code = (
-        "from token_reduce_config import config_path; "
-        "print(config_path())"
-    )
+    code = "from token_reduce_config import config_path; print(config_path())"
     result = subprocess.run(
         [sys.executable, "-c", code],
         cwd=str(SCRIPTS_DIR),

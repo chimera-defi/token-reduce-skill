@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Repo-local telemetry for token-reduce helper and hook events."""
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,11 @@ def default_repo_root() -> Path:
             text=True,
             timeout=10,
         ).stdout.strip()
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return script_dir.parent
     return Path(root)
 
@@ -122,7 +127,9 @@ def _context_efficiency(ctx_events: list[dict], percentile_func) -> dict:
     ctx_last_err: dict[tuple[str, str], datetime] = {}
     ctx_sorted = sorted(
         ctx_events,
-        key=lambda item: event_timestamp(item) or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda item: (
+            event_timestamp(item) or datetime.min.replace(tzinfo=timezone.utc)
+        ),
     )
     for ev in ctx_sorted:
         key = (str(ev.get("tool", "unknown")), str(ev.get("query", "")))
@@ -157,18 +164,33 @@ def _context_efficiency(ctx_events: list[dict], percentile_func) -> dict:
         "helper_calls": ctx_calls,
         "helper_ok_calls": ctx_ok,
         "helper_error_calls": ctx_err,
-        "helper_error_rate_pct": round((ctx_err * 100.0 / ctx_calls), 1) if ctx_calls else 0.0,
+        "helper_error_rate_pct": round((ctx_err * 100.0 / ctx_calls), 1)
+        if ctx_calls
+        else 0.0,
         "unique_helper_queries": len(ctx_queries),
         "repeated_helper_calls": ctx_repeated,
         "rapid_repeat_calls": ctx_rapid,
         "error_recovery_retries": ctx_recovery,
         "failure_overhead_calls": ctx_failure,
-        "failure_overhead_pct": round((ctx_failure * 100.0 / ctx_calls), 1) if ctx_calls else 0.0,
-        "helper_latency_avg_ms": round(sum(ctx_helper_latencies) / len(ctx_helper_latencies), 1) if ctx_helper_latencies else 0.0,
-        "helper_latency_p50_ms": round(percentile_func(ctx_helper_latencies, 50), 1) if ctx_helper_latencies else 0.0,
-        "helper_latency_p95_ms": round(percentile_func(ctx_helper_latencies, 95), 1) if ctx_helper_latencies else 0.0,
-        "helper_latency_max_ms": round(max(ctx_helper_latencies), 1) if ctx_helper_latencies else 0.0,
+        "failure_overhead_pct": round((ctx_failure * 100.0 / ctx_calls), 1)
+        if ctx_calls
+        else 0.0,
+        "helper_latency_avg_ms": round(
+            sum(ctx_helper_latencies) / len(ctx_helper_latencies), 1
+        )
+        if ctx_helper_latencies
+        else 0.0,
+        "helper_latency_p50_ms": round(percentile_func(ctx_helper_latencies, 50), 1)
+        if ctx_helper_latencies
+        else 0.0,
+        "helper_latency_p95_ms": round(percentile_func(ctx_helper_latencies, 95), 1)
+        if ctx_helper_latencies
+        else 0.0,
+        "helper_latency_max_ms": round(max(ctx_helper_latencies), 1)
+        if ctx_helper_latencies
+        else 0.0,
     }
+
 
 def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -> dict:
     def percentile(values: list[float], pct: float) -> float:
@@ -206,7 +228,9 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     excluded_event_count = 0
 
     # Context-separated accumulators
-    context_helper_events: dict[str, list[dict]] = {ctx: [] for ctx in ("runtime", "benchmark", "test", "synthetic")}
+    context_helper_events: dict[str, list[dict]] = {
+        ctx: [] for ctx in ("runtime", "benchmark", "test", "synthetic")
+    }
     context_helper_events["all"] = []
 
     # QMD sub-latency accumulators (ms)
@@ -257,7 +281,9 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             hook_error_count += 1
         if event_name == "helper_invocation":
             helper_events.append(event)
-            helper_query_counts[(str(event.get("tool", "unknown")), str(event.get("query", "")))] += 1
+            helper_query_counts[
+                (str(event.get("tool", "unknown")), str(event.get("query", "")))
+            ] += 1
             # Also bin by context for context-separated analysis
             ctx = context if context in context_helper_events else "runtime"
             context_helper_events[ctx].append(event)
@@ -290,7 +316,9 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
                 exit_code = meta.get("exit_code")
                 if isinstance(exit_code, int):
                     helper_exit_code_coverage_count += 1
-                    if (status == "ok" and exit_code != 0) or (status == "error" and exit_code == 0):
+                    if (status == "ok" and exit_code != 0) or (
+                        status == "error" and exit_code == 0
+                    ):
                         helper_status_exit_mismatch_count += 1
 
                 latency_ms = meta.get("latency_ms")
@@ -305,7 +333,9 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
 
                 for companion in ("context_mode", "headroom", "code_review_graph"):
                     if meta.get(f"{companion}_recommended") is True:
-                        companion_recommendations[f"{companion}_recommended_events"] += 1
+                        companion_recommendations[
+                            f"{companion}_recommended_events"
+                        ] += 1
             else:
                 helper_backend_counts["unknown"] += 1
 
@@ -316,19 +346,25 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             "count": count,
             "avg_chars": round(stats["chars_total"] / count, 1) if count else 0.0,
             "avg_lines": round(stats["lines_total"] / count, 1) if count else 0.0,
-            "avg_latency_ms": round(stats["latency_total"] / count, 1) if count else 0.0,
+            "avg_latency_ms": round(stats["latency_total"] / count, 1)
+            if count
+            else 0.0,
         }
 
     helper_ok_calls = 0
     helper_error_calls = 0
     rapid_repeat_calls = 0
     error_recovery_retries = 0
-    repeated_helper_calls = sum(max(0, count - 1) for count in helper_query_counts.values())
+    repeated_helper_calls = sum(
+        max(0, count - 1) for count in helper_query_counts.values()
+    )
     last_call_by_key: dict[tuple[str, str], datetime] = {}
     last_error_by_key: dict[tuple[str, str], datetime] = {}
     sorted_helper_events = sorted(
         helper_events,
-        key=lambda item: event_timestamp(item) or datetime.min.replace(tzinfo=timezone.utc),
+        key=lambda item: (
+            event_timestamp(item) or datetime.min.replace(tzinfo=timezone.utc)
+        ),
     )
     for event in sorted_helper_events:
         key = (str(event.get("tool", "unknown")), str(event.get("query", "")))
@@ -355,6 +391,7 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             last_call_by_key[key] = ts
 
     helper_calls = len(helper_events)
+
     def pct(count: int) -> float:
         return round((count * 100.0 / helper_calls), 1) if helper_calls else 0.0
 
@@ -367,14 +404,32 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     helper_status_exit_mismatch_pct = pct(helper_status_exit_mismatch_count)
     helper_missing_latency_count = max(0, helper_calls - helper_latency_coverage_count)
 
-    helper_error_rate_pct = round((helper_error_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
+    helper_error_rate_pct = (
+        round((helper_error_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
+    )
     failure_overhead_calls = helper_error_calls + error_recovery_retries
-    failure_overhead_pct = round((failure_overhead_calls * 100.0 / helper_calls), 1) if helper_calls else 0.0
-    helper_latency_avg_ms = round(sum(helper_latencies_ms) / len(helper_latencies_ms), 1) if helper_latencies_ms else 0.0
-    helper_latency_p50_ms = round(percentile(helper_latencies_ms, 50), 1) if helper_latencies_ms else 0.0
-    helper_latency_p90_ms = round(percentile(helper_latencies_ms, 90), 1) if helper_latencies_ms else 0.0
-    helper_latency_p95_ms = round(percentile(helper_latencies_ms, 95), 1) if helper_latencies_ms else 0.0
-    helper_latency_max_ms = round(max(helper_latencies_ms), 1) if helper_latencies_ms else 0.0
+    failure_overhead_pct = (
+        round((failure_overhead_calls * 100.0 / helper_calls), 1)
+        if helper_calls
+        else 0.0
+    )
+    helper_latency_avg_ms = (
+        round(sum(helper_latencies_ms) / len(helper_latencies_ms), 1)
+        if helper_latencies_ms
+        else 0.0
+    )
+    helper_latency_p50_ms = (
+        round(percentile(helper_latencies_ms, 50), 1) if helper_latencies_ms else 0.0
+    )
+    helper_latency_p90_ms = (
+        round(percentile(helper_latencies_ms, 90), 1) if helper_latencies_ms else 0.0
+    )
+    helper_latency_p95_ms = (
+        round(percentile(helper_latencies_ms, 95), 1) if helper_latencies_ms else 0.0
+    )
+    helper_latency_max_ms = (
+        round(max(helper_latencies_ms), 1) if helper_latencies_ms else 0.0
+    )
     latency_by_tool = {
         tool: {
             "avg_ms": round(sum(values) / len(values), 1),
@@ -413,7 +468,7 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     pending_marked = int(by_event.get("pending_marked", 0))
     pending_cleared = int(by_event.get("pending_cleared", 0))
     pending_balance = pending_marked - pending_cleared
-    pending_leak_count = pending_balance if pending_balance > 0 else 0
+    pending_leak_count = max(0, pending_balance)
 
     # Build context-separated efficiency
     efficiency_by_context = {}
@@ -426,27 +481,51 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
     qmd_latency_breakdown = {
         "qmd_ensure_ms": {
             "count": len(qmd_ensure_ms_vals),
-            "avg_ms": round(sum(qmd_ensure_ms_vals) / len(qmd_ensure_ms_vals), 1) if qmd_ensure_ms_vals else 0.0,
-            "p50_ms": round(percentile(qmd_ensure_ms_vals, 50), 1) if qmd_ensure_ms_vals else 0.0,
-            "p95_ms": round(percentile(qmd_ensure_ms_vals, 95), 1) if qmd_ensure_ms_vals else 0.0,
+            "avg_ms": round(sum(qmd_ensure_ms_vals) / len(qmd_ensure_ms_vals), 1)
+            if qmd_ensure_ms_vals
+            else 0.0,
+            "p50_ms": round(percentile(qmd_ensure_ms_vals, 50), 1)
+            if qmd_ensure_ms_vals
+            else 0.0,
+            "p95_ms": round(percentile(qmd_ensure_ms_vals, 95), 1)
+            if qmd_ensure_ms_vals
+            else 0.0,
         },
         "qmd_files_ms": {
             "count": len(qmd_files_ms_vals),
-            "avg_ms": round(sum(qmd_files_ms_vals) / len(qmd_files_ms_vals), 1) if qmd_files_ms_vals else 0.0,
-            "p50_ms": round(percentile(qmd_files_ms_vals, 50), 1) if qmd_files_ms_vals else 0.0,
-            "p95_ms": round(percentile(qmd_files_ms_vals, 95), 1) if qmd_files_ms_vals else 0.0,
+            "avg_ms": round(sum(qmd_files_ms_vals) / len(qmd_files_ms_vals), 1)
+            if qmd_files_ms_vals
+            else 0.0,
+            "p50_ms": round(percentile(qmd_files_ms_vals, 50), 1)
+            if qmd_files_ms_vals
+            else 0.0,
+            "p95_ms": round(percentile(qmd_files_ms_vals, 95), 1)
+            if qmd_files_ms_vals
+            else 0.0,
         },
         "qmd_snippet_ms": {
             "count": len(qmd_snippet_ms_vals),
-            "avg_ms": round(sum(qmd_snippet_ms_vals) / len(qmd_snippet_ms_vals), 1) if qmd_snippet_ms_vals else 0.0,
-            "p50_ms": round(percentile(qmd_snippet_ms_vals, 50), 1) if qmd_snippet_ms_vals else 0.0,
-            "p95_ms": round(percentile(qmd_snippet_ms_vals, 95), 1) if qmd_snippet_ms_vals else 0.0,
+            "avg_ms": round(sum(qmd_snippet_ms_vals) / len(qmd_snippet_ms_vals), 1)
+            if qmd_snippet_ms_vals
+            else 0.0,
+            "p50_ms": round(percentile(qmd_snippet_ms_vals, 50), 1)
+            if qmd_snippet_ms_vals
+            else 0.0,
+            "p95_ms": round(percentile(qmd_snippet_ms_vals, 95), 1)
+            if qmd_snippet_ms_vals
+            else 0.0,
         },
         "fallback_ms": {
             "count": len(fallback_ms_vals),
-            "avg_ms": round(sum(fallback_ms_vals) / len(fallback_ms_vals), 1) if fallback_ms_vals else 0.0,
-            "p50_ms": round(percentile(fallback_ms_vals, 50), 1) if fallback_ms_vals else 0.0,
-            "p95_ms": round(percentile(fallback_ms_vals, 95), 1) if fallback_ms_vals else 0.0,
+            "avg_ms": round(sum(fallback_ms_vals) / len(fallback_ms_vals), 1)
+            if fallback_ms_vals
+            else 0.0,
+            "p50_ms": round(percentile(fallback_ms_vals, 50), 1)
+            if fallback_ms_vals
+            else 0.0,
+            "p95_ms": round(percentile(fallback_ms_vals, 95), 1)
+            if fallback_ms_vals
+            else 0.0,
         },
     }
 

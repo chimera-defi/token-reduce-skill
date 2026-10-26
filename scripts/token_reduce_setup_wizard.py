@@ -4,6 +4,7 @@
 Detects available tools, prompts user for preferences, and saves the shared
 config path from token_reduce_config.py. Supports --non-interactive for CI.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from token_reduce_config import DEFAULT_CONFIG, load_config, save_config
-
 
 _DELEGATES = {
     "devin": ("devin-delegate", "Browser, UI, screenshot, sandbox, adversarial review"),
@@ -31,9 +31,15 @@ _COMPANIONS = {
 }
 
 _ENFORCEMENT_CHOICES = {
-    "1": ("warn_first", "Warn first (recommended) — allow on first occurrence, block on repeat"),
+    "1": (
+        "warn_first",
+        "Warn first (recommended) — allow on first occurrence, block on repeat",
+    ),
     "2": ("hard_block", "Hard block — immediately block all broad scans"),
-    "3": ("advisory", "Advisory discovery — warn on broad exploration; keep catastrophic guards"),
+    "3": (
+        "advisory",
+        "Advisory discovery — warn on broad exploration; keep catastrophic guards",
+    ),
 }
 
 _PROFILE_CHOICES = {
@@ -83,10 +89,12 @@ def run_wizard(non_interactive: bool = False) -> dict:
             )
             config["delegates"][name]["enabled"] = answer.lower().startswith("y")
         config["delegates"][name].setdefault(
-            "mode", DEFAULT_CONFIG["delegates"].get(name, {}).get("mode", "recommend_only")
+            "mode",
+            DEFAULT_CONFIG["delegates"].get(name, {}).get("mode", "recommend_only"),
         )
         config["delegates"][name].setdefault(
-            "description", DEFAULT_CONFIG["delegates"].get(name, {}).get("description", desc)
+            "description",
+            DEFAULT_CONFIG["delegates"].get(name, {}).get("description", desc),
         )
 
     # --- Companions ---
@@ -99,7 +107,11 @@ def run_wizard(non_interactive: bool = False) -> dict:
         if non_interactive:
             config["companions"][name]["enabled"] = default_enabled
         else:
-            status = "found" if (cmd and detected) else ("built-in" if cmd is None else "not found")
+            status = (
+                "found"
+                if (cmd and detected)
+                else ("built-in" if cmd is None else "not found")
+            )
             answer = _ask(
                 f"  {name} ({desc}) [{status}] — enable?",
                 "y" if (detected or cmd is None) else "n",
@@ -112,7 +124,9 @@ def run_wizard(non_interactive: bool = False) -> dict:
         for k, (_, label) in _ENFORCEMENT_CHOICES.items():
             print(f"  {k}) {label}")
         choice = _ask("Choose", "1")
-        config["enforcement"] = _ENFORCEMENT_CHOICES.get(choice, _ENFORCEMENT_CHOICES["1"])[0]
+        config["enforcement"] = _ENFORCEMENT_CHOICES.get(
+            choice, _ENFORCEMENT_CHOICES["1"]
+        )[0]
 
     # --- Profile ---
     if not non_interactive:
@@ -121,14 +135,20 @@ def run_wizard(non_interactive: bool = False) -> dict:
             print(f"  {k}) {label}")
         choice = _ask("Choose", "1")
         config.setdefault("routing", {})
-        config["routing"]["profile"] = _PROFILE_CHOICES.get(choice, _PROFILE_CHOICES["1"])[0]
+        config["routing"]["profile"] = _PROFILE_CHOICES.get(
+            choice, _PROFILE_CHOICES["1"]
+        )[0]
 
     # --- Save ---
     path = save_config(config)
 
     # --- Summary ---
-    enabled_delegates = [n for n, cfg in config["delegates"].items() if cfg.get("enabled")]
-    enabled_companions = [n for n, cfg in config["companions"].items() if cfg.get("enabled")]
+    enabled_delegates = [
+        n for n, cfg in config["delegates"].items() if cfg.get("enabled")
+    ]
+    enabled_companions = [
+        n for n, cfg in config["companions"].items() if cfg.get("enabled")
+    ]
     if not non_interactive:
         print(
             f"\nConfigured {len(enabled_delegates)} delegate(s): {', '.join(enabled_delegates) or 'none'}"

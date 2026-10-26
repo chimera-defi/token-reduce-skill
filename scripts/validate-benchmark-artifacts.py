@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate benchmark artifact freshness and README token-table sync."""
+
 from __future__ import annotations
 
 import argparse
@@ -77,7 +78,9 @@ def main() -> int:
     root = Path(args.repo_root).resolve()
     config = load_config()
     configured_max_age = int(config.get("benchmark", {}).get("max_age_days", 14) or 14)
-    max_age_days = args.max_age_days if args.max_age_days is not None else configured_max_age
+    max_age_days = (
+        args.max_age_days if args.max_age_days is not None else configured_max_age
+    )
 
     local_path = root / "references" / "benchmarks" / "local-benchmark.json"
     composite_path = root / "references" / "benchmarks" / "composite-benchmark.json"

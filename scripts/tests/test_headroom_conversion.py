@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:

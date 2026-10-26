@@ -5,6 +5,7 @@ Covers:
 - validate_artifact_freshness: missing file, missing field, stale vs fresh
 - validate_readme_token_rows: missing row, present row, non-list benchmarks
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -42,19 +43,13 @@ validate_readme_token_rows = _mod.validate_readme_token_rows
 
 
 class TestParseTimestamp:
-
     def test_iso_with_z_suffix(self):
         ts = parse_timestamp("2026-06-01T00:00:00Z")
         assert ts is not None
         assert ts.tzinfo is not None
 
-
     def test_invalid_string_returns_none(self):
         assert parse_timestamp("not-a-date") is None
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -73,13 +68,16 @@ class TestValidateArtifactFreshness:
         assert len(errors) == 1
         assert "missing benchmark artifact" in errors[0]
 
-
-
     @pytest.mark.parametrize(
         ("content", "expected"),
-        [({"other": "data"}, "missing generated_at"), ({"generated_at": "bad-date"}, "invalid generated_at")],
+        [
+            ({"other": "data"}, "missing generated_at"),
+            ({"generated_at": "bad-date"}, "invalid generated_at"),
+        ],
     )
-    def test_malformed_generated_at_returns_error(self, tmp_path: Path, content: dict, expected: str):
+    def test_malformed_generated_at_returns_error(
+        self, tmp_path: Path, content: dict, expected: str
+    ):
         path = tmp_path / "benchmark.json"
         path.write_text(json.dumps(content), encoding="utf-8")
         assert any(expected in e for e in validate_artifact_freshness(path, 14))
@@ -100,8 +98,6 @@ class TestValidateArtifactFreshness:
         assert "stale benchmark artifact" in errors[0]
 
 
-
-
 # ---------------------------------------------------------------------------
 # validate_readme_token_rows
 # ---------------------------------------------------------------------------
@@ -114,24 +110,23 @@ def _write_artifact_with_benchmarks(path: Path, benchmarks: list) -> None:
 class TestValidateReadmeTokenRows:
     def test_matching_row_present_returns_no_errors(self, tmp_path: Path):
         artifact = tmp_path / "local-benchmark.json"
-        _write_artifact_with_benchmarks(artifact, [{"name": "my-script", "tokens": 1234}])
+        _write_artifact_with_benchmarks(
+            artifact, [{"name": "my-script", "tokens": 1234}]
+        )
         readme = "# Benchmarks\n| `my-script` | `1234` | some description |\n"
         errors = validate_readme_token_rows(readme, artifact)
         assert errors == []
 
     def test_missing_row_returns_error(self, tmp_path: Path):
         artifact = tmp_path / "local-benchmark.json"
-        _write_artifact_with_benchmarks(artifact, [{"name": "missing-script", "tokens": 999}])
+        _write_artifact_with_benchmarks(
+            artifact, [{"name": "missing-script", "tokens": 999}]
+        )
         readme = "# Benchmarks\n| `other-script` | `100` | desc |\n"
         errors = validate_readme_token_rows(readme, artifact)
         assert len(errors) == 1
         assert "missing-script" in errors[0]
         assert "999" in errors[0]
-
-
-
-
-
 
     def test_wrong_token_count_triggers_error(self, tmp_path: Path):
         artifact = tmp_path / "local-benchmark.json"
@@ -140,4 +135,3 @@ class TestValidateReadmeTokenRows:
         errors = validate_readme_token_rows(readme, artifact)
         assert len(errors) == 1
         assert "script-x" in errors[0]
-

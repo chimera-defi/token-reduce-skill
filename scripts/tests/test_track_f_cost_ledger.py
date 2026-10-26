@@ -6,6 +6,7 @@ F1. Per-session estimated tokens saved when helper ran vs estimated
 F2. Per-source aggregate (claude/codex): avg context size, helper-used
     vs broad-scan, surfaced under a new "Context Impact" review section.
 """
+
 from __future__ import annotations
 
 import sys
@@ -15,18 +16,15 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from cost_ledger import (  # noqa: E402
+from cost_ledger import (
     BENCHMARK_BROAD_TOKENS,
     aggregate_by_source,
     estimate_session_cost,
 )
 
-
 # --------------------------------------------------------------------------- #
 # F1 — per-session estimates
 # --------------------------------------------------------------------------- #
-
-
 
 
 def test_f1_helper_session_estimates_savings() -> None:
@@ -67,10 +65,6 @@ def test_f1_broad_session_estimates_overspend() -> None:
     assert cost["estimated_tokens_saved"] == 0
     assert cost["estimated_tokens_spent_on_broad"] >= BENCHMARK_BROAD_TOKENS
     assert cost["session_kind"] == "broad"
-
-
-
-
 
 
 # --------------------------------------------------------------------------- #
@@ -120,7 +114,3 @@ def test_f2_aggregate_by_source_groups_correctly() -> None:
     assert agg["claude"]["broad_sessions"] == 1
     assert agg["codex"]["helper_sessions"] == 1
     assert agg["codex"]["broad_sessions"] == 2
-
-
-
-

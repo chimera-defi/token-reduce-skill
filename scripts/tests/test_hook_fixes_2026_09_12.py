@@ -35,6 +35,7 @@ Fixes, by id:
   existed, are preserved above and in TestF3QuoteAwareBroadMatching /
   TestR2CompoundSegmentClassification.)
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -54,7 +55,9 @@ HOOK = SCRIPTS_DIR / "enforce-token-reduce-first.py"
 
 
 def _load(name: str):
-    spec = importlib.util.spec_from_file_location(name.replace("-", "_"), SCRIPTS_DIR / f"{name}.py")
+    spec = importlib.util.spec_from_file_location(
+        name.replace("-", "_"), SCRIPTS_DIR / f"{name}.py"
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -62,8 +65,8 @@ def _load(name: str):
 
 enforce = _load("enforce-token-reduce-first")
 
-import command_rewrites as cr  # noqa: E402
-import token_reduce_state as trs  # noqa: E402
+import command_rewrites as cr
+import token_reduce_state as trs
 
 
 def _init_git_repo(path: Path) -> None:
@@ -81,7 +84,9 @@ def repo(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _run_hook(payload: dict, repo_root: Path, *, env_extra: dict | None = None) -> subprocess.CompletedProcess[str]:
+def _run_hook(
+    payload: dict, repo_root: Path, *, env_extra: dict | None = None
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
     env["PYTHONPATH"] = str(SCRIPTS_DIR) + os.pathsep + env.get("PYTHONPATH", "")
@@ -99,7 +104,9 @@ def _run_hook(payload: dict, repo_root: Path, *, env_extra: dict | None = None) 
     )
 
 
-def _bash_payload(command: str, session_id: str = "sess-test", tool_use_id: str | None = None) -> dict:
+def _bash_payload(
+    command: str, session_id: str = "sess-test", tool_use_id: str | None = None
+) -> dict:
     payload: dict[str, object] = {
         "session_id": session_id,
         "tool_name": "Bash",
@@ -154,17 +161,21 @@ class TestF2BashClassification:
         assert result.returncode == 0, f"{command!r} should pass, got {result.stdout!r}"
         assert result.stdout.strip() == ""
 
-
-
-
     def test_catastrophic_find_root_still_blocks(self, repo: Path) -> None:
         session_id = "sess-f2-catastrophic"
-        result = _run_hook(_bash_payload("find / -name '*.py'", session_id=session_id), repo)
+        result = _run_hook(
+            _bash_payload("find / -name '*.py'", session_id=session_id), repo
+        )
         assert result.returncode == 2
         decision = json.loads(result.stdout)
         assert decision["decision"] == "block"
         events = _events(repo)
-        cata = [e for e in events if e.get("event") == "hook_block" and (e.get("meta") or {}).get("policy") == "catastrophic"]
+        cata = [
+            e
+            for e in events
+            if e.get("event") == "hook_block"
+            and (e.get("meta") or {}).get("policy") == "catastrophic"
+        ]
         assert cata, events
 
 
@@ -186,20 +197,21 @@ class TestF3QuoteAwareBroadMatching:
         assert result.returncode == 0, result.stdout
         assert result.stdout.strip() == ""
         events = _events(repo)
-        assert not [e for e in events if e.get("event") in {"hook_block", "hook_warn"}], events
-
-
-
+        assert not [
+            e for e in events if e.get("event") in {"hook_block", "hook_warn"}
+        ], events
 
     def test_python_dash_c_os_walk_recursed_into_quoted_body(self, repo: Path) -> None:
         """python -c is a command-executor too -- its quoted body must be
         recursed into, not stripped (this guards the F3 x F4 combination
         that regressed N1's os.walk detection during development)."""
-        cmd = 'python3 -c "import os; [_ for _ in os.walk(\'.\')]"'
+        cmd = "python3 -c \"import os; [_ for _ in os.walk('.')]\""
         r1 = _run_hook(_bash_payload(cmd, session_id="sess-f3-py-walk"), repo)
         assert r1.returncode == 0
         r2 = _run_hook(_bash_payload(cmd, session_id="sess-f3-py-walk"), repo)
-        assert r2.returncode == 2, "repeat python3 -c os.walk must still escalate to block"
+        assert r2.returncode == 2, (
+            "repeat python3 -c os.walk must still escalate to block"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -215,8 +227,6 @@ class TestF3QuoteAwareBroadMatching:
 
 
 class TestF3FollowupFdTreeCommandPosition:
-
-
     @pytest.mark.parametrize(
         "command",
         [
@@ -243,12 +253,18 @@ class TestF3FollowupFdTreeCommandPosition:
             "cd y && fd",
         ],
     )
-    def test_command_position_still_blocks_after_repeat_live(self, repo: Path, command: str) -> None:
+    def test_command_position_still_blocks_after_repeat_live(
+        self, repo: Path, command: str
+    ) -> None:
         session_id = f"sess-f3-followup-block-{hash(command)}"
         first = _run_hook(_bash_payload(command, session_id=session_id), repo)
-        assert first.returncode == 0, f"{command!r} first attempt should warn-and-allow, got {first.stdout!r}"
+        assert first.returncode == 0, (
+            f"{command!r} first attempt should warn-and-allow, got {first.stdout!r}"
+        )
         second = _run_hook(_bash_payload(command, session_id=session_id), repo)
-        assert second.returncode == 2, f"{command!r} repeat attempt should block, got {second.stdout!r}"
+        assert second.returncode == 2, (
+            f"{command!r} repeat attempt should block, got {second.stdout!r}"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -271,10 +287,6 @@ class TestF4CostAwareFind:
         assert cr.is_broad_find(f"find {target} -maxdepth 3") is True
 
 
-
-
-
-
 # --------------------------------------------------------------------------- #
 # F5 - double-run dedup keyed on tool_use_id
 # --------------------------------------------------------------------------- #
@@ -288,7 +300,9 @@ class TestF5DoubleRunDedup:
         the broad-attempt counter increments exactly once, and the two
         invocations produce byte-identical output."""
         session_id = "sess-f5-dedup"
-        payload = _bash_payload("tree .", session_id=session_id, tool_use_id="toolu_same_call_01")
+        payload = _bash_payload(
+            "tree .", session_id=session_id, tool_use_id="toolu_same_call_01"
+        )
 
         first = _run_hook(payload, repo)
         second = _run_hook(payload, repo)
@@ -298,16 +312,21 @@ class TestF5DoubleRunDedup:
         assert first.stdout == second.stdout == ""
 
         count = trs.broad_attempt_count(repo, session_id)
-        assert count == 1, f"counter should increment once across 2 duplicate-wiring invocations, got {count}"
+        assert count == 1, (
+            f"counter should increment once across 2 duplicate-wiring invocations, got {count}"
+        )
 
         # R5: dedup replay must record NOTHING -- assert the hook_warn event
         # (from the first, real invocation) fired exactly once, not twice.
         events = _events(repo)
         warns = [e for e in events if e.get("event") == "hook_warn"]
-        assert len(warns) == 1, f"hook_warn should fire once (dedup replay records nothing), got {events}"
+        assert len(warns) == 1, (
+            f"hook_warn should fire once (dedup replay records nothing), got {events}"
+        )
 
-
-    def test_different_tool_use_id_is_a_genuine_retry_and_escalates(self, repo: Path) -> None:
+    def test_different_tool_use_id_is_a_genuine_retry_and_escalates(
+        self, repo: Path
+    ) -> None:
         """Same session + same command text but a DIFFERENT tool_use_id is a
         real second attempt (not a duplicate hook wiring) and must still go
         through the warn-once/block-on-repeat escalation, not get deduped
@@ -315,12 +334,17 @@ class TestF5DoubleRunDedup:
         session_id = "sess-f5-real-retry"
         cmd = "tree ."
 
-        first = _run_hook(_bash_payload(cmd, session_id=session_id, tool_use_id="toolu_call_A"), repo)
-        second = _run_hook(_bash_payload(cmd, session_id=session_id, tool_use_id="toolu_call_B"), repo)
+        first = _run_hook(
+            _bash_payload(cmd, session_id=session_id, tool_use_id="toolu_call_A"), repo
+        )
+        second = _run_hook(
+            _bash_payload(cmd, session_id=session_id, tool_use_id="toolu_call_B"), repo
+        )
 
         assert first.returncode == 0, "first attempt should warn-and-allow"
-        assert second.returncode == 2, "second attempt (different tool_use_id) must escalate to block"
-
+        assert second.returncode == 2, (
+            "second attempt (different tool_use_id) must escalate to block"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -329,7 +353,9 @@ class TestF5DoubleRunDedup:
 
 
 class TestF6SymlinkGuard:
-    def test_find_on_symlink_root_is_blocked_loudly(self, tmp_path: Path, repo: Path) -> None:
+    def test_find_on_symlink_root_is_blocked_loudly(
+        self, tmp_path: Path, repo: Path
+    ) -> None:
         real_dir = tmp_path / "real_target"
         real_dir.mkdir()
         link = tmp_path / "the_link"
@@ -341,8 +367,9 @@ class TestF6SymlinkGuard:
         assert "symlink" in decision["reason"].lower()
         assert str(link) in decision["reason"]
 
-
-    def test_find_on_symlink_root_with_trailing_slash_passes_guard(self, tmp_path: Path, repo: Path) -> None:
+    def test_find_on_symlink_root_with_trailing_slash_passes_guard(
+        self, tmp_path: Path, repo: Path
+    ) -> None:
         real_dir = tmp_path / "real_target3"
         real_dir.mkdir()
         link = tmp_path / "the_link3"
@@ -358,7 +385,9 @@ class TestF6SymlinkGuard:
             decision = json.loads(result.stdout)
             assert "symlink" not in decision["reason"].lower()
 
-    def test_symlink_guard_takes_precedence_over_f4_maxdepth_exception(self, tmp_path: Path, repo: Path) -> None:
+    def test_symlink_guard_takes_precedence_over_f4_maxdepth_exception(
+        self, tmp_path: Path, repo: Path
+    ) -> None:
         """Pins the precedence between F6 and F4: `find <symlink> -maxdepth 1`
         (no trailing slash) is exactly the RC3 shape (e.g. `find
         /home/agents/.claude/projects -maxdepth 1`) -- it must still hit the
@@ -376,8 +405,6 @@ class TestF6SymlinkGuard:
         assert "symlink" in decision["reason"].lower()
 
 
-
-
 # --------------------------------------------------------------------------- #
 # F7 - suggest_rewrite preserves results
 # --------------------------------------------------------------------------- #
@@ -389,14 +416,12 @@ class TestF7RewritePreservesResults:
         assert s == "rg --files --hidden --no-ignore -g '*.py' ."
 
 
-
 # --------------------------------------------------------------------------- #
 # F8 - exit-path / stdout-content audit
 # --------------------------------------------------------------------------- #
 
 
 class TestF8ExitPathStdoutContent:
-
     def test_invalid_json_stdin_fails_open_with_empty_stdout(self, repo: Path) -> None:
         env = os.environ.copy()
         env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
@@ -417,7 +442,11 @@ class TestF8ExitPathStdoutContent:
         "payload_factory",
         [
             lambda: _bash_payload("find / -name x", session_id="sess-f8-cata"),
-            lambda: {"session_id": "sess-f8-glob", "tool_name": "Glob", "tool_input": {"pattern": "**/*.ts"}},
+            lambda: {
+                "session_id": "sess-f8-glob",
+                "tool_name": "Glob",
+                "tool_input": {"pattern": "**/*.ts"},
+            },
             lambda: {
                 "session_id": "sess-f8-grep",
                 "tool_name": "Grep",
@@ -425,13 +454,14 @@ class TestF8ExitPathStdoutContent:
             },
         ],
     )
-    def test_every_block_branch_emits_valid_json_with_nonempty_reason(self, repo: Path, payload_factory) -> None:
+    def test_every_block_branch_emits_valid_json_with_nonempty_reason(
+        self, repo: Path, payload_factory
+    ) -> None:
         result = _run_hook(payload_factory(), repo)
         assert result.returncode == 2, result.stdout
         decision = json.loads(result.stdout)
         assert decision["decision"] == "block"
         assert isinstance(decision["reason"], str) and decision["reason"].strip()
-
 
 
 # --------------------------------------------------------------------------- #
@@ -440,7 +470,9 @@ class TestF8ExitPathStdoutContent:
 
 
 class TestF9WarnMode:
-    def test_warn_mode_downgrades_block_to_exit_zero_empty_stdout(self, repo: Path) -> None:
+    def test_warn_mode_downgrades_block_to_exit_zero_empty_stdout(
+        self, repo: Path
+    ) -> None:
         result = _run_hook(
             _bash_payload("find / -name x", session_id="sess-f9-warn"),
             repo,
@@ -449,16 +481,15 @@ class TestF9WarnMode:
         assert result.returncode == 0, result.stdout
         assert result.stdout == ""
 
-    def test_warn_mode_env_value_other_than_warn_is_normal_mode(self, repo: Path) -> None:
+    def test_warn_mode_env_value_other_than_warn_is_normal_mode(
+        self, repo: Path
+    ) -> None:
         result = _run_hook(
             _bash_payload("find / -name x", session_id="sess-f9-other-env"),
             repo,
             env_extra={"TOKEN_REDUCE_ENFORCE_MODE": "block"},
         )
         assert result.returncode == 2
-
-
-
 
 
 # --------------------------------------------------------------------------- #
@@ -480,30 +511,19 @@ class TestR1FindGlobalOptions:
         assert "catastrophic" in decision["reason"].lower()
 
 
-
-
-
-
-
-
-
 class TestR4WrapperStrippedLeadingCommand:
     """`sudo fd .`, `env FOO=1 fd .`, `time fd` decorate the front of a
     segment without changing what actually runs -- must still count fd/tree
     as the leading command, not evade the ^fd/^tree anchor."""
 
-
     def test_wrapped_fd_blocks_after_repeat_live(self, repo: Path) -> None:
         session_id = "sess-r4"
         first = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
-        assert first.returncode == 0, f"first attempt should warn-and-allow, got {first.stdout!r}"
+        assert first.returncode == 0, (
+            f"first attempt should warn-and-allow, got {first.stdout!r}"
+        )
         second = _run_hook(_bash_payload("sudo fd .", session_id=session_id), repo)
         assert second.returncode == 2, second.stdout
-
-
-
-
-
 
 
 # --------------------------------------------------------------------------- #
@@ -529,21 +549,29 @@ class TestR5DedupCoversNonBashBlocks:
     block()/warn_and_allow(), so it now covers Glob/Grep/Read/symlink-guard
     blocks too, not just Bash's broad-attempt path."""
 
-    def test_dual_wiring_does_not_produce_spurious_post_block_classification(self, repo: Path) -> None:
+    def test_dual_wiring_does_not_produce_spurious_post_block_classification(
+        self, repo: Path
+    ) -> None:
         """R5(b): a second wiring's consume_block must not eat the marker
         the first wiring's block() just wrote and then spuriously classify
         the SAME blocked call as a post_block_escape/abandon."""
         payload = _bash_payload(
-            "find / -name x", session_id="sess-r5-postblock", tool_use_id="toolu_postblock_dual"
+            "find / -name x",
+            session_id="sess-r5-postblock",
+            tool_use_id="toolu_postblock_dual",
         )
         _run_hook(payload, repo)
         _run_hook(payload, repo)
 
         events = _events(repo)
         post_block_events = [
-            e for e in events if e.get("event") in {"post_block_escape", "post_block_abandon"}
+            e
+            for e in events
+            if e.get("event") in {"post_block_escape", "post_block_abandon"}
         ]
-        assert not post_block_events, f"dual-wiring replay must not trigger post-block classification, got {events}"
+        assert not post_block_events, (
+            f"dual-wiring replay must not trigger post-block classification, got {events}"
+        )
 
     def test_glob_block_deduped_across_dual_wiring(self, repo: Path) -> None:
         payload = {
@@ -560,7 +588,9 @@ class TestR5DedupCoversNonBashBlocks:
 
         events = _events(repo)
         blocks = [e for e in events if e.get("event") == "hook_block"]
-        assert len(blocks) == 1, f"Glob block telemetry must not double-record under dual wiring, got {events}"
+        assert len(blocks) == 1, (
+            f"Glob block telemetry must not double-record under dual wiring, got {events}"
+        )
 
 
 class TestC3SymlinkGuardHonorsFollowOptions:
@@ -577,7 +607,6 @@ class TestC3SymlinkGuardHonorsFollowOptions:
 
 
 class TestR7PostBlockClassifierQuoteAware:
-
     def test_post_block_escape_not_fooled_by_quoted_payload(self, repo: Path) -> None:
         """R7(c): the post-block Bash escape classifier must use
         quote-aware surfaces, not raw lines -- an inert quoted payload
@@ -586,7 +615,7 @@ class TestR7PostBlockClassifierQuoteAware:
         session_id = "sess-r7c"
         _run_hook(_bash_payload("find / -name x", session_id=session_id), repo)
         payload = _bash_payload(
-            "echo '{\"command\":\"find /x\"}'",
+            'echo \'{"command":"find /x"}\'',
             session_id=session_id,
         )
         result = _run_hook(payload, repo)
@@ -594,4 +623,6 @@ class TestR7PostBlockClassifierQuoteAware:
 
         events = _events(repo)
         escapes = [e for e in events if e.get("event") == "post_block_escape"]
-        assert not escapes, f"quoted inert text must not be classified as an escape, got {events}"
+        assert not escapes, (
+            f"quoted inert text must not be classified as an escape, got {events}"
+        )

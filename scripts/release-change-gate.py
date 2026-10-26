@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Evaluate whether current benchmark artifacts meet release keep/drop criteria."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,14 @@ def composite_check(
     benchmarks = payload.get("benchmarks", [])
     if not isinstance(benchmarks, list):
         return False, {"reason": "missing benchmarks list"}
-    composite = next((row for row in benchmarks if isinstance(row, dict) and row.get("name") == "composite_stack"), None)
+    composite = next(
+        (
+            row
+            for row in benchmarks
+            if isinstance(row, dict) and row.get("name") == "composite_stack"
+        ),
+        None,
+    )
     if composite is None:
         return False, {"reason": "missing composite_stack row"}
     quality_pass = bool(composite.get("quality_pass"))
@@ -208,7 +216,9 @@ def main() -> int:
         "profiles_gate": {"pass": profiles_ok, **profiles_summary},
         "runtime_reliability_gate": {"pass": review_ok, **review_summary},
     }
-    verdict["release_gate_pass"] = composite_ok and adaptive_ok and profiles_ok and review_ok
+    verdict["release_gate_pass"] = (
+        composite_ok and adaptive_ok and profiles_ok and review_ok
+    )
     print(json.dumps(verdict, indent=2))
     return 0 if verdict["release_gate_pass"] else 1
 

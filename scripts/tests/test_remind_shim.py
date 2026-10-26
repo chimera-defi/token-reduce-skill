@@ -9,6 +9,7 @@ a symlinked copy of this skill's `scripts/` directory. These tests pin that
 contract directly at the Python level: for any stdin (valid JSON, garbage, or
 empty), the shim must exit 0 and print nothing.
 """
+
 from __future__ import annotations
 
 import stat
@@ -34,7 +35,9 @@ def _run(stdin: str) -> subprocess.CompletedProcess[str]:
 
 def test_shim_file_is_executable() -> None:
     mode = SHIM.stat().st_mode
-    assert mode & stat.S_IXUSR, f"{SHIM} must stay executable for a raw (no `uv run`) consumer invocation"
+    assert mode & stat.S_IXUSR, (
+        f"{SHIM} must stay executable for a raw (no `uv run`) consumer invocation"
+    )
 
 
 @pytest.mark.parametrize(
@@ -51,4 +54,6 @@ def test_shim_exits_zero_and_silent(stdin: str) -> None:
     assert result.returncode == 0, (
         f"shim must always exit 0, got returncode={result.returncode} stderr={result.stderr!r}"
     )
-    assert result.stdout == "", f"shim must print nothing to stdout, got {result.stdout!r}"
+    assert result.stdout == "", (
+        f"shim must print nothing to stdout, got {result.stdout!r}"
+    )

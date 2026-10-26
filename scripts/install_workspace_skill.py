@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install token-reduce into sibling repos and enforce first-move guidance."""
+
 from __future__ import annotations
 
 import argparse
@@ -7,10 +8,9 @@ import json
 import os
 import re
 import shutil
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-
 
 BLOCK_START = "<!-- token-reduce:begin -->"
 BLOCK_END = "<!-- token-reduce:end -->"
@@ -77,7 +77,9 @@ def is_placeholder_skill_dir(path: Path) -> bool:
 
 
 def backup_name() -> str:
-    return f"token-reduce.backup-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    return (
+        f"token-reduce.backup-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    )
 
 
 def ensure_skill_link(
@@ -189,7 +191,9 @@ def install_workspace(
         if not include_self and repo.resolve() in {source_root, canonical_root}:
             continue
 
-        skill_link, changed_link = ensure_skill_link(repo, source_root, dry_run, force_relink)
+        skill_link, changed_link = ensure_skill_link(
+            repo, source_root, dry_run, force_relink
+        )
         doc_path = target_doc(repo)
         doc_action, changed_doc = ensure_doc_block(doc_path, dry_run)
         changed = changed_link or changed_doc
@@ -221,9 +225,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--workspace-root",
-        default=os.environ.get("TOKEN_REDUCE_WORKSPACE_ROOT", "/root/.openclaw/workspace/dev"),
+        default=os.environ.get(
+            "TOKEN_REDUCE_WORKSPACE_ROOT", "/root/.openclaw/workspace/dev"
+        ),
     )
-    parser.add_argument("--skill-source", default=str(Path(__file__).resolve().parents[1]))
+    parser.add_argument(
+        "--skill-source", default=str(Path(__file__).resolve().parents[1])
+    )
     parser.add_argument("--include-self", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force-relink", action="store_true")

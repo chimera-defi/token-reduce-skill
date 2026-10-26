@@ -15,6 +15,7 @@ target. Verified live: running from a session worktree reported
 repos that were, on manual inspection, all correctly symlinked to
 `.worktrees/main`.
 """
+
 from __future__ import annotations
 
 import sys
@@ -24,14 +25,16 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from audit_workspace_skills import resolve_expected_skill_root  # noqa: E402
+from audit_workspace_skills import resolve_expected_skill_root
 
 
 def test_prefers_global_skill_symlink_target(tmp_path: Path) -> None:
     """When ~/.claude/skills/token-reduce exists, it's the expected root --
     not wherever the audit script itself happens to be running from."""
     fake_home = tmp_path / "home"
-    canonical_repo = tmp_path / "workspace" / "token-reduce-skill" / ".worktrees" / "main"
+    canonical_repo = (
+        tmp_path / "workspace" / "token-reduce-skill" / ".worktrees" / "main"
+    )
     canonical_repo.mkdir(parents=True)
     skills_dir = fake_home / ".claude" / "skills"
     skills_dir.mkdir(parents=True)

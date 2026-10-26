@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check companion dependency freshness and optionally apply updates."""
+
 from __future__ import annotations
 
 import argparse
@@ -92,6 +93,7 @@ def selected_dependencies(*, include_conditional: bool) -> tuple[Dependency, ...
         return CORE_DEPENDENCIES + CONDITIONAL_DEPENDENCIES
     return CORE_DEPENDENCIES
 
+
 SEMVER_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
 
 
@@ -144,7 +146,9 @@ def semver_to_str(version: tuple[int, int, int] | None, fallback: str = "") -> s
 
 
 def fetch_json(url: str, timeout_seconds: int = 5) -> dict[str, Any] | list[Any] | None:
-    req = urllib.request.Request(url, headers={"User-Agent": "token-reduce-dependency-health"})
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "token-reduce-dependency-health"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
             body = resp.read().decode("utf-8", errors="ignore")
@@ -253,10 +257,21 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
         name = item["name"]
         latest = item.get("latest_version")
         held = name == "qmd" and needs_action(str(item.get("state")))
-        unqualified = name in qualified and latest and latest != qualified[name] and needs_action(str(item.get("state")))
+        unqualified = (
+            name in qualified
+            and latest
+            and latest != qualified[name]
+            and needs_action(str(item.get("state")))
+        )
         if held or unqualified:
-            actions.append({"target": name, "status": "skipped", "command": "none",
-                            "detail": "candidate held for dependency intake; see references/dependency-compatibility-20261009.md"})
+            actions.append(
+                {
+                    "target": name,
+                    "status": "skipped",
+                    "command": "none",
+                    "detail": "candidate held for dependency intake; see references/dependency-compatibility-20261009.md",
+                }
+            )
         else:
             eligible.append(item)
     statuses = eligible
@@ -264,7 +279,16 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rtk_status = next((item for item in statuses if item["name"] == "rtk"), None)
     if rtk_status and needs_action(str(rtk_status.get("state"))):
         if shutil.which("cargo"):
-            cmd = ["cargo", "install", "--force", "--git", "https://github.com/rtk-ai/rtk", "--tag", "v0.51.0", "--locked"]
+            cmd = [
+                "cargo",
+                "install",
+                "--force",
+                "--git",
+                "https://github.com/rtk-ai/rtk",
+                "--tag",
+                "v0.51.0",
+                "--locked",
+            ]
             code, out, err = run_install(cmd)
             actions.append(
                 {
@@ -285,12 +309,15 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
             )
 
     needs_axi_update = any(
-        item["name"] in {"gh-axi", "chrome-devtools-axi"} and needs_action(str(item.get("state")))
+        item["name"] in {"gh-axi", "chrome-devtools-axi"}
+        and needs_action(str(item.get("state")))
         for item in statuses
     )
     if needs_axi_update:
         if shutil.which("npm"):
-            code, out, err = run_install(["npm", "install", "-g", "gh-axi", "chrome-devtools-axi"])
+            code, out, err = run_install(
+                ["npm", "install", "-g", "gh-axi", "chrome-devtools-axi"]
+            )
             actions.append(
                 {
                     "target": "axi_companions",
@@ -308,7 +335,9 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "detail": "npm not installed",
                 }
             )
-    context_mode_status = next((item for item in statuses if item["name"] == "context-mode"), None)
+    context_mode_status = next(
+        (item for item in statuses if item["name"] == "context-mode"), None
+    )
     if context_mode_status and needs_action(str(context_mode_status.get("state"))):
         if shutil.which("npm"):
             code, out, err = run_install(["npm", "install", "-g", "context-mode"])
@@ -330,12 +359,26 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 }
             )
 
-    headroom_status = next((item for item in statuses if item["name"] == "headroom"), None)
+    headroom_status = next(
+        (item for item in statuses if item["name"] == "headroom"), None
+    )
     if headroom_status and needs_action(str(headroom_status.get("state"))):
         if shutil.which("uv"):
-            python = "/usr/bin/python3.12" if Path("/usr/bin/python3.12").exists() else "python3.12"
+            python = (
+                "/usr/bin/python3.12"
+                if Path("/usr/bin/python3.12").exists()
+                else "python3.12"
+            )
             code, out, err = run_install(
-                ["uv", "tool", "install", "--upgrade", "--python", python, "headroom-ai[proxy]==0.40.0"]
+                [
+                    "uv",
+                    "tool",
+                    "install",
+                    "--upgrade",
+                    "--python",
+                    python,
+                    "headroom-ai[proxy]==0.40.0",
+                ]
             )
             actions.append(
                 {
@@ -358,9 +401,13 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     code_review_graph_status = next(
         (item for item in statuses if item["name"] == "code-review-graph"), None
     )
-    if code_review_graph_status and needs_action(str(code_review_graph_status.get("state"))):
+    if code_review_graph_status and needs_action(
+        str(code_review_graph_status.get("state"))
+    ):
         if shutil.which("uv"):
-            code, out, err = run_install(["uv", "tool", "install", "--upgrade", "code-review-graph"])
+            code, out, err = run_install(
+                ["uv", "tool", "install", "--upgrade", "code-review-graph"]
+            )
             actions.append(
                 {
                     "target": "code-review-graph",
@@ -394,7 +441,10 @@ def apply_updates(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def print_human(
-    statuses: list[dict[str, Any]], actions: list[dict[str, Any]], *, include_conditional: bool
+    statuses: list[dict[str, Any]],
+    actions: list[dict[str, Any]],
+    *,
+    include_conditional: bool,
 ) -> None:
     if include_conditional:
         print("dependency health (core + conditional companions):")
@@ -410,7 +460,7 @@ def print_human(
         if status["state"] in {"missing", "outdated"}:
             print(f"  update: {status['update_hint']}")
     if actions:
-        print("")
+        print()
         print("update actions:")
         for action in actions:
             print(f"- {action['target']}: {action['status']} ({action['command']})")
@@ -418,8 +468,12 @@ def print_human(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
-    parser.add_argument("--apply", action="store_true", help="Attempt dependency updates")
+    parser.add_argument(
+        "--json", action="store_true", help="Emit machine-readable JSON"
+    )
+    parser.add_argument(
+        "--apply", action="store_true", help="Attempt dependency updates"
+    )
     parser.add_argument(
         "--include-conditional",
         action="store_true",
@@ -439,7 +493,9 @@ def main() -> int:
         "actions": actions,
         "summary": {
             "checked": len(statuses),
-            "included_tiers": ["core", "conditional"] if args.include_conditional else ["core"],
+            "included_tiers": ["core", "conditional"]
+            if args.include_conditional
+            else ["core"],
             "up_to_date": sum(1 for item in statuses if item["state"] == "up_to_date"),
             "outdated": sum(1 for item in statuses if item["state"] == "outdated"),
             "missing": sum(1 for item in statuses if item["state"] == "missing"),
@@ -451,7 +507,7 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
     else:
         print_human(statuses, actions, include_conditional=args.include_conditional)
-        print("")
+        print()
         print(json.dumps(payload["summary"], indent=2))
     return 0
 
