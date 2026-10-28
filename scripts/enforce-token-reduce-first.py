@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: require token-reduce helper before exploratory Grep/Glob/Read/Bash."""
+"""PreToolUse hook: advisory telemetry and symlink-find context; fail open."""
 from __future__ import annotations
 
 import json
@@ -206,7 +206,8 @@ def _record_decision_for(data: dict[str, object], *, blocked: bool, stdout: str)
 def _advisory_discovery_mode() -> bool:
     """Return True when ordinary discovery gates should warn, not block.
 
-    Catastrophic filesystem scans and symlink-root guards remain hard blocks.
+    This selects policy inside the legacy test harness. Production decisions
+    are always advisory, including catastrophic scans and symlink-root hints.
     The host config is intentionally consulted at tool-call time so operators can
     change this without respawning long-running Claude sessions.
     """
@@ -218,29 +219,36 @@ def _advisory_discovery_mode() -> bool:
     except Exception:
         return False
 
+
+def _warn_mode() -> bool:
+    # Exit-2 behavior exists only for explicit legacy-policy test harnesses.
+    return os.environ.get("TOKEN_REDUCE_ENFORCE_MODE", "").strip().lower() != "block"
+
+
 def block(
     reason: str,
     data: dict[str, object] | None = None,
     *,
     extra_meta: dict[str, object] | None = None,
 ) -> int:
-    # F9: TOKEN_REDUCE_ENFORCE_MODE=warn downgrades every would-be block to a
-    # telemetry-only warning instead of an actual exit-2 block. This
-    # codifies, as a supported first-class mode, a hand-written and never-
-    # committed escape hatch someone had already added at the deploy site
-    # after an over-blocking incident (a wrapper that turned blocks into
-    # stderr warnings). Normal mode (env unset/anything else) is unchanged.
     # Operator decision 2026-10-28: token-reduce is NEVER blocking. Every
     # would-be block (including the former catastrophic / symlink_root_guard
     # hard guards) is downgraded to a telemetry-only warning and exits 0.
     # Only the explicit test-harness opt-in TOKEN_REDUCE_ENFORCE_MODE=block
     # restores exit-2 behaviour (so the legacy gate logic stays testable).
-    warn_mode = os.environ.get("TOKEN_REDUCE_ENFORCE_MODE", "").strip().lower() != "block"
+    warn_mode = _warn_mode()
     # Compute the exact bytes/exit-code up front so both the real emission
     # below AND the R5 decision marker record the SAME actual outcome (a
     # replay must reproduce what really happened, not what the policy
     # nominally wanted before an F9 warn-mode downgrade).
     stdout_payload = "" if warn_mode else json.dumps({"decision": "block", "reason": reason}) + "\n"
+    if warn_mode and (extra_meta or {}).get("policy") == "symlink_root_guard":
+        # Claude Code 2.1.308's installed PreToolUse schema and consumer both
+        # support additionalContext without a permission decision. Keep other
+        # discovery warnings telemetry-only to avoid per-call context noise.
+        stdout_payload = json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "additionalContext": reason,
+        }}) + "\n"
     rc = 0 if warn_mode else 2
 
     if data is not None:
@@ -274,7 +282,7 @@ def block(
             record_block(repo, tool_name, reason, meta.get("command"))  # type: ignore[arg-type]
         record_event(
             repo,
-            event="hook_block",
+            event="hook_warn" if warn_mode else "hook_block",
             source="hook",
             tool=tool_name,
             # R6: warn mode never actually blocked anything -- status must
@@ -305,7 +313,8 @@ def warn_and_allow(
 
     The block message would have cost tokens on a failed attempt; we trade
     that for a single advisory event and trust the agent to switch to the
-    helper next time. Repeat attempts then hit the hard-block branch.
+    helper next time. Repeat attempts retain a distinct telemetry policy;
+    only the explicit legacy test mode can block them.
     """
     repo = repo_root()
     est = estimate_output_tokens(command)
@@ -707,6 +716,11 @@ def main() -> int:
         _record_hook_error("stdin_json", exc)
         return 0
 
+    # Read has no discovery policy. In advisory mode there is no post-block
+    # compliance to track, so avoid repository discovery (and its git process).
+    if isinstance(data, dict) and data.get("tool_name") == "Read" and _warn_mode():
+        return 0
+
     # R5: dedup FIRST, before ANY other side effect (post-block tracking,
     # telemetry, counters) -- moved here (was inside handle_broad_bash,
     # Bash-only) because a second hook-wiring layer invoked for the SAME
@@ -723,7 +737,7 @@ def main() -> int:
             cached = recent_decision(
                 repo, session_key(data), tool_use_id, _decision_fingerprint_source(data)
             )
-            if cached is not None:
+            if cached is not None and not (cached.get("blocked") and _warn_mode()):
                 stdout = cached.get("stdout") or ""
                 if stdout:
                     sys.stdout.write(stdout)
