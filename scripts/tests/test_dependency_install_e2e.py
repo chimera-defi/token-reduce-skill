@@ -51,7 +51,7 @@ def test_setup_and_update_keep_qmd_held_and_use_only_pinned_rtk(tmp_path):
     assert len(settings["hooks"]["PreToolUse"]) == 4
     for entry in settings["hooks"]["PreToolUse"]:
         command = entry["hooks"][0]["command"]
-        assert '$T' in command and '$?' in command and '$ec' in command
+        assert '$T' in command and 'exit 2' not in command and command.endswith('exit 0')
     assert settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] == str(
         home / ".claude/hooks/token-reduce/token-reduce-update-check.sh")
     assert (home / ".claude/hooks/token-reduce/enforce-token-reduce-first.py").is_file()

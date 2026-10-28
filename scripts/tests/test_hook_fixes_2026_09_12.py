@@ -85,7 +85,7 @@ def _run_hook(payload: dict, repo_root: Path, *, env_extra: dict | None = None) 
     env = os.environ.copy()
     env["TOKEN_REDUCE_REPO_ROOT"] = str(repo_root)
     env["PYTHONPATH"] = str(SCRIPTS_DIR) + os.pathsep + env.get("PYTHONPATH", "")
-    env.pop("TOKEN_REDUCE_ENFORCE_MODE", None)
+    env["TOKEN_REDUCE_ENFORCE_MODE"] = "block"  # legacy gate logic; prod default is warn-only
     if env_extra:
         env.update(env_extra)
     return subprocess.run(
