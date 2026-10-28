@@ -161,16 +161,15 @@ settings_path.parent.mkdir(parents=True, exist_ok=True)
 settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
 
 hook_dir = str(pathlib.Path.home() / ".claude" / "hooks" / "token-reduce")
-uv_abs = shutil.which("uv") or "uv"
+python_abs = shutil.which("python3") or "python3"
 enforce_script = f"{hook_dir}/enforce-token-reduce-first.py"
-# Fail-open wrapper (the 2026-08-17 wedge RCA / PR #70): a bare `uv run <script>`
-# lets a uv spawn-failure exit 2 -- indistinguishable from enforce's own
-# intentional-block signal -- and wedge every subsequent tool call. So: wrap in
-# `timeout`, and honor exit 2 as a block ONLY when the script still exists
-# (otherwise fail open).
+# The hook and helpers use only the Python standard library. Bypass uv's
+# startup/cache resolution on every tool call; pin Python for minimal hook PATHs.
+# Force advisory mode even if a legacy test opt-in leaked into the environment.
+# Forward symlink-find additionalContext, suppress spawn errors, always exit 0.
 enforce_cmd = (
-    f'T="{enforce_script}"; timeout 5 {uv_abs} run --no-project "$T" >/dev/null; '
-    f'exit 0'  # never forward exit 2: non-blocking (2026-10-28)
+    f'T="{enforce_script}"; TOKEN_REDUCE_ENFORCE_MODE=warn '
+    f'timeout 5 "{python_abs}" "$T" 2>/dev/null; exit 0'
 )
 update_cmd = sys.argv[1]
 
