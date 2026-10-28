@@ -230,12 +230,12 @@ def block(
     # committed escape hatch someone had already added at the deploy site
     # after an over-blocking incident (a wrapper that turned blocks into
     # stderr warnings). Normal mode (env unset/anything else) is unchanged.
-    policy = str((extra_meta or {}).get("policy", ""))
-    hard_guard = policy in {"catastrophic", "symlink_root_guard"}
-    warn_mode = (
-        os.environ.get("TOKEN_REDUCE_ENFORCE_MODE") == "warn"
-        or (_advisory_discovery_mode() and not hard_guard)
-    )
+    # Operator decision 2026-10-28: token-reduce is NEVER blocking. Every
+    # would-be block (including the former catastrophic / symlink_root_guard
+    # hard guards) is downgraded to a telemetry-only warning and exits 0.
+    # Only the explicit test-harness opt-in TOKEN_REDUCE_ENFORCE_MODE=block
+    # restores exit-2 behaviour (so the legacy gate logic stays testable).
+    warn_mode = os.environ.get("TOKEN_REDUCE_ENFORCE_MODE", "").strip().lower() != "block"
     # Compute the exact bytes/exit-code up front so both the real emission
     # below AND the R5 decision marker record the SAME actual outcome (a
     # replay must reproduce what really happened, not what the policy
