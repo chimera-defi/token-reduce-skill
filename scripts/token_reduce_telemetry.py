@@ -223,6 +223,10 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             continue
 
         event_name = str(event.get("event", "unknown"))
+        # Older advisory hooks emitted hook_block with status=warn. Correct
+        # aggregate counts without rewriting append-only historical events.
+        if event_name == "hook_block" and event.get("status") == "warn":
+            event_name = "hook_warn"
         by_event[event_name] += 1
         if tool := event.get("tool"):
             by_tool[str(tool)] += 1

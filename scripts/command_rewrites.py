@@ -110,16 +110,15 @@ def _find_targets_broad_root(command: str) -> bool:
     """True when `find` is rooted at the filesystem root or a near-top-level
     directory (<=2 path segments -- e.g. /, /usr, /home, /home/<user>).
 
-    A single invocation at that depth can return an enormous listing
-    regardless of any -maxdepth, because the fan-out at that level (every
-    top-level system dir, or every repo/workspace under a home directory) is
-    itself huge. Deeper, specifically-named roots (e.g. one project or skill
-    directory several levels down) are not catastrophic here -- they still
-    hit the broad-scan warn-once/block-on-repeat path via
-    BROAD_BASH_PATTERNS, they just aren't hard-blocked on the first attempt.
+    A depth-limited scan of a named directory is not catastrophic merely
+    because that directory is shallow (e.g. /tmp -maxdepth 6). It may still
+    warrant broad-scan advice: a depth bound does not bound output volume.
+    Filesystem-root scans retain their conservative catastrophic label.
     """
     m = _FIND_ROOT_RE.search(command)
     if not m:
+        return False
+    if m.group(1).rstrip("/") and _FIND_MAXDEPTH_RE.search(command):
         return False
     segments = [seg for seg in m.group(1).split("/") if seg]
     return len(segments) <= 2
