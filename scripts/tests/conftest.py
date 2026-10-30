@@ -4,6 +4,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def isolated_session_policy(monkeypatch, tmp_path):
+    monkeypatch.setenv("TOKEN_REDUCE_CENTRAL_EVENTS", str(tmp_path / "central-events.jsonl"))
     # Tests that exercise explicit configuration override this fixture themselves.
     monkeypatch.setenv("TOKEN_REDUCE_CONFIG_PATH", str(tmp_path / "absent-host-config.json"))
     monkeypatch.delenv("TOKEN_REDUCE_DISCOVERY_MODE", raising=False)
