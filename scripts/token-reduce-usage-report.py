@@ -13,6 +13,9 @@ from token_reduce_central import central_path
 NON_RUNTIME = {"test", "benchmark", "synthetic"}
 
 
+COUNTED_EVENTS = {"hook_call", "helper_invocation"}
+
+
 def summarize(path: Path | None, days: int = 14) -> dict:
     by_tool, by_model, by_lane, by_project, by_rule = (Counter() for _ in range(5))
     advised, matched = Counter(), Counter()
@@ -38,8 +41,8 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                         raise ValueError("non-runtime")
                     # hook_warn/block/error are auxiliary events, already represented
                     # by the one hook_call row for that invocation.
-                    if row.get("source") == "hook" and row.get("event") != "hook_call":
-                        raise ValueError("auxiliary hook event")
+                    if row.get("event") not in COUNTED_EVENTS:
+                        raise ValueError("auxiliary event")  # hook_warn, brain_hint_error, ...
                     ts = datetime.fromisoformat(row["ts"].replace("Z", "+00:00"))
                     if ts.tzinfo is None:
                         ts = ts.replace(tzinfo=timezone.utc)

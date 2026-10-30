@@ -305,3 +305,15 @@ def test_report_dedups_same_call_across_hook_layers(tmp_path):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert mod.summarize(sink, 14)["events_considered"] == 2
+
+
+def test_report_counts_only_calls_and_helper_invocations(tmp_path):
+    from datetime import datetime, timezone
+    base = {"ts": datetime.now(timezone.utc).isoformat(), "source": "helper", "tool": "token-reduce-snippet"}
+    sink = tmp_path / "aux.jsonl"
+    sink.write_text("\n".join(json.dumps(dict(base, event=e)) for e in
+                              ("helper_invocation", "brain_hint_error", "hook_warn")) + "\n")
+    spec = importlib.util.spec_from_file_location("usage_report2", SCRIPTS / "token-reduce-usage-report.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.summarize(sink, 14)["events_considered"] == 1
