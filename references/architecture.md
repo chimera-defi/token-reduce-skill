@@ -159,6 +159,37 @@ That means the skill can do more than claim savings. It can inspect whether it i
 
 The adoption loop is intentionally warning-only. A clean install/doc audit does not prove usage. The report therefore separates deployment drift from behavior gaps such as active repos with sessions but no helper calls, telemetry-only helper calls, and missing host-session attribution.
 
+### Central usage telemetry
+
+Hooks also append to `~/.local/share/token-reduce/events.jsonl`. Set
+`TOKEN_REDUCE_CENTRAL_EVENTS` to override the path, or to `off`, `0`, or an empty
+value to disable it. The sink is best-effort: no git or extra processes, one
+`O_APPEND` write per line, newly created files mode `0600`, and failures never
+change hook decisions. Repository-local event format is unchanged.
+
+Each `hook_call` includes UTC `ts`, `event`, `tool`, `model`, `lane`, hashed
+`session` (12 SHA-1 hex characters, never the raw ID), `advised`, `rule`, `project`
+(directory basename), `hook_event`, `client`, and `source: "hook"`. Read calls
+use this central-only path; cached decision replays add no call row. Model
+precedence is `CLAUDE_SESSION_MODEL`, `ANTHROPIC_MODEL`, payload `model`, then the
+last model in the transcript's final 64 KiB, with `unknown` as fallback. Model
+lookups are cached only within the process. `TOKEN_REDUCE_LANE` overrides lane;
+otherwise agent ID/type selects `subagent`, falling back to `main`.
+`CLAUDE_CODE_ENTRYPOINT` supplies client, and `CLAUDE_PROJECT_DIR` supplies project
+when payload `cwd` is absent. First sightings save sorted payload key names
+(no values) to `payload-keys-<hook_event>-<tool>.json` beside the sink.
+
+Other repository events are copied centrally with `ts`, `event`, `tool`,
+`status`, `source`, `rule` (metadata policy/rule), hashed `session`, and `project`;
+metadata `context` is retained when present. `hook_call` is not copied again.
+
+Run `python3 scripts/token-reduce-usage-report.py --days 14` for tool, model,
+lane, top-ten project, advice-rule/rate, and model-by-tool summaries; add `--json`
+or `--events /path/to/events.jsonl`. The report reads only the central sink,
+excludes test/benchmark/synthetic sources or contexts, and skips auxiliary hook
+events already represented by `hook_call`. Malformed and out-of-window lines
+are skipped; considered/skipped counts are printed even for an empty sink.
+
 ## Cost Governance Boundary
 
 `token-reduce` now reports warning-only coverage against the Databricks AI coding cost playbook, but it is still not a full AI Gateway.
