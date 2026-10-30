@@ -66,6 +66,7 @@ ENTRYPOINTS = ["enforce-token-reduce-first.py"]
 HELPER_MODULES = [
     "token_reduce_state.py",
     "token_reduce_telemetry.py",
+    "token_reduce_central.py",
     "token_reduce_config.py",
     "command_rewrites.py",
     "coverage_patterns.py",
@@ -414,6 +415,7 @@ def _run_script(script: Path, root: Path, payload: dict, *, env_extra: dict | No
     env["TOKEN_REDUCE_REPO_ROOT"] = str(root)
     env["PYTHONPATH"] = str(script.parent) + os.pathsep + env.get("PYTHONPATH", "")
     env.pop("TOKEN_REDUCE_ENFORCE_MODE", None)
+    env["TOKEN_REDUCE_CENTRAL_EVENTS"] = "off"  # diagnostics must not pollute runtime telemetry
     if env_extra:
         env.update(env_extra)
     try:
