@@ -46,6 +46,16 @@ except Exception:
     sys.exit(0)
 
 
+try:
+    from token_reduce_central import log_call
+except Exception:
+    # A partial deployment of the optional sink must preserve legacy behavior.
+    log_call = None
+
+_ADVICE: dict[str, object] = {}
+_HOOK_DATA: dict | None = None
+
+
 BROAD_BASH_PATTERNS = [
     # `find` is handled separately by matches_broad_bash() via is_broad_find()
     # (F4) so a cost-bounded `find <specific-dir> -maxdepth <=2>` isn't
@@ -231,6 +241,9 @@ def block(
     *,
     extra_meta: dict[str, object] | None = None,
 ) -> int:
+    _ADVICE.update(advised=True, rule=(extra_meta or {}).get("policy") or
+                   {"Glob": "broad_glob", "Grep": "exploratory_grep"}.get(
+                       (data or {}).get("tool_name"), "broad_bash"))
     # Operator decision 2026-10-28: token-reduce is NEVER blocking. Every
     # would-be block (including the former catastrophic / symlink_root_guard
     # hard guards) is downgraded to a telemetry-only warning and exits 0.
@@ -316,6 +329,7 @@ def warn_and_allow(
     helper next time. Repeat attempts retain a distinct telemetry policy;
     only the explicit legacy test mode can block them.
     """
+    _ADVICE.update(advised=True, rule="exploratory_grep" if reason == "exploratory rg scan" else "broad_bash")
     repo = repo_root()
     est = estimate_output_tokens(command)
     rewrite = suggest_rewrite(command) or ""
@@ -709,12 +723,17 @@ def _record_hook_error(stage: str, exc: Exception, data: object = None) -> None:
         pass
 
 
-def main() -> int:
+def _main_inner() -> int:
+    global _HOOK_DATA
     try:
         data = json.load(sys.stdin)
     except Exception as exc:
         _record_hook_error("stdin_json", exc)
         return 0
+
+    if not isinstance(data, dict):
+        return 0
+    _HOOK_DATA = data
 
     # Read has no discovery policy. In advisory mode there is no post-block
     # compliance to track, so avoid repository discovery (and its git process).
@@ -738,6 +757,7 @@ def main() -> int:
                 repo, session_key(data), tool_use_id, _decision_fingerprint_source(data)
             )
             if cached is not None and not (cached.get("blocked") and _warn_mode()):
+                _ADVICE["dedup"] = True
                 stdout = cached.get("stdout") or ""
                 if stdout:
                     sys.stdout.write(stdout)
@@ -863,6 +883,20 @@ def main() -> int:
         # repo_root()/record_event() can't turn the fail-open back into a crash.
         _record_hook_error("runtime", exc, data)
         return 0
+
+
+def main() -> int:
+    global _HOOK_DATA
+    _HOOK_DATA = None
+    _ADVICE.clear()
+    try:
+        return _main_inner()
+    finally:
+        try:
+            if _HOOK_DATA is not None and not _ADVICE.get("dedup") and log_call is not None:
+                log_call(_HOOK_DATA, advised=bool(_ADVICE.get("advised")), rule=_ADVICE.get("rule"))
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
