@@ -59,7 +59,7 @@ def test_central_schema_and_single_append(monkeypatch, tmp_path):
     [row] = rows()
     assert row == dict(ts=row["ts"], event="hook_call", tool="Read", model="claude-test",
                        lane="main", session=c.session_hash({"session_id": "secret-session"}),
-                       advised=False, rule=None, project="project", hook_event="PreToolUse",
+                       advised=False, call=None, rule=None, project="project", hook_event="PreToolUse",
                        client="cli", source="hook")
     assert datetime.fromisoformat(row["ts"]).utcoffset().total_seconds() == 0
     assert len(calls) == 1
@@ -154,7 +154,8 @@ def test_hook_tools(tmp_path, tool, tool_input, advised, rule):
     assert result.returncode == 0, result.stderr
     calls = [row for row in rows() if row["event"] == "hook_call"]
     assert len(calls) == 1
-    assert (calls[0]["tool"], calls[0]["advised"], calls[0]["rule"]) == (tool, advised, rule)
+    assert (calls[0]["tool"], calls[0]["matched"], calls[0]["rule"]) == (tool, advised, rule)
+    assert calls[0]["advised"] is False  # warn mode writes nothing for the model
 
 
 def test_read_never_discovers_repo(monkeypatch, tmp_path):
@@ -186,7 +187,7 @@ def test_bash_policy_rules_and_allowed_call(tmp_path):
         assert result.returncode == 0, result.stderr
         row = [row for row in rows() if row["event"] == "hook_call"][-1]
         assert row["rule"] == rule
-        assert row["advised"] == (rule is not None)
+        assert row["matched"] == (rule is not None)
 
 
 @pytest.mark.parametrize("value", ["off", "0", ""])
@@ -291,3 +292,16 @@ def test_report_empty_or_missing(tmp_path, exists):
     assert "No events" in result.stdout
     result = run_report("--events", str(path), "--json")
     assert json.loads(result.stdout)["events_considered"] == 0
+
+
+def test_report_dedups_same_call_across_hook_layers(tmp_path):
+    from datetime import datetime, timezone
+    row = {"ts": datetime.now(timezone.utc).isoformat(), "event": "hook_call", "source": "hook",
+           "tool": "Read", "session": "s1", "call": "c1", "model": "m", "lane": "main",
+           "project": "p", "advised": False, "rule": None}
+    sink = tmp_path / "dup.jsonl"
+    sink.write_text("\n".join(json.dumps(r) for r in (row, row, dict(row, call="c2"))) + "\n")
+    spec = importlib.util.spec_from_file_location("usage_report", SCRIPTS / "token-reduce-usage-report.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.summarize(sink, 14)["events_considered"] == 2

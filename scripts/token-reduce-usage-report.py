@@ -15,7 +15,8 @@ NON_RUNTIME = {"test", "benchmark", "synthetic"}
 
 def summarize(path: Path | None, days: int = 14) -> dict:
     by_tool, by_model, by_lane, by_project, by_rule = (Counter() for _ in range(5))
-    advised = Counter()
+    advised, matched = Counter(), Counter()
+    seen_calls = set()
     matrix = defaultdict(Counter)
     considered = skipped = 0
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -47,6 +48,12 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                 except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
                     skipped += 1
                     continue
+                call_id = (row.get("session"), row.get("call")) if row.get("call") else None
+                if call_id in seen_calls:
+                    skipped += 1  # same tool call seen by a second hook layer
+                    continue
+                if call_id:
+                    seen_calls.add(call_id)
                 considered += 1
                 tool = str(row.get("tool") or "unknown")
                 model = str(row.get("model") or "unknown")
@@ -57,6 +64,8 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                 matrix[model][tool] += 1
                 if row.get("advised") is True:
                     advised[tool] += 1
+                if row.get("matched") is True or row.get("advised") is True:
+                    matched[tool] += 1
                     by_rule[str(row.get("rule") or "unknown")] += 1
     return {
         "events_considered": considered, "events_skipped": skipped,
@@ -64,6 +73,10 @@ def summarize(path: Path | None, days: int = 14) -> dict:
         "by_lane": dict(by_lane.most_common()), "by_project": dict(by_project.most_common(10)),
         "advice_rate_by_tool": {
             tool: {"advised": advised[tool], "total": count, "rate": advised[tool] / count}
+            for tool, count in by_tool.items()
+        },
+        "rule_match_rate_by_tool": {
+            tool: {"matched": matched[tool], "total": count, "rate": matched[tool] / count}
             for tool, count in by_tool.items()
         },
         "advice_by_rule": dict(by_rule.most_common()),
@@ -89,13 +102,16 @@ def main() -> int:
         return 0
     for key, label in (("by_tool", "Calls by tool"), ("by_model", "Calls by model"),
                        ("by_lane", "Calls by lane"), ("by_project", "Calls by project (top 10)"),
-                       ("advice_by_rule", "Advice by rule")):
+                       ("advice_by_rule", "Rule matches by rule")):
         print(f"\n{label}:")
         for name, count in report[key].items():
             print(f"  {name}: {count}")
-    print("\nAdvice rate by tool:")
+    print("\nAdvice emitted to the model by tool:")
     for tool, counts in report["advice_rate_by_tool"].items():
         print(f"  {tool}: {counts['advised']}/{counts['total']} ({counts['rate']:.1%})")
+    print("\nRule matched (advice or telemetry-only) by tool:")
+    for tool, counts in report["rule_match_rate_by_tool"].items():
+        print(f"  {tool}: {counts['matched']}/{counts['total']} ({counts['rate']:.1%})")
     print("\nModel x tool matrix:")
     tools = sorted(report["by_tool"])
     print("  model\t" + "\t".join(tools))

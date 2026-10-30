@@ -241,7 +241,7 @@ def block(
     *,
     extra_meta: dict[str, object] | None = None,
 ) -> int:
-    _ADVICE.update(advised=True, rule=(extra_meta or {}).get("policy") or
+    _ADVICE.update(matched=True, rule=(extra_meta or {}).get("policy") or
                    {"Glob": "broad_glob", "Grep": "exploratory_grep"}.get(
                        (data or {}).get("tool_name"), "broad_bash"))
     # Operator decision 2026-10-28: token-reduce is NEVER blocking. Every
@@ -263,6 +263,7 @@ def block(
             "hookEventName": "PreToolUse", "additionalContext": reason,
         }}) + "\n"
     rc = 0 if warn_mode else 2
+    _ADVICE["advised"] = bool(stdout_payload)  # advice actually written for the model
 
     if data is not None:
         repo = repo_root()
@@ -329,7 +330,7 @@ def warn_and_allow(
     helper next time. Repeat attempts retain a distinct telemetry policy;
     only the explicit legacy test mode can block them.
     """
-    _ADVICE.update(advised=True, rule="exploratory_grep" if reason == "exploratory rg scan" else "broad_bash")
+    _ADVICE.update(matched=True, advised=False, rule="exploratory_grep" if reason == "exploratory rg scan" else "broad_bash")
     repo = repo_root()
     est = estimate_output_tokens(command)
     rewrite = suggest_rewrite(command) or ""
@@ -894,7 +895,8 @@ def main() -> int:
     finally:
         try:
             if _HOOK_DATA is not None and not _ADVICE.get("dedup") and log_call is not None:
-                log_call(_HOOK_DATA, advised=bool(_ADVICE.get("advised")), rule=_ADVICE.get("rule"))
+                log_call(_HOOK_DATA, advised=bool(_ADVICE.get("advised")), rule=_ADVICE.get("rule"),
+                         extra={"matched": bool(_ADVICE.get("matched"))})
         except Exception:
             pass
 

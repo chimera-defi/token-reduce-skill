@@ -122,6 +122,8 @@ def log_call(data: dict, *, advised: bool = False, rule: str | None = None,
             "hook_event": data.get("hook_event_name"),
             "client": os.environ.get("CLAUDE_CODE_ENTRYPOINT", ""),
             "source": "hook",
+            "call": hashlib.sha1(str(data["tool_use_id"]).encode(), usedforsecurity=False).hexdigest()[:12]
+            if data.get("tool_use_id") else None,
         }
         if extra:
             payload.update(extra)
