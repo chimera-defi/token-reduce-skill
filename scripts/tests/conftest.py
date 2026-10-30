@@ -7,5 +7,8 @@ def isolated_session_policy(monkeypatch, tmp_path):
     # Tests that exercise explicit configuration override this fixture themselves.
     monkeypatch.setenv("TOKEN_REDUCE_CONFIG_PATH", str(tmp_path / "absent-host-config.json"))
     monkeypatch.delenv("TOKEN_REDUCE_DISCOVERY_MODE", raising=False)
+    # Legacy gate tests exercise the exit-2 logic; production default is warn-only
+    # (see test_never_blocks.py).
+    monkeypatch.setenv("TOKEN_REDUCE_ENFORCE_MODE", "block")
     for name in ("RTK", "SEARCH_QMD", "MEMORY", "HEADROOM_COMPRESS", "HEADROOM_RETRIEVE", "MCP_TRIM", "CONTEXT_AUDIT"):
         monkeypatch.delenv(f"TOKEN_REDUCE_LAYER_{name}", raising=False)

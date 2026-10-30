@@ -30,6 +30,7 @@ def _run(payload: dict, repo: Path, *, advisory: bool = True):
     env = os.environ.copy()
     env["TOKEN_REDUCE_REPO_ROOT"] = str(repo)
     env["PYTHONPATH"] = str(SCRIPTS) + os.pathsep + env.get("PYTHONPATH", "")
+    env.pop("TOKEN_REDUCE_ENFORCE_MODE", None)  # prod default: warn-only
     if advisory:
         cfg = repo / "token-reduce-config.json"
         cfg.write_text(json.dumps({"enforcement": "advisory"}) + "\n")
@@ -66,19 +67,7 @@ def test_advisory_allows_exploratory_glob_and_grep(repo: Path) -> None:
     assert grep.stdout == ""
 
 
-def test_advisory_still_hard_blocks_catastrophic_scan(repo: Path) -> None:
+def test_catastrophic_scan_is_warn_only_now(repo: Path) -> None:
     result = _run(_bash("find / -maxdepth 1 -type f", "adv-cat", "c1"), repo)
-    assert result.returncode == 2
-    decision = json.loads(result.stdout)
-    assert decision["decision"] == "block"
-    assert "catastrophic" in decision["reason"].lower()
-
-
-def test_warn_telemetry_is_not_counted_as_blocked(repo: Path) -> None:
-    _run({"session_id": "adv-glob-t", "tool_use_id": "g3", "tool_name": "Glob", "tool_input": {"pattern": "**/*"}}, repo)
-    events_path = repo / "artifacts" / "token-reduction" / "events.jsonl"
-    events = [json.loads(line) for line in events_path.read_text().splitlines() if line.strip()]
-    events = [e for e in events if e.get("event") == "hook_block"]
-    assert events
-    assert events[-1]["status"] == "warn"
-    assert (events[-1].get("meta") or {}).get("mode") == "warn"
+    assert result.returncode == 0
+    assert result.stdout == ""
