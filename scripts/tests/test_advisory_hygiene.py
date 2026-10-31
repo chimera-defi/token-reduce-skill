@@ -215,3 +215,4 @@ def test_report_keeps_glob_rule_without_double_counting(tmp_path):
     report = mod.summarize(sink, 14)
     assert report["by_tool"] == {"Glob": 1}
     assert report["advice_by_rule"] == {"glob_explosion": 1}
+    assert report["rule_match_rate_by_tool"]["Glob"]["matched"] == 1
