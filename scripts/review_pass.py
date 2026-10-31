@@ -67,6 +67,7 @@ HELPER_MODULES = [
     "token_reduce_state.py",
     "token_reduce_telemetry.py",
     "token_reduce_central.py",
+    "advisory_hygiene.py",
     "token_reduce_config.py",
     "command_rewrites.py",
     "coverage_patterns.py",

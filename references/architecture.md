@@ -179,6 +179,13 @@ otherwise agent ID/type selects `subagent`, falling back to `main`.
 when payload `cwd` is absent. First sightings save sorted payload key names
 (no values) to `payload-keys-<hook_event>-<tool>.json` beside the sink.
 
+Hygiene rules `read_unbounded` (large files over 300 lines without a Read limit),
+`grep_no_head_limit` (Grep content without a positive head limit), and
+`glob_explosion` (Glob results over 50 paths) are advisory-only and fail open.
+They emit no stdout; Read/Grep set advice on the central `hook_call`, while
+`scripts/warn-glob-explosion.py` records PostToolUse Glob advice. These rules
+supersede etc-mono's corresponding project hooks.
+
 Other repository events are copied centrally with `ts`, `event`, `tool`,
 `status`, `source`, `rule` (metadata policy/rule), hashed `session`, and `project`;
 metadata `context` is retained when present. `hook_call` is not copied again.

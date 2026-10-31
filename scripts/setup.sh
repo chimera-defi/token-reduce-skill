@@ -129,7 +129,7 @@ fi
 HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
 mkdir -p "$HOOK_INSTALL_DIR"
 
-for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py token_reduce_central.py command_rewrites.py coverage_patterns.py enforce-token-reduce-first.py; do
+for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py token_reduce_central.py advisory_hygiene.py command_rewrites.py coverage_patterns.py enforce-token-reduce-first.py; do
   cp "$REPO_ROOT/scripts/$f" "$HOOK_INSTALL_DIR/$f"
 done
 ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
