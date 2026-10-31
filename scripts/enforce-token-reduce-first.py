@@ -52,6 +52,12 @@ except Exception:
     # A partial deployment of the optional sink must preserve legacy behavior.
     log_call = None
 
+try:
+    from advisory_hygiene import grep_advice, read_advice
+except Exception:
+    # Hygiene is optional; partial deployments must preserve normal policy.
+    grep_advice = read_advice = None
+
 _ADVICE: dict[str, object] = {}
 _HOOK_DATA: dict | None = None
 
@@ -739,6 +745,14 @@ def _main_inner() -> int:
     # Read has no discovery policy. In advisory mode there is no post-block
     # compliance to track, so avoid repository discovery (and its git process).
     if isinstance(data, dict) and data.get("tool_name") == "Read" and _warn_mode():
+        tool_input = data.get("tool_input", {}) or {}
+        if isinstance(tool_input, dict) and "limit" not in tool_input and read_advice is not None:
+            try:
+                rule = read_advice(tool_input)
+                if rule:
+                    _ADVICE.update(matched=True, rule=rule)
+            except Exception:
+                pass
         return 0
 
     # R5: dedup FIRST, before ANY other side effect (post-block tracking,
@@ -877,6 +891,11 @@ def _main_inner() -> int:
                 "then use Grep on an exact file path or a much narrower scope.",
                 data,
             )
+
+        if tool_name == "Grep" and grep_advice is not None:
+            rule = grep_advice(tool_input)
+            if rule:
+                _ADVICE.update(matched=True, rule=rule)
 
         return 0
     except Exception as exc:
