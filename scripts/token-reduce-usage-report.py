@@ -13,13 +13,13 @@ from token_reduce_central import central_path
 NON_RUNTIME = {"test", "benchmark", "synthetic"}
 
 
-COUNTED_EVENTS = {"hook_call", "helper_invocation"}
+COUNTED_EVENTS = {"hook_call", "helper_invocation", "hook_result"}
 
 
 def summarize(path: Path | None, days: int = 14) -> dict:
     by_tool, by_model, by_lane, by_project, by_rule = (Counter() for _ in range(5))
     advised, matched = Counter(), Counter()
-    seen_calls = set()
+    seen_calls, matched_calls = set(), set()
     matrix = defaultdict(Counter)
     considered = skipped = 0
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
@@ -51,6 +51,17 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                 except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
                     skipped += 1
                     continue
+                if row.get("event") == "hook_result":
+                    # PostToolUse findings (e.g. glob_explosion) annotate a call already
+                    # counted by its PreToolUse hook_call; add the rule match only.
+                    if row.get("matched") is True:
+                        by_rule[str(row.get("rule") or "unknown")] += 1
+                        key = (row.get("session"), row.get("call")) if row.get("call") else None
+                        if key not in matched_calls:  # the call's own PreToolUse row did not match
+                            matched[str(row.get("tool") or "unknown")] += 1
+                            if key:
+                                matched_calls.add(key)
+                    continue
                 call_id = (row.get("session"), row.get("call")) if row.get("call") else None
                 if call_id in seen_calls:
                     skipped += 1  # same tool call seen by a second hook layer
@@ -69,6 +80,8 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                     advised[tool] += 1
                 if row.get("matched") is True or row.get("advised") is True:
                     matched[tool] += 1
+                    if call_id:
+                        matched_calls.add(call_id)
                     by_rule[str(row.get("rule") or "unknown")] += 1
     return {
         "events_considered": considered, "events_skipped": skipped,
