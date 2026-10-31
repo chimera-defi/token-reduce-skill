@@ -131,7 +131,7 @@ def run_hook(tmp_path, script, data, *, raw=False, scripts=SCRIPTS):
     assert result.stdout == ""
     assert result.stderr == ""
     rows = [json.loads(line) for line in sink.read_text().splitlines()] if sink.exists() else []
-    return [row for row in rows if row["event"] == "hook_call"]
+    return [row for row in rows if row["event"] in ("hook_call", "hook_result")]
 
 
 @pytest.mark.parametrize("limit", [None, 50])
@@ -178,12 +178,12 @@ def test_glob_hook_telemetry(tmp_path, response):
     assert row["rule"] == "glob_explosion"
     assert row["count"] == 51
     assert row["hook_event"] == "PostToolUse"
+    assert row["event"] == "hook_result"
 
 
 def test_glob_small_result(tmp_path):
-    [row] = run_hook(tmp_path, "warn-glob-explosion.py", {
-        "tool_name": "Glob", "tool_response": PATHS[:3], "hook_event_name": "PostToolUse"})
-    assert row["matched"] is False
+    assert run_hook(tmp_path, "warn-glob-explosion.py", {
+        "tool_name": "Glob", "tool_response": PATHS[:3], "hook_event_name": "PostToolUse"}) == []
 
 
 @pytest.mark.parametrize("stdin", ["garbage", "", "[]", "null", "42"])
@@ -196,5 +196,22 @@ def test_glob_garbage_is_silent(tmp_path, stdin):
 def test_optional_hygiene_module_missing(tmp_path, script, tool):
     scripts = tmp_path / "scripts"
     shutil.copytree(SCRIPTS, scripts, ignore=shutil.ignore_patterns("advisory_hygiene.py", "__pycache__", "tests"))
-    [row] = run_hook(tmp_path, script, {"tool_name": tool}, scripts=scripts)
-    assert row["matched"] is False
+    rows = run_hook(tmp_path, script, {"tool_name": tool}, scripts=scripts)
+    assert all(row["matched"] is False for row in rows)
+
+
+def test_report_keeps_glob_rule_without_double_counting(tmp_path):
+    import importlib.util
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    pre = {"ts": now, "event": "hook_call", "source": "hook", "tool": "Glob",
+           "session": "s", "call": "c", "advised": False, "rule": None}
+    post = dict(pre, event="hook_result", matched=True, rule="glob_explosion")
+    sink = tmp_path / "x.jsonl"
+    sink.write_text("\n".join(json.dumps(r) for r in (pre, post)) + "\n")
+    spec = importlib.util.spec_from_file_location("ur", SCRIPTS / "token-reduce-usage-report.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    report = mod.summarize(sink, 14)
+    assert report["by_tool"] == {"Glob": 1}
+    assert report["advice_by_rule"] == {"glob_explosion": 1}

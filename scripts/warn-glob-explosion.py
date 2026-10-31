@@ -20,8 +20,10 @@ def main() -> int:
         if not isinstance(data, dict):
             return 0
         advice = glob_result_advice(data) if glob_result_advice is not None else None
-        log_call(data, advised=False, rule=advice[0] if advice else None,
-                 extra={"matched": advice is not None, "count": advice[1] if advice else 0})
+        if advice is not None:
+            # hook_result: annotates the call its PreToolUse hook_call already counted.
+            log_call(data, advised=False, rule=advice[0], event="hook_result",
+                     extra={"matched": True, "count": advice[1]})
     except Exception:
         pass
     return 0
