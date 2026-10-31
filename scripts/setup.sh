@@ -129,7 +129,7 @@ fi
 HOOK_INSTALL_DIR="$HOME/.claude/hooks/token-reduce"
 mkdir -p "$HOOK_INSTALL_DIR"
 
-for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py token_reduce_central.py command_rewrites.py coverage_patterns.py enforce-token-reduce-first.py; do
+for f in token_reduce_config.py token_reduce_state.py token_reduce_telemetry.py token_reduce_central.py advisory_hygiene.py command_rewrites.py coverage_patterns.py enforce-token-reduce-first.py warn-glob-explosion.py; do
   cp "$REPO_ROOT/scripts/$f" "$HOOK_INSTALL_DIR/$f"
 done
 ok "token-reduce hook scripts installed to $HOOK_INSTALL_DIR"
@@ -203,6 +203,16 @@ ptu[:] = [
 ]
 for matcher in ("Bash", "Glob", "Grep", "Read"):
     ptu.append({"matcher": matcher, "hooks": [{"type": "command", "command": enforce_cmd}]})
+
+# PostToolUse Glob: silent glob_explosion telemetry (plain python3, always exit 0).
+glob_script = f"{hook_dir}/warn-glob-explosion.py"
+glob_cmd = f'timeout 5 "{python_abs}" "{glob_script}" >/dev/null 2>&1; exit 0'
+potu = hooks.setdefault("PostToolUse", [])
+potu[:] = [
+    h for h in potu
+    if not any(_refs_token_reduce(hh.get("command"), glob_script) for hh in h.get("hooks", []))
+]
+potu.append({"matcher": "Glob", "hooks": [{"type": "command", "command": glob_cmd}]})
 
 ss = hooks.setdefault("SessionStart", [])
 if not any(
