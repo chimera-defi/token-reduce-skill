@@ -13,7 +13,7 @@ from token_reduce_central import central_path
 NON_RUNTIME = {"test", "benchmark", "synthetic"}
 
 
-COUNTED_EVENTS = {"hook_call", "helper_invocation"}
+COUNTED_EVENTS = {"hook_call", "helper_invocation", "hook_result"}
 
 
 def summarize(path: Path | None, days: int = 14) -> dict:
@@ -50,6 +50,12 @@ def summarize(path: Path | None, days: int = 14) -> dict:
                         raise ValueError("outside window")
                 except (ValueError, TypeError, KeyError, AttributeError, OverflowError):
                     skipped += 1
+                    continue
+                if row.get("event") == "hook_result":
+                    # PostToolUse findings (e.g. glob_explosion) annotate a call already
+                    # counted by its PreToolUse hook_call; add the rule match only.
+                    if row.get("matched") is True:
+                        by_rule[str(row.get("rule") or "unknown")] += 1
                     continue
                 call_id = (row.get("session"), row.get("call")) if row.get("call") else None
                 if call_id in seen_calls:
