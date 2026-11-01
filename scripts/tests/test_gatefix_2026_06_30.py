@@ -228,7 +228,7 @@ def test_search_does_not_register_nested_alternate_pytest_root(tmp_path: Path) -
 def test_paths_wrapper_honors_aggregate_root_override(
     aggregate: str, tmp_path: Path
 ) -> None:
-    """The wrapper refuses aggregate roots before QMD or broad rg fallback."""
+    """The wrapper never uses QMD or a broad rg on aggregate roots; it takes the bounded fallback."""
     with tempfile.TemporaryDirectory(prefix="token-reduce-root-override-") as raw_root:
         sandbox = Path(raw_root)
         home = sandbox / "home"
@@ -244,8 +244,9 @@ def test_paths_wrapper_honors_aggregate_root_override(
             repo, stub_dir, log, repo_root=root, home=home, wrapper=True
         )
 
-        assert result.returncode == 2
-        assert "refusing aggregate root" in result.stderr
+        # Empty aggregate root: bounded fallback finds nothing (rg exit 1), says how to narrow.
+        assert result.returncode == 1
+        assert "bounded fallback" in result.stderr
         assert "TOKEN_REDUCE_REPO_ROOT" in result.stderr
         assert not log.exists() or log.read_text() == ""
         assert not (root / "artifacts").exists()
