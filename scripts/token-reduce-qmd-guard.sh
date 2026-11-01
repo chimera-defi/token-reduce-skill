@@ -68,7 +68,7 @@ token_reduce_aggregate_fallback() {
     workspace_root="$(cd "$home_root/workspace" && pwd -P)" || return 1
     if [[ "$workspace_root" != "$home_root" ]] && ! token_reduce_aggregate_path_is_private "$workspace_root"; then
       scan_root="$workspace_root"
-      inputs+=(.)
+      inputs+=("$scan_root")
     fi
   fi
   if [[ "$root" == "$home_root" ]]; then

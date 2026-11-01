@@ -467,3 +467,24 @@ def test_while_read_includes_last_token_without_underscore(tmp_path: Path) -> No
         "word-tokenizer fallback (second while-read site).\n"
         f"stdout: {result.stdout!r}\nstderr: {result.stderr!r}"
     )
+
+
+def test_aggregate_fallback_emits_absolute_workspace_paths(tmp_path: Path) -> None:
+    """Matches under $HOME/workspace must be printable from the caller's directory."""
+    with tempfile.TemporaryDirectory(prefix="token-reduce-abs-paths-") as raw_root:
+        sandbox = Path(raw_root)
+        home = sandbox / "home"
+        proj = home / "workspace" / "proj"
+        proj.mkdir(parents=True)
+        (proj / "README.md").write_text("needle\n")
+        repo = sandbox / "valid-repo"
+        repo.mkdir()
+        _init_git_repo(repo)
+        stub_dir, log = _qmd_stub(tmp_path / "qmd-stub")
+
+        result = _run_search_with_qmd(
+            repo, stub_dir, log, repo_root=home, home=home, wrapper=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert str((proj / "README.md").resolve()) in result.stdout
