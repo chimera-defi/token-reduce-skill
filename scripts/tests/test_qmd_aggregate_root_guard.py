@@ -105,8 +105,9 @@ def test_aggregate_home_fallback_before_qmd_or_uv(tmp_path, root_kind, entry):
 
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
-    assert "./repo1/README.md" in lines
-    assert set(lines) == {"./repo1/README.md", *([str(home / "AGENTS.md")] if root_kind == "home" else [])}
+    readme = str((workspace / "repo1" / "README.md").resolve())
+    assert readme in lines
+    assert set(lines) == {readme, *([str(home / "AGENTS.md")] if root_kind == "home" else [])}
     assert result.stderr.splitlines()[0] == (
         f"[token-reduce-search] aggregate root '{root.resolve()}': bounded fallback "
         "(no QMD, private dirs excluded); narrow with TOKEN_REDUCE_REPO_ROOT=<repo> or cd into it"
@@ -153,9 +154,9 @@ def test_aggregate_depth_size_extensions_and_result_cap(tmp_path):
     for extension in ("md", "toml", "json", "sh", "py", "txt", "csv"):
         (repo / f"source.{extension}").write_text("extension")
     (repo / "large.md").write_text("large-needle" + "x" * (1024 * 1024))
-    assert _run_aggregate("search", root, env, "boundary").stdout.splitlines() == ["./repo1/deep/boundary.md"]
+    assert _run_aggregate("search", root, env, "boundary").stdout.splitlines() == [str((workspace / "repo1" / "deep" / "boundary.md").resolve())]
     assert set(_run_aggregate("search", root, env, "extension").stdout.splitlines()) == {
-        f"./repo1/source.{ext}" for ext in ("md", "toml", "json", "sh", "py")
+        str((workspace / "repo1" / f"source.{ext}").resolve()) for ext in ("md", "toml", "json", "sh", "py")
     }
     assert _run_aggregate("search", root, env, "large-needle").returncode == 1
     for index in range(1000):
@@ -199,7 +200,7 @@ def test_aggregate_detected_from_cwd_and_explicit_adaptive_argument(tmp_path, en
     extra = ("--repo-root", str(root)) if entry == "adaptive_shell" else ()
     result = _run_aggregate(entry, root, env, extra=extra, cwd=REPO_ROOT if extra else root)
     assert result.returncode == 0, result.stderr
-    assert result.stdout.splitlines() == ["./README.md"]
+    assert result.stdout.splitlines() == [str((workspace / "README.md").resolve())]
     assert len(calls.read_text().splitlines()) == 1
 
 
@@ -212,7 +213,7 @@ def test_aggregate_ignores_rg_config_and_ignore_files(tmp_path):
     (workspace / ".ignore").write_text("*.md\n")
     result = _run_aggregate("search", root, env)
     assert result.returncode == 0
-    assert result.stdout.splitlines() == ["./README.md"]
+    assert result.stdout.splitlines() == [str((workspace / "README.md").resolve())]
     assert len(calls.read_text().splitlines()) == 1
 
 
@@ -235,7 +236,7 @@ def test_aggregate_inside_home_git_repo_still_uses_bounded_fallback(tmp_path):
     (workspace / "README.md").write_text("needle")
     result = _run_aggregate("search", root, env)
     assert result.returncode == 0
-    assert result.stdout.splitlines() == ["./README.md"]
+    assert result.stdout.splitlines() == [str((workspace / "README.md").resolve())]
     assert len(calls.read_text().splitlines()) == 1
 
 
