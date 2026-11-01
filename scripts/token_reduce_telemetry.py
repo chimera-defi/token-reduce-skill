@@ -59,6 +59,23 @@ def record_event(
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, sort_keys=True) + "\n")
 
+    if event != "hook_call":
+        try:
+            from token_reduce_central import append_line, session_hash
+            metadata = meta or {}
+            central = {
+                "ts": payload["timestamp"], "event": event, "tool": tool,
+                "status": status, "source": source,
+                "rule": metadata.get("policy") or metadata.get("rule"),
+                "session": session_hash({"session_id": metadata.get("session_key")}),
+                "project": Path(repo_root).name,
+            }
+            if "context" in metadata:
+                central["context"] = metadata["context"]
+            append_line(central)
+        except Exception:
+            pass
+
 
 def load_events(repo_root: Path, *, days: int | None = None) -> list[dict]:
     path = events_path(repo_root)
@@ -223,6 +240,10 @@ def summarize_events(events: list[dict], *, include_non_runtime: bool = False) -
             continue
 
         event_name = str(event.get("event", "unknown"))
+        # Older advisory hooks emitted hook_block with status=warn. Correct
+        # aggregate counts without rewriting append-only historical events.
+        if event_name == "hook_block" and event.get("status") == "warn":
+            event_name = "hook_warn"
         by_event[event_name] += 1
         if tool := event.get("tool"):
             by_tool[str(tool)] += 1
