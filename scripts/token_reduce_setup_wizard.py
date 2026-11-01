@@ -17,7 +17,6 @@ from token_reduce_config import DEFAULT_CONFIG, load_config, save_config
 
 _DELEGATES = {
     "devin": ("devin-delegate", "Browser, UI, screenshot, sandbox, adversarial review"),
-    "kimi": ("kimi-delegate", "Cheap research, review, summarize"),
     "grok": ("grok-delegate", "Multi-file refactor, large codebase"),
     "spark": ("spark", "Local Codex write-mode implementation"),
 }

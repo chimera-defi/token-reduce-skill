@@ -51,11 +51,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "mode": "recommend_and_wrap",
             "description": "Browser, UI, screenshot, sandbox, adversarial review",
         },
-        "kimi": {
-            "enabled": False,
-            "mode": "recommend_only",
-            "description": "Cheap research, review, summarize",
-        },
         "grok": {
             "enabled": False,
             "mode": "recommend_only",
