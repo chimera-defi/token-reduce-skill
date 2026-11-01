@@ -130,7 +130,7 @@ For additions like alternate search backends, structural indexers, or external M
 
 ### Headroom Companion
 
-Use Headroom more aggressively when the task is dominated by large tool results, repeated logs/API payloads, or long-session context pressure, but only after the token-reduce first-move helper flow has run.
+Headroom is **off by default** (removed host-wide 2026-10-12: live proxy saved 2.3% of 113.1M tokens over 1476 requests while costing ~1 GB RSS, one MCP process per session, and a hook on every SessionStart/Bash call). Use it only as an explicit, per-session opt-in. Consider it only when a task is dominated by large tool results, after the token-reduce first-move flow has run.
 
 - Verify first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`.
 - Prefer selected wrapped sessions: `headroom wrap codex` or `headroom wrap claude`.
@@ -141,17 +141,18 @@ Use Headroom more aggressively when the task is dominated by large tool results,
 <!-- delegate-skill:begin -->
 ## AI Delegate Routing — MANDATORY
 
-All delegation MUST go through the `delegate-skill` router, which selects the backend and calls its wrapper. Direct `devin`, `pi --provider kimi-coding`, raw `grok`, or backgrounded delegate commands are **prohibited** — they bypass envelope checks, fallback routing, auth detection, timeout scaling, and telemetry.
+All delegation MUST go through the `delegate-skill` router, which selects the backend and calls its wrapper. Direct `devin`, raw `grok`, or backgrounded delegate commands are **prohibited** — they bypass envelope checks, fallback routing, auth detection, timeout scaling, and telemetry.
 
 **Pick the delegate with the router, then call the named wrapper:**
 
 | Task | Wrapper |
 |------|---------|
 | Browser / UI / screenshot / sandbox | `devin-delegate --task "..."` |
-| Cheap research / review / summarize / draft | `kimi-delegate --task "..."` |
+| Cheap research / review / summarize / draft | Haiku-high read-only subagent, or Codex `gpt-6.1-sol` low |
+| Builds / implementation | `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high` |
 | Multi-file refactor / large codebase | `grok-delegate --task "..."` |
 | Local Codex write-mode implementation | `/spark` |
-| Unknown scope | `kimi-delegate` to scope, then escalate |
+| Unknown scope | `devin-delegate --task "..."` |
 
 - **Interactive envelope builder:** `<delegate>-delegate --interactive`
 - **Print envelope only:** `<delegate>-delegate --print-envelope --task "..."`

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve with Bash builtins even when PATH lacks coreutils or the source has no slash.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || SCRIPT_DIR=.
+SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd)"
 
 # ── Update-check preamble (check_on_manage) ──────────────────────────────────
 # Reads check_on_manage from config (default: true). Uses --no-fetch so it's
@@ -315,7 +318,7 @@ case "$cmd" in
   delegate-health)
     # O2: check installed/missing for each configured delegate and companion
     printf 'Delegates:\n'
-    for _delegate in devin kimi grok spark; do
+    for _delegate in devin grok spark; do
       _cmd="${_delegate}-delegate"
       if command -v "$_cmd" >/dev/null 2>&1; then
         _status="installed"

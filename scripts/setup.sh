@@ -8,7 +8,12 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 ok()   { printf "${GREEN}✔${NC} %s\n" "$*"; }
 warn() { printf "${YELLOW}!${NC} %s\n" "$*"; }
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Resolve with Bash builtins even when PATH lacks coreutils or the source has no slash.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[[ "${BASH_SOURCE[0]}" == */* ]] || SCRIPT_DIR=.
+SCRIPT_DIR="$(cd -- "$SCRIPT_DIR" && pwd)"
+source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
+REPO_ROOT="$(token_reduce_resolve_repo_root)"
 BIN_DIR="${HOME}/.local/bin"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_SKILLS_DIR="${CODEX_HOME_DIR}/skills"
@@ -16,15 +21,6 @@ CODEX_SKILL_DIR="${CODEX_SKILLS_DIR}/token-reduce"
 AGENTS_SKILLS_DIR="${HOME}/.agents/skills"
 TOKEN_SAVIOR_PY="${HOME}/.local/share/token-savior/.venv/bin/python"
 EXTENDED_STACK="${TOKEN_REDUCE_INSTALL_EXTENDED_STACK:-0}"
-QMD_EXTENSION_FILE="${REPO_ROOT}/scripts/qmd-file-extensions.txt"
-QMD_EXTENSIONS_DEFAULT="md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
-if [[ -f "$QMD_EXTENSION_FILE" ]]; then
-  QMD_EXTENSIONS_DEFAULT="$(tr -d '[:space:]' <"$QMD_EXTENSION_FILE")"
-fi
-QMD_EXTENSIONS="${TOKEN_REDUCE_QMD_EXTENSIONS:-$QMD_EXTENSIONS_DEFAULT}"
-QMD_MASK_DEFAULT="**/*.{${QMD_EXTENSIONS}}"
-QMD_MASK="${TOKEN_REDUCE_QMD_MASK:-$QMD_MASK_DEFAULT}"
-
 mkdir -p "$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
 
@@ -310,29 +306,27 @@ for companion_skill in axi caveman caveman-cn caveman-es compress; do
   ensure_codex_companion_link "$companion_skill" "$AGENTS_SKILLS_DIR/$companion_skill"
 done
 
-# Optional delegate-skill router integration (devin / kimi / grok / spark).
+# Optional delegate-skill router integration (devin / grok / spark).
 # delegate-skill is the single entry point; its setup.sh installs and links all
-# four wrappers. TOKEN_REDUCE_SETUP_KIMI_DELEGATE is honored as a legacy alias.
-if [[ "${TOKEN_REDUCE_SETUP_DELEGATE_SKILL:-${TOKEN_REDUCE_SETUP_KIMI_DELEGATE:-1}}" == "1" ]]; then
+# four wrappers.
+if [[ "${TOKEN_REDUCE_SETUP_DELEGATE_SKILL:-1}" == "1" ]]; then
   if "$REPO_ROOT/scripts/integrate-delegate-skill.sh" >/dev/null 2>&1; then
-    ok "delegate-skill router integrated (devin / kimi / grok / spark)"
+    ok "delegate-skill router integrated (devin / grok / spark)"
   else
     warn "delegate-skill integration skipped/failed (set TOKEN_REDUCE_SETUP_DELEGATE_SKILL=0 to silence)"
   fi
 fi
 
-# ── Index this repo in QMD ────────────────────────────────────────────────────
+# ── Check existing QMD registration without mutating the shared index ─────────
 COLLECTION="repo-$(printf '%s' "$REPO_ROOT" | sha1sum | cut -c1-12)"
-if command -v qmd >/dev/null 2>&1; then
-  index_started="$(date +%s)"
-  if qmd collection add "$REPO_ROOT" --name "$COLLECTION" --mask "$QMD_MASK" >/dev/null 2>&1; then
-    index_elapsed="$(( $(date +%s) - index_started ))"
-    ok "qmd collection indexed ($COLLECTION) with docs+code mask in ${index_elapsed}s"
-  elif qmd collection list 2>/dev/null | grep -qE "^${COLLECTION}[[:space:]]"; then
-    ok "qmd collection already indexed ($COLLECTION)"
+if token_reduce_qmd_root_is_eligible "$REPO_ROOT" && command -v qmd >/dev/null 2>&1; then
+  if qmd collection list 2>/dev/null | grep -qE "^${COLLECTION}[[:space:]]"; then
+    ok "qmd collection already registered ($COLLECTION); setup left the shared index unchanged"
   else
-    warn "qmd collection add failed — run manually: qmd collection add . --name $COLLECTION --mask \"$QMD_MASK\""
+    warn "qmd collection is not registered ($COLLECTION); search will use scoped rg until the collection is registered through a reviewed maintenance path"
   fi
+elif command -v qmd >/dev/null 2>&1; then
+  warn "skipping QMD registration check for a non-repository or excluded aggregate root"
 fi
 
 # ── Telemetry opt-in onboarding (gstack-style prompt) ────────────────────────

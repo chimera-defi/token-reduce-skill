@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Integrate the delegate-skill router (devin / kimi / grok / spark) for token-reduce.
+# Integrate the delegate-skill router (devin / grok / spark) for token-reduce.
 # delegate-skill is the single entry point: its setup.sh installs and links all four
 # delegate wrappers and injects the global routing block. token-reduce no longer wires
 # individual delegate skills directly.
@@ -31,4 +31,4 @@ fi
 
 ok "delegate-skill repo: $DELEGATE_SKILL_REPO"
 bash "$DELEGATE_SKILL_REPO/setup.sh"
-ok "delegate-skill router integrated (devin / kimi / grok / spark)"
+ok "delegate-skill router integrated (devin / grok / spark)"

@@ -29,7 +29,6 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "composite-benchmark.json"
 QMD_COLLECTION = f"repo-{sha1(str(ROOT).encode('utf-8'), usedforsecurity=False).hexdigest()[:12]}"
 BENCH_ENV = {**os.environ, "TOKEN_REDUCE_TELEMETRY_CONTEXT": "benchmark"}
-QMD_EXTENSIONS_DEFAULT = "md,txt,rst,py,sh,bash,zsh,js,jsx,ts,tsx,mjs,cjs,json,yml,yaml,toml,ini,cfg,go,rs,java,rb,php"
 
 
 @dataclass
@@ -67,17 +66,6 @@ def token_count(text: str) -> int:
         return len(text.split())
     encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(text))
-
-
-def qmd_mask() -> str:
-    ext_file = ROOT / "scripts" / "qmd-file-extensions.txt"
-    extensions = QMD_EXTENSIONS_DEFAULT
-    if ext_file.exists():
-        loaded = ext_file.read_text(encoding="utf-8").strip().replace(" ", "")
-        if loaded:
-            extensions = loaded
-    mask_default = f"**/*.{{{extensions}}}"
-    return os.environ.get("TOKEN_REDUCE_QMD_MASK", mask_default)
 
 
 BENCH_CMD_TIMEOUT = int(os.environ.get("BENCH_CMD_TIMEOUT", "120"))
@@ -151,22 +139,26 @@ def run_cmd(command: str, expected_substrings: list[str]) -> StepResult:
     )
 
 
-def ensure_qmd_collection() -> None:
-    if shutil.which("qmd") is None:
-        return
-    mask = qmd_mask()
-    subprocess.run(
-        [
-            "bash",
-            "-lc",
-            f"qmd collection add {json.dumps(str(ROOT))} --name {QMD_COLLECTION} --mask {json.dumps(mask)} >/dev/null 2>&1 || true",
-        ],
+def ensure_qmd_collection() -> bool:
+    """Check registration without changing the shared QMD index."""
+    qmd = shutil.which("qmd")
+    if qmd is None:
+        return False
+    result = subprocess.run(
+        [qmd, "collection", "list"],
         cwd=ROOT,
         check=False,
         capture_output=True,
         text=True,
         env=BENCH_ENV,
     )
+    if result.returncode != 0:
+        return False
+    for line in result.stdout.splitlines():
+        fields = line.split(maxsplit=1)
+        if fields and fields[0] == QMD_COLLECTION:
+            return True
+    return False
 
 
 def availability(requirements: list[str]) -> tuple[bool, str]:
@@ -191,8 +183,26 @@ def _token_savior_functional() -> bool:
 
 
 def run_strategy(
-    name: str, requirements: list[str], steps: list[tuple[str, str, list[str]]]
+    name: str,
+    requirements: list[str],
+    steps: list[tuple[str, str, list[str]]],
+    skip_reason: str = "",
 ) -> StrategyResult:
+    if skip_reason:
+        return StrategyResult(
+            name=name,
+            requires=requirements,
+            available=False,
+            skipped_reason=skip_reason,
+            exit_code=0,
+            duration_ms=0,
+            bytes=0,
+            lines=0,
+            tokens=0,
+            quality_pass=False,
+            savings_vs_broad_pct=0.0,
+            steps=[],
+        )
     ok, reason = availability(requirements)
     if not ok:
         return StrategyResult(
@@ -259,7 +269,7 @@ def render_table(results: list[StrategyResult]) -> str:
 
 
 def main() -> int:
-    ensure_qmd_collection()
+    qmd_collection_registered = ensure_qmd_collection()
 
     strategies = [
         (
@@ -384,7 +394,19 @@ def main() -> int:
         ),
     ]
 
-    results = [run_strategy(name, requires, steps) for name, requires, steps in strategies]
+    results = [
+        run_strategy(
+            name,
+            requires,
+            steps,
+            skip_reason=(
+                f"QMD collection {QMD_COLLECTION} is not registered"
+                if name == "qmd_only" and not qmd_collection_registered
+                else ""
+            ),
+        )
+        for name, requires, steps in strategies
+    ]
 
     broad = next((r.tokens for r in results if r.name == "broad_shell" and r.available), 0)
     for result in results:

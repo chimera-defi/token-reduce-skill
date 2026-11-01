@@ -91,16 +91,19 @@ token-reduce-manage benchmark-profiles
 
 ## MCP
 
-```json
-{
-  "mcpServers": {
-    "token-reduce-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/token-reduce-skill/mcp/server.mjs"]
-    }
-  }
-}
+For an explicit Claude Code project opt-in, run from the consuming project:
+
+```bash
+claude mcp add -s project --transport stdio token-reduce-mcp -- node /absolute/path/to/token-reduce-skill/mcp/server.mjs
 ```
+
+Claude Code reads project registrations from `.mcp.json`, user registrations
+from `~/.claude.json` (`-s user`), or servers from a plugin manifest. It does
+not read `mcpServers` from `~/.claude/settings.json`; `scripts/setup.sh` uses
+that file for hooks only. Plugin users already receive `token-reduce-mcp`.
+
+Keep token-savior MCP opt-in. The structural Python helper does not need an
+MCP server; see [the decision and host cleanup commands](token-savior-evaluation.md#mcp-registration-decision--2026-10-25).
 
 ## What Each Layer Does
 

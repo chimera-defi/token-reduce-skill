@@ -17,7 +17,7 @@ specific grep, `git`/`gh` commands, running tests) is never gated by enforcement
 
 ## Headroom Companion
 
-Use Headroom more aggressively for large tool-result payloads, repeated logs/API responses, and long-running sessions where old tool output keeps inflating context.
+Headroom is **off by default** (removed host-wide 2026-10-12: live proxy saved 2.3% of 113.1M tokens over 1476 requests while costing ~1 GB RSS, one MCP process per session, and a hook on every SessionStart/Bash call). Use it only as an explicit, per-session opt-in. Never wire it globally (ANTHROPIC_BASE_URL, plugin, shell profile, hooks).
 
 - Verify health first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`.
 - Prefer selected wrapped sessions: `headroom wrap claude` or `headroom wrap codex`.
@@ -44,4 +44,4 @@ Use Cost Caliper only for periodic spend/session meta-review, not discovery. Sta
 ./scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.0.1:49123
 ```
 
-Use Caliper findings to identify expensive repos/sessions, expensive model-tier mix, cache write/read imbalance, and places where Headroom or delegate batching should be used more aggressively. Treat Caliper costs as estimates and do not auto-write persistent cost-discipline guidance without explicit user consent.
+Use Caliper findings to identify expensive repos/sessions, expensive model-tier mix, cache write/read imbalance, and places where delegate batching should be used more aggressively. Treat Caliper costs as estimates and do not auto-write persistent cost-discipline guidance without explicit user consent.

@@ -14,7 +14,22 @@ if [[ ! -f "$TARGET" ]]; then
   exit 0
 fi
 
-if command -v uv >/dev/null 2>&1; then
+source "$SCRIPT_DIR/token-reduce-qmd-guard.sh"
+REQUESTED_ROOT="${TOKEN_REDUCE_REPO_ROOT:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+ROOT_ARG_NEXT=0
+for ARG in "$@"; do
+  if [[ "$ROOT_ARG_NEXT" == 1 ]]; then
+    REQUESTED_ROOT="$ARG"
+    ROOT_ARG_NEXT=0
+  elif [[ "$ARG" == --repo-root ]]; then
+    ROOT_ARG_NEXT=1
+  elif [[ "$ARG" == --repo-root=* ]]; then
+    REQUESTED_ROOT="${ARG#--repo-root=}"
+  fi
+done
+if token_reduce_qmd_root_is_aggregate "$REQUESTED_ROOT"; then
+  exec env TOKEN_REDUCE_REPO_ROOT="$REQUESTED_ROOT" python3 "$TARGET" "$@"
+elif command -v uv >/dev/null 2>&1; then
   RUNNER=(uv run --no-project "$TARGET")
 elif command -v python3 >/dev/null 2>&1; then
   RUNNER=(python3 "$TARGET")
