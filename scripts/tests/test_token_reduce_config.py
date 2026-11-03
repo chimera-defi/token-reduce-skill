@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -19,7 +19,6 @@ from token_reduce_config import (
     save_config,
     set_nested,
 )
-
 
 # ---------------------------------------------------------------------------
 # deep_merge

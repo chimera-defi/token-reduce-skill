@@ -1,11 +1,11 @@
 """One filesystem/process installer flow; external installers only record argv."""
 import json
 import os
-from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 

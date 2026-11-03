@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REQUIRED_FRONTMATTER = ("name", "license", "description")
 REQUIRED_METADATA_FIELDS = ("author", "category")
 REQUIRED_SECTIONS = ("# Token Reduction Skill", "## Description", "## Triggers")

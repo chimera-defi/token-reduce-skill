@@ -12,12 +12,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from token_reduce_state import (  # noqa: E402
-    normalize_session_key,
-    session_key,
     broad_attempt_count,
-    record_broad_attempt,
     clear_broad_attempts,
     discovery_hint,
+    normalize_session_key,
+    record_broad_attempt,
+    session_key,
 )
 
 # ---------------------------------------------------------------------------

@@ -22,8 +22,8 @@ expensive parse functions, not just wall-clock timing -- that:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -33,7 +33,6 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import measure_token_reduction as mtr  # noqa: E402
 from session_metrics_cache import cache_path as smc_cache_path  # noqa: E402
-
 
 CODEX_LINE = json.dumps(
     {

@@ -5,11 +5,13 @@ should therefore warn/allow without weakening catastrophic and symlink-root
 hard guards.
 """
 from __future__ import annotations
+
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+
 import pytest
 
 SCRIPTS = Path(__file__).resolve().parents[1]

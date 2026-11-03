@@ -9,7 +9,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 CHECKPOINT_COMMANDS: list[tuple[str, list[str]]] = [
     ("release_gate", ["./scripts/token-reduce-manage.sh", "release-gate"]),
     ("validate", ["./scripts/token-reduce-manage.sh", "validate"]),

@@ -26,16 +26,14 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import review_pass as rp  # noqa: E402
-
 
 # --------------------------------------------------------------------------- #
 # Shared fixture helpers

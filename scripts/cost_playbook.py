@@ -14,7 +14,6 @@ from caliper_summary import CaliperUnavailable, fetch_summary
 from measure_token_reduction import measure
 from token_reduce_config import load_config
 
-
 PLAYBOOK_LEVERS: tuple[dict[str, str], ...] = (
     {
         "id": "efficiency_frontier",
