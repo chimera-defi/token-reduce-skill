@@ -10,7 +10,6 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "context-mode-intake.json"
 

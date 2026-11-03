@@ -25,10 +25,10 @@ try:
         broad_attempt_count,
         consume_block,
         discovery_hint,
+        recent_decision,
         record_block,
         record_broad_attempt,
         record_decision,
-        recent_decision,
         repo_root,
         session_key,
     )

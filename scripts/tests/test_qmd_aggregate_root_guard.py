@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SEARCH = REPO_ROOT / "scripts" / "token-reduce-search.sh"
 ADAPTIVE = REPO_ROOT / "scripts" / "token_reduce_adaptive.py"

@@ -13,7 +13,6 @@ from pathlib import Path
 from session_metrics_cache import SessionMetricsCache, cache_path, fingerprint_files
 from token_reduce_telemetry import load_events, summarize_events
 
-
 QMD_RE = re.compile(r"\bqmd\s+search\b")
 TOKEN_REDUCE_SEARCH_RE = re.compile(
     r"(?:^|/)(?:\.claude/)?token-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b|\btoken-reduce-(?:search|paths|snippet|adaptive)(?:\.sh)?\b"

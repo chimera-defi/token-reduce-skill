@@ -116,7 +116,7 @@ def test_lane(monkeypatch):
 
 
 def test_record_event_mirrors_without_changing_repo_format(monkeypatch, tmp_path):
-    from token_reduce_telemetry import record_event, events_path
+    from token_reduce_telemetry import events_path, record_event
     record_event(tmp_path, event="helper_call", source="helper", tool="paths", status="ok",
                  meta={"session_key": "raw-session", "policy": "helper", "context": "test"})
     [row] = rows()

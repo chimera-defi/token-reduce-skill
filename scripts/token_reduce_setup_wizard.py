@@ -14,7 +14,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from token_reduce_config import DEFAULT_CONFIG, load_config, save_config
 
-
 _DELEGATES = {
     "devin": ("devin-delegate", "Browser, UI, screenshot, sandbox, adversarial review"),
     "grok": ("grok-delegate", "Multi-file refactor, large codebase"),

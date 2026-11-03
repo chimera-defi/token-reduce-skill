@@ -19,7 +19,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-
 STOPWORDS = frozenset({
     "a", "an", "the", "and", "or", "but", "if", "then", "than", "so",
     "for", "of", "to", "in", "on", "at", "by", "from", "into", "out",

@@ -7,8 +7,13 @@ import json
 from copy import deepcopy
 from typing import Any
 
-from token_reduce_config import DEFAULT_CONFIG, load_config, parse_value, save_config, set_nested
-
+from token_reduce_config import (
+    DEFAULT_CONFIG,
+    load_config,
+    parse_value,
+    save_config,
+    set_nested,
+)
 
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
     "minimal-load": {

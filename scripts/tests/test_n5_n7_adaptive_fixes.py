@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from token_reduce_adaptive import decide, BehaviorProfile, Availability, RoutingPolicy
+from token_reduce_adaptive import Availability, BehaviorProfile, RoutingPolicy, decide
 
 
 def _behavior(*, helper_calls: int = 10, repeated: float = 0.1, rapid: float = 0.0) -> BehaviorProfile:
