@@ -7,10 +7,9 @@ import json
 import os
 import re
 import shutil
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-
 
 BLOCK_START = "<!-- token-reduce:begin -->"
 BLOCK_END = "<!-- token-reduce:end -->"

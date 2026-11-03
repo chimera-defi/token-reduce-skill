@@ -11,8 +11,8 @@ composite_gate fails.  The fix makes those tools optional with rg fallbacks.
 """
 from __future__ import annotations
 
-import importlib.util
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess

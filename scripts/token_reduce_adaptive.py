@@ -21,9 +21,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Sequence
 
-from token_reduce_config import load_config, layer_enabled
+from token_reduce_config import layer_enabled, load_config
 from token_reduce_telemetry import load_events, record_event, summarize_events
-
 
 OUTPUT_HEAVY_TERMS = {
     "log",

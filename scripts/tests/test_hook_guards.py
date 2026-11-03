@@ -31,6 +31,7 @@ if str(SCRIPT_DIR) not in sys.path:
 # Dynamic import to handle hyphenated filenames
 import importlib.util
 
+
 def _load(name: str):
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"),

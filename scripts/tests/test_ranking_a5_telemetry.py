@@ -14,8 +14,6 @@ from rank_paths import (  # noqa: E402
 )
 
 
-
-
 def test_aggregate_priors_counts_per_query_path_pairs() -> None:
     events = [
         {

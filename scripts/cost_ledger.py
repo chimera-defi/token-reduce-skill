@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-
 # Pulled from references/benchmarks/local-benchmark.json (broad_inventory
 # tokens and token_reduce_paths_warm tokens, rounded for stability).
 BENCHMARK_BROAD_TOKENS = 1028

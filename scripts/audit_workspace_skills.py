@@ -9,10 +9,9 @@ import re
 import shutil
 import subprocess
 from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
 
 TOKEN_REDUCE_DOC_RE = re.compile(r"token-reduce|token-reduce-paths", re.IGNORECASE)
 TOKEN_REDUCE_HELPER_RE = re.compile(

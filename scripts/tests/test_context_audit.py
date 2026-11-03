@@ -1,9 +1,9 @@
 """End-to-end report, on-load hook, and bounded scan through the real CLI."""
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "context_audit.py"
 

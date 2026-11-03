@@ -11,13 +11,12 @@ import json
 import shutil
 import subprocess
 import time
-from hashlib import sha1
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from hashlib import sha1
 from pathlib import Path
 
 import tiktoken
-
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "references" / "benchmarks" / "local-benchmark.json"

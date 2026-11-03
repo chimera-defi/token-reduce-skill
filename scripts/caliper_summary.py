@@ -10,9 +10,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode
 from typing import Any
-
+from urllib.parse import urlencode
 
 DEFAULT_CALIPER_URL = "http://127.0.0.1:49123"
 DEFAULT_AGGREGATE_BUDGET_MS = 4000

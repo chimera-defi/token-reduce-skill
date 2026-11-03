@@ -5,15 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
 import shlex
 import shutil
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 from token_reduce_config import DEFAULT_CONFIG, config_path, layer_mode, load_config
-
 
 CONTROLS = {
     "rtk": "run argv wrapper; existing global rewrite hooks are external",

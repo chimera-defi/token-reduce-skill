@@ -10,6 +10,8 @@ from caliper_summary import (
     CaliperUnavailable,
     build_spend_findings,
     fetch_summary,
+)
+from caliper_summary import (
     render_markdown as render_caliper_markdown,
 )
 from cost_playbook import (

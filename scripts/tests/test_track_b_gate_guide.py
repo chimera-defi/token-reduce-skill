@@ -10,9 +10,9 @@ Covers:
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
@@ -26,7 +26,6 @@ from token_reduce_state import (  # noqa: E402
     broad_attempt_count,
     record_broad_attempt,
 )
-
 
 # --------------------------------------------------------------------------- #
 # B1 — auto-rewrite suggestions

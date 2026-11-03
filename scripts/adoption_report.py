@@ -9,7 +9,6 @@ from pathlib import Path
 
 from audit_workspace_skills import build_payload
 
-
 DEFAULT_ACTIVE_HELPER_SLO_PCT = 90.0
 DEFAULT_HELPER_USAGE_SLO_PCT = 25.0
 

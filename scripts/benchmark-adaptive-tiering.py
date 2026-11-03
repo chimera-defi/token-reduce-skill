@@ -2,8 +2,8 @@
 """Benchmark adaptive tier routing vs baseline token-reduce paths helper."""
 from __future__ import annotations
 
-import json
 import argparse
+import json
 import os
 import subprocess
 import time

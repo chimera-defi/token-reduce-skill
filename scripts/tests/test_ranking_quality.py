@@ -32,7 +32,6 @@ from rank_paths import (  # noqa: E402  (path setup before import)
     tokenize_query,
 )
 
-
 # ---------------------------------------------------------------------------
 # A4 query expansion / stopwords (no fixture needed)
 # ---------------------------------------------------------------------------

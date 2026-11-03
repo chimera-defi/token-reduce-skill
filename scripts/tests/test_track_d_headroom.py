@@ -28,7 +28,6 @@ from token_reduce_adaptive import (  # noqa: E402
     decide,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 

@@ -23,8 +23,8 @@ SCRIPT_DIR = Path(__file__).resolve().parents[1]
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-import token_reduce_state
 import token_reduce_adaptive
+import token_reduce_state
 
 
 class TestRepoRootGuards:

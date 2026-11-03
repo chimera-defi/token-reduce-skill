@@ -8,8 +8,11 @@ import pytest
 
 # Allow import without installing as a package
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from composite_token_telemetry import _clamp, _extract_commands, maybe_json  # noqa: E402
-
+from composite_token_telemetry import (  # noqa: E402
+    _clamp,
+    _extract_commands,
+    maybe_json,
+)
 
 # ── maybe_json ───────────────────────────────────────────────────────────────
 

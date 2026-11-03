@@ -8,7 +8,6 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
     "layers": {name: "auto" for name in (

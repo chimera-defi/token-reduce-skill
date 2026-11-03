@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Optional
-
 
 # --------------------------------------------------------------------------- #
 # Auto-rewrite suggestions (B1)
@@ -29,7 +27,7 @@ _FIND_NAME_RE = re.compile(
 )
 
 
-def _find_name_rewrite(command: str) -> Optional[str]:
+def _find_name_rewrite(command: str) -> str | None:
     m = _FIND_NAME_RE.search(command)
     if not m:
         return None
@@ -47,7 +45,7 @@ def _find_name_rewrite(command: str) -> Optional[str]:
     return f"rg --files --hidden --no-ignore -g '{pattern}' {root}".rstrip()
 
 
-def suggest_rewrite(command: str) -> Optional[str]:
+def suggest_rewrite(command: str) -> str | None:
     """Suggest a cheaper alternative for a broad/exploratory command.
 
     Returns a short shell snippet ready to copy, or None when no specific
@@ -145,7 +143,7 @@ def is_catastrophic(command: str) -> bool:
 # --------------------------------------------------------------------------- #
 
 
-def estimate_output_tokens(command: str) -> Optional[int]:
+def estimate_output_tokens(command: str) -> int | None:
     """Rough estimate of tokens a command's output will consume.
 
     Returns None when the command is not a known broad/exploratory pattern.
