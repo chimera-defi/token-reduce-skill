@@ -119,23 +119,6 @@ def record_broad_attempt(repo: Path, key: str) -> int:
     return count
 
 
-def clear_broad_attempts(repo: Path, key: str | None = None) -> None:
-    root = state_dir(repo)
-    if not root.exists():
-        return
-    if key is None:
-        for path in root.glob("broad_attempt_*.json"):
-            try:
-                path.unlink()
-            except OSError:
-                continue
-        return
-    try:
-        broad_attempt_path(repo, key).unlink()
-    except FileNotFoundError:
-        pass
-
-
 def block_state_path(repo: Path) -> Path:
     return state_dir(repo) / "last_block.json"
 
