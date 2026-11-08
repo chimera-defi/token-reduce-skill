@@ -1,27 +1,27 @@
 # Shrink report: token-reduce (2026-11-08)
 
-Plan and usage evidence: `SHRINK-PLAN.md`. Old code: commit `b3f1f89`. Landed in two PRs: #122 (new code beside old, then deploy) and this one (delete old).
+Plan and usage evidence: `SHRINK-PLAN.md`. Old code: commit `b3f1f89`. Landed in three PRs: #122 (new code beside old, then deploy), #123 (delete old) and a small follow-up that stops data files outranking code.
 
 ## Line counts (tracked files, symlinks excluded)
 
 | | Before (`b3f1f89`) | After | 
 |---|---:|---:|
-| Code (scripts, mcp, plugin, web page) | 17,797 | 186 |
-| Tests | 8,649 | 67 |
-| Docs (`*.md`, llms.txt) | 5,289 | 377 (incl. this report and the plan) |
+| Code (scripts, mcp, plugin, web page) | 17,797 | 188 |
+| Tests | 8,649 | 71 |
+| Docs (`*.md`, llms.txt) | 5,289 | 378 (incl. this report and the plan) |
 | Config (json/yaml/txt) | 844 | 22 |
 | CI (`.githooks`, workflows; unchanged) | 280 | 280 |
-| **Total** | **32,859** | **932** |
+| **Total** | **32,859** | **939** |
 | Files | 203 | 21 |
 
-Code after: `token-reduce.sh` 97, `symlink-find-hint.py` 61, `deploy.sh` 28.
+Code after: `token-reduce.sh` 99, `symlink-find-hint.py` 61, `deploy.sh` 28.
 
 ## Kept, and why
 
-- **`token-reduce-paths` / `-snippet` / `-adaptive`** (one script, verb from argv or basename). Codex called `token-reduce-paths` 465 times in 30 days; Claude about 40. Now rg only: ranked by how many query words the path matches, then content hits. From `$HOME`/`~/workspace` it does a bounded search with private-name excludes (secrets, agent memory, holdouts, dotfile config dirs). Replay of 40 real queries: 0 timeouts, 0 private paths, p50 0.84 s, max 1.48 s (the old script fell back to rg in 99% of calls and hit 120 s timeouts on large repos).
+- **`token-reduce-paths` / `-snippet` / `-adaptive`** (one script, verb from argv or basename). Codex called `token-reduce-paths` 465 times in 30 days; Claude about 40. Now rg only: ranked by how many query words the path matches, then content hits. From `$HOME`/`~/workspace` it does a bounded search with private-name excludes (secrets, agent memory, holdouts, dotfile config dirs). Content search skips files over 1 MB and data files (`*.jsonl`, `*.log`, `*.csv`, ...) so a big log cannot outrank code on raw hit count. Replay of 40 real queries: 0 timeouts, 0 private paths, p50 0.25 s, max 0.37 s (the old script fell back to rg in 99% of calls and hit 120 s timeouts on large repos).
 - **Symlinked-dir `find` hint** (`symlink-find-hint.py`). The only hook rule that ever advised in the 30-day central log. Adds `additionalContext`, never blocks, always exits 0. Replay over 5,521 real Bash commands: 0 non-zero exits, 9 hints, all true positives, p99 54 ms. Handles `~`, `$HOME`, `rtk`/`sudo`/`timeout N` prefixes, `bash -c '...'`, `$(...)`, multi-line commands, and ignores heredoc bodies.
 - **`deploy.sh`**: diff-first install of the hook copy and `~/.local/bin` wrappers, with timestamped backups.
-- **`tests/test_e2e.sh`**: 35 cases with real rg and real hook stdin in a temp HOME.
+- **`tests/test_e2e.sh`**: 36 cases with real rg and real hook stdin in a temp HOME.
 - `SKILL.md`, `README.md`, `AGENTS.md` (attribution, commit format, PR rules, delegate block), `CLAUDE.md`, `agents/openai.yaml`, `.githooks`, `.github`.
 
 ## Dropped, and why
@@ -41,6 +41,7 @@ Code after: `token-reduce.sh` 97, `symlink-find-hint.py` 61, `deploy.sh` 28.
 - `~/.claude/settings.json` (global) edited with a dated backup `~/.claude/settings.json.bak-token-reduce-20261108`: removed the Glob/Grep/Read PreToolUse, PostToolUse Glob and SessionStart entries; Bash now runs only the symlink hint. All non-hook keys unchanged.
 - Crontab backed up to `~/backups/token-reduce-20261108/crontab`; qmd refresh line removed; its wrapper archived.
 - Live check in a fresh `claude -p` session: a normal Bash call passed with no hook output; `find ~/.claude/projects -name ...` received the hint.
+- After #123: `.worktrees/main` advanced to 65daac4; `deploy.sh --dry-run` showed no diff (wrappers exec the symlinked helpers). Second fresh `claude -p` check passed the same way with no hook errors; `token-reduce-paths`/`-snippet`/`-adaptive` on PATH ran the new script in a real repo and at `~/workspace`.
 
 Rollback: `SHRINK-PLAN.md` section 6, step 5.
 
@@ -52,7 +53,7 @@ Rollback: `SHRINK-PLAN.md` section 6, step 5.
 - Hook stays advisory (`additionalContext`), never blocks.
 - Removed verbs get exit-2 stubs instead of disappearing, so callers see a pointer.
 - Squash-merge, branches kept.
-- Review: Claude Sonnet 5.5 subagent (Codex out of quota, Fable paused).
+- Review: Claude Sonnet 5.5 subagent on #122 and #123 (Codex out of quota per the task brief; Fable paused).
 
 ## Left undone / for others
 
