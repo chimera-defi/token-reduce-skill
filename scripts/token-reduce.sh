@@ -31,15 +31,16 @@ root="${TOKEN_REDUCE_REPO_ROOT:-}"
 root="$(cd "$root" 2>/dev/null && pwd -P)" || root="$PWD"
 home="$(cd "$HOME" 2>/dev/null && pwd -P)" || home="$HOME"
 
+private_dirs=(agent-memory secrets .ssh .gnupg .codex .claude .config .local .cache state private node_modules .git venv .venv venvs .venvs env .env virtualenv .virtualenv)
 private() {
-  case "/$1/" in
-    */agent-memory/*|*/secrets/*|*/.ssh/*|*/.gnupg/*|*/.codex/*|*/.claude/*|*/.config/*|*/.local/*|*/.cache/*|*/state/*|*/private/*|*/node_modules/*|*/.git/*|*/venv/*|*/.venv/*|*/venvs/*|*/.venvs/*|*/env/*|*/.env/*|*/virtualenv/*|*/.virtualenv/*|*[hH][oO][lL][dD][oO][uU][tT]*) return 0 ;;
-  esac
+  local d
+  [[ ${1,,} != *holdout* ]] || return 0
+  for d in "${private_dirs[@]}"; do [[ /$1/ == */$d/* ]] && return 0; done
   return 1
 }
 
 aggregate() {
-  local scan="$home" depth=3 ws f size name inputs=() ex=() st
+  local scan="$home" depth=3 ws f size name inputs=() ex=()
   echo "token-reduce: aggregate root '$root': bounded search, private dirs excluded; cd into a repo (or set TOKEN_REDUCE_REPO_ROOT) to narrow" >&2
   if [[ -d $home/workspace ]]; then
     ws="$(cd "$home/workspace" && pwd -P)" || return 0
@@ -56,17 +57,12 @@ aggregate() {
   fi
   [[ ${#inputs[@]} -gt 0 ]] || return 0
   [[ $scan != "$home" ]] || depth=1
-  for name in agent-memory secrets .ssh .gnupg .codex .claude .config .local .cache state private node_modules .git venv .venv venvs .venvs env .env virtualenv .virtualenv; do
-    ex+=(--iglob "!$name")
-  done
+  for name in "${private_dirs[@]}"; do ex+=(--iglob "!$name"); done
   (
     cd "$scan" || exit 0
     timeout 20 rg --no-config --no-ignore --hidden --no-follow -l -i -F --max-depth "$depth" --max-filesize 1M \
       -g '*.md' -g '*.toml' -g '*.json' -g '*.sh' -g '*.py' "${ex[@]}" --iglob '!*holdout*' --color never \
       "${pat[@]}" -- "${inputs[@]}" | head -n 20
-    st=("${PIPESTATUS[@]}")
-    # head closing the pipe (141) and rg "no match" (1) are fine
-    [[ ${st[0]} == 141 || ${st[0]} == 0 || ${st[0]} == 1 ]]
   )
 }
 
@@ -77,13 +73,12 @@ if [[ $root == "$home" || $root == "$home/workspace" ]]; then
 fi
 
 cd "$root" || exit 1
-wl="${words[*]}"
 # content search skips big and data files so logs cannot outrank code on raw hit count
 cx=(--max-filesize 1M -g '!artifacts/token-reduction/**' -g '!*.{jsonl,ndjson,log,csv,tsv}')
 list="$(
   {
     timeout 20 rg --files -g '!artifacts/token-reduction/**' 2>/dev/null \
-      | TR_Q="${query,,}" awk -v ws="${wl:-}" 'BEGIN{n=split(ws,w," "); if(!n){w[1]=ENVIRON["TR_Q"];n=1}}
+      | TR_Q="${query,,}" awk -v ws="${words[*]}" 'BEGIN{n=split(ws,w," "); if(!n){w[1]=ENVIRON["TR_Q"];n=1}}
           {p=tolower($0); s=0; for(i=1;i<=n;i++) if(index(p,w[i])) s++; if(s) printf "P\t%d\t%s\n", s, $0}'
     timeout 20 rg -c -i -F --no-messages "${cx[@]}" "${pat[@]}" 2>/dev/null </dev/null \
       | sed 's/^\(.*\):\([0-9][0-9]*\)$/C\t\2\t\1/'
