@@ -8,11 +8,11 @@ Plan and usage evidence: `SHRINK-PLAN.md`. Old code: commit `b3f1f89`. Landed in
 |---|---:|---:|
 | Code (scripts, mcp, plugin, web page) | 17,797 | 186 |
 | Tests | 8,649 | 67 |
-| Docs (`*.md`, llms.txt) | 5,289 | 315 (incl. this report and the plan) |
+| Docs (`*.md`, llms.txt) | 5,289 | 377 (incl. this report and the plan) |
 | Config (json/yaml/txt) | 844 | 22 |
 | CI (`.githooks`, workflows; unchanged) | 280 | 280 |
-| **Total** | **32,859** | **870** |
-| Files | 203 | 20 |
+| **Total** | **32,859** | **932** |
+| Files | 203 | 21 |
 
 Code after: `token-reduce.sh` 97, `symlink-find-hint.py` 61, `deploy.sh` 28.
 
