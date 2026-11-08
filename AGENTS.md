@@ -51,92 +51,13 @@ git config core.hooksPath .githooks
 - Keep the PR summary factual and short.
 - Include the original request verbatim in `## Original Request`.
 
-## Token Reduce — Codex Overrides
+## Token Reduce — Codex Notes
 
-Canonical token-reduce rules are in `SKILL.md`. The notes below replace or supplement sections that differ in Codex.
+Canonical usage is in `SKILL.md`. In Codex there is no subagent API: if the candidate set stays broad after two discovery passes, ask the user to narrow the scope.
 
-### Escalation
+If the path is unknown, start discovery with `./scripts/token-reduce-paths.sh topic words` (or `token-reduce-snippet.sh` for one ranked excerpt), then use scoped `rg` and targeted reads. Do not start with `rg --files`, repo-wide `rg -n`, `find .`, `ls -R` or `grep -R`. This applies when editing this repo too.
 
-There is no `Task(subagent_type)` API in Codex. If the candidate set stays broad after two discovery passes, stop and ask the user to narrow the scope. Do not attempt to spin up sub-agents.
-
-### Python Commands
-
-Use `uv run ...` instead of `python3 ...` or `pip ...`.
-For the validator: `uv run --with pyyaml /path/to/quick_validate.py .`
-
-### Skill Self-Maintenance
-
-These narrow-discovery rules apply even when the task is modifying this skill repo itself. Editing `SKILL.md` or a hook does not justify broad repo inventory.
-
-### First Move Discipline
-
-If the user does not already provide the exact file path, the first compliant discovery command is:
-
-```bash
-./scripts/token-reduce-paths.sh topic words
-```
-
-Use `./scripts/token-reduce-snippet.sh topic words` only if one ranked excerpt is necessary after the path list.
-
-Do not start Codex discovery in this repo with:
-
-- `rg --files`
-- raw `rg -n` across the repo
-- `find .`
-- `ls -R`
-- `grep -R`
-
-Scoped `rg` and targeted reads are follow-up tools after the helper returns candidate paths. They are not the initial compliant move when token-reduce is installed.
-
-Named anti-patterns (see `references/opus55-anti-patterns.md` for the full, host-agnostic list): dumping a whole large file when a line range would do, `cat`/`head`/`tail` over a transcript or JSONL log, recursive `ls -R`/`find /` with no depth limit, and re-reading a file just edited. Ordinary targeted work — a known file, a specific grep, running tests — is not blocked by these rules; they target unbounded scans, not narrow reads.
-
-### Packaging Checks
-
-Before calling the skill package complete, run:
-
-```bash
-./scripts/token-reduce-manage.sh validate
-```
-
-### Operational Checks
-
-When changing routing, hooks, telemetry, or benchmark logic, also run:
-
-```bash
-./scripts/token-reduce-manage.sh measure
-./scripts/token-reduce-manage.sh review
-./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
-```
-
-Treat the review output as the current evidence source for weak adoption, weak routing, or benchmark drift. Use `improve-adoption` when workspace install/docs are compliant but recent Claude/Codex sessions are not showing helper usage; it emits active-repo helper usage SLOs and a prioritized intervention queue.
-
-For major change sets before release/merge, also run:
-
-```bash
-./scripts/token-reduce-manage.sh release-gate
-```
-
-Only keep the change set when the gate reports `release_gate_pass: true`, or document the exception explicitly.
-
-### Companion Tool Intake
-
-For additions like alternate search backends, structural indexers, or external MCP servers:
-
-1. verify the external project directly
-2. run its tests or validation first
-3. benchmark it on representative token-reduce tasks
-4. integrate it only if it improves a specific task class without harming the default workflow
-5. propagate the decision into docs and validation
-
-### Headroom Companion
-
-Headroom is **off by default** (removed host-wide 2026-10-12: live proxy saved 2.3% of 113.1M tokens over 1476 requests while costing ~1 GB RSS, one MCP process per session, and a hook on every SessionStart/Bash call). Use it only as an explicit, per-session opt-in. Consider it only when a task is dominated by large tool results, after the token-reduce first-move flow has run.
-
-- Verify first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`.
-- Prefer selected wrapped sessions: `headroom wrap codex` or `headroom wrap claude`.
-- Keep Headroom telemetry disabled and do not enable `--learn` until memory writes are reviewed.
-- Do not use Headroom as unknown-path repo discovery; start with `./scripts/token-reduce-paths.sh topic words`.
-- After routing or docs changes, run `./scripts/token-reduce-manage.sh measure` and `review`; check `headroom_command_pct` and recommendation conversion findings.
+Before merging, run `bash tests/test_e2e.sh` and paste its result in the PR. The old `validate`, `release-gate`, `measure`, `review`, Headroom and Caliper rules were removed with the 2026-11-08 shrink (see `SHRINK-REPORT.md`).
 
 <!-- delegate-skill:begin -->
 ## AI Delegate Routing — MANDATORY
