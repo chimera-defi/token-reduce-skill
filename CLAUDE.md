@@ -1,47 +1,5 @@
 # Claude Guidance
 
-Use `token-reduce` before broad repo discovery. If the path is unknown, start with:
+If the path is unknown, start with `./scripts/token-reduce-paths.sh topic words`, then use scoped `rg` and targeted reads on the candidates it returns.
 
-```bash
-./scripts/token-reduce-paths.sh topic words
-```
-
-Use scoped `rg` and targeted reads after the helper returns candidate paths. Do not start with `find .`, `ls -R`, `grep -R`, `rg --files .`, or broad glob patterns.
-
-For a broad sweep — an audit, a repo-wide search, tracing something across many files —
-delegate instead of scanning it yourself: `Agent(subagent_type="Explore", ...)` for read-only
-search, or `subagent_type="builder"` / `model="sonnet"` for implementation and deep-research
-fan-out, and use the conclusions + evidence it returns. Ordinary targeted work (a known file, a
-specific grep, `git`/`gh` commands, running tests) is never gated by enforcement — see
-`references/opus55-anti-patterns.md` for the named anti-patterns enforcement actually targets.
-
-## Headroom Companion
-
-Headroom is **off by default** (removed host-wide 2026-10-12: live proxy saved 2.3% of 113.1M tokens over 1476 requests while costing ~1 GB RSS, one MCP process per session, and a hook on every SessionStart/Bash call). Use it only as an explicit, per-session opt-in. Never wire it globally (ANTHROPIC_BASE_URL, plugin, shell profile, hooks).
-
-- Verify health first: `headroom install status` or `curl -fsS http://127.0.0.1:8787/readyz`.
-- Prefer selected wrapped sessions: `headroom wrap claude` or `headroom wrap codex`.
-- Keep telemetry disabled.
-- Do not enable `--learn` until memory writes are reviewed against memory policy.
-- Do not use Headroom as the first move for unknown-path discovery; token-reduce remains the master router.
-
-Measure adoption with:
-
-```bash
-./scripts/token-reduce-manage.sh measure
-./scripts/token-reduce-manage.sh review
-./scripts/token-reduce-manage.sh improve-adoption --workspace-root /home/agents/workspace --days 7
-```
-
-Use `improve-adoption` when install/docs look clean but Claude or Codex are not actually using the helper. It reports active-repo helper usage SLOs, active repos with zero helper usage, likely causes, and prioritized repo interventions. The adoption review includes `headroom_mentions`, `headroom_command_sessions`, `headroom_command_pct`, and recommendation conversion findings.
-
-## Cost Caliper Companion
-
-Use Cost Caliper only for periodic spend/session meta-review, not discovery. Start its local dashboard/API with Caliper's `/caliper` command, then inspect token-reduce's normalized view:
-
-```bash
-./scripts/token-reduce-manage.sh caliper-summary --url http://127.0.0.1:49123
-./scripts/token-reduce-manage.sh review --with-caliper --caliper-url http://127.0.0.1:49123
-```
-
-Use Caliper findings to identify expensive repos/sessions, expensive model-tier mix, cache write/read imbalance, and places where delegate batching should be used more aggressively. Treat Caliper costs as estimates and do not auto-write persistent cost-discipline guidance without explicit user consent.
+Before merging a change, run `bash tests/test_e2e.sh`. Deploying to the live host is a manual step; see `README.md`.

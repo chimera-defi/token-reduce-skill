@@ -2,7 +2,7 @@
 # token-reduce: path finder. Verbs: paths, snippet. Deps: bash, rg, coreutils, git.
 set -u
 usage() { echo "usage: token-reduce-paths <words...> | token-reduce-snippet <words...>
-Lists up to 20 candidate files (./rel in a repo; absolute at \$HOME or ~/workspace)."; }
+Lists up to 20 candidate files, 10 plus file:line hits for snippet (./rel in a repo; absolute at \$HOME or ~/workspace)."; }
 name="$(basename "$0")"
 case "${1:-}" in
   paths|snippet) verb="$1"; shift ;;
