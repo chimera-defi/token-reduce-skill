@@ -35,4 +35,4 @@ bash tests/test_e2e.sh
 
 ## History
 
-Until 2026-11-08 this repo also held a qmd backend, an MCP server, telemetry, benchmarks and many hook rules (about 17k lines). Usage evidence and the reasons each part was dropped: `SHRINK-PLAN.md` and `SHRINK-REPORT.md`. The old code is at commit `b3f1f89`.
+Until 2026-11-08 this repo also held a qmd backend, an MCP server, telemetry, benchmarks and many hook rules (about 33k lines, 18k of it code). Usage evidence and the reasons each part was dropped: `SHRINK-PLAN.md` and `SHRINK-REPORT.md`. The old code is at commit `b3f1f89`.
