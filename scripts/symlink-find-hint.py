@@ -5,7 +5,7 @@ import json, os, re, shlex, sys
 
 def expand(p):
     p = re.sub(r"^\$\{?HOME\}?(?=/|$)", lambda m: os.environ.get("HOME", ""), p)
-    return os.path.expanduser(p) if p.startswith("~") else p
+    return os.path.expanduser(p)
 
 
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n.*?\n\s*\2[ \t]*(?=\n|$)", re.S)
