@@ -6,7 +6,7 @@ mode="${1:---dry-run}"
 case "$mode" in --dry-run|--apply) ;; *) echo "usage: $0 [--dry-run|--apply]" >&2; exit 2 ;; esac
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 skill="${SKILL_ROOT:-$(readlink -f "$HOME/.claude/skills/token-reduce")}"
-bak="$HOME/backups/token-reduce-$(date +%Y%m%d)"
+bak="$HOME/backups/token-reduce-$(date +%Y%m%d-%H%M%S)"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 targets=("$here/symlink-find-hint.py:$HOME/.claude/hooks/token-reduce/symlink-find-hint.py")
 for n in paths snippet adaptive; do
@@ -24,5 +24,5 @@ for t in "${targets[@]}"; do
     echo "== $dst"; diff -u "$([[ -f $dst ]] && echo "$dst" || echo /dev/null)" "$src" || true; continue
   fi
   if [[ -e $dst ]]; then mkdir -p "$bak"; cp -p "$dst" "$bak/$(basename "$dst")"; fi
-  mkdir -p "$(dirname "$dst")"; cp "$src" "$dst"; chmod +x "$dst"; echo "installed $dst"
+  mkdir -p "$(dirname "$dst")"; rm -f "$dst"; cp "$src" "$dst"; chmod +x "$dst"; echo "installed $dst"
 done

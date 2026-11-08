@@ -57,7 +57,7 @@ aggregate() {
   [[ ${#inputs[@]} -gt 0 ]] || return 0
   [[ $scan != "$home" ]] || depth=1
   for name in agent-memory secrets .ssh .gnupg .codex .claude .config .local .cache state private node_modules .git venv .venv venvs .venvs env .env virtualenv .virtualenv; do
-    ex+=(-g "!$name")
+    ex+=(--iglob "!$name")
   done
   (
     cd "$scan" || exit 0
@@ -81,9 +81,9 @@ wl="${words[*]}"
 list="$(
   {
     timeout 20 rg --files -g '!artifacts/token-reduction/**' 2>/dev/null \
-      | awk -v ws="${wl:-}" -v q="${query,,}" 'BEGIN{n=split(ws,w," "); if(!n){w[1]=q;n=1}}
+      | TR_Q="${query,,}" awk -v ws="${wl:-}" 'BEGIN{n=split(ws,w," "); if(!n){w[1]=ENVIRON["TR_Q"];n=1}}
           {p=tolower($0); s=0; for(i=1;i<=n;i++) if(index(p,w[i])) s++; if(s) printf "P\t%d\t%s\n", s, $0}'
-    timeout 20 rg -c -i -F --no-messages -g '!artifacts/token-reduction/**' "${pat[@]}" 2>/dev/null \
+    timeout 20 rg -c -i -F --no-messages -g '!artifacts/token-reduction/**' "${pat[@]}" 2>/dev/null </dev/null \
       | sed 's/^\(.*\):\([0-9][0-9]*\)$/C\t\2\t\1/'
   } | sort -s -t$'\t' -k1,1r -k2,2nr \
     | awk -F'\t' '!seen[$3]++ {print "./" $3}' | head -n "$top"
@@ -92,6 +92,6 @@ list="$(
 printf '%s\n' "$list"
 if [[ $verb == snippet ]]; then
   echo
-  timeout 20 rg -n -i -F --no-messages --max-columns 200 -g '!artifacts/token-reduction/**' "${pat[@]}" 2>/dev/null | head -n 40
+  timeout 20 rg -n -i -F --no-messages --max-columns 200 -g '!artifacts/token-reduction/**' "${pat[@]}" 2>/dev/null </dev/null | head -n 40
 fi
 exit 0
